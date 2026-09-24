@@ -244,6 +244,7 @@ export default function Home() {
   }
 
   async function clearStale() {
+    if (!confirm('Delete all leads (including approved) and reset dedup history? The next Run Now will fetch everything fresh.')) return;
     try {
       const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
       const data = await res.json() as { leadsDeleted?: number };
@@ -289,7 +290,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
             }}
           >
-            Clear Stale
+            Reset Leads
           </button>
           <button
             onClick={runNow}

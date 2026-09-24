@@ -18,29 +18,27 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const db = createClient(url, key);
 
-  // Delete all leads from old employee job boards that are now irrelevant.
-  // Keep: upwork, apollo. Remove: remotive, remoteok, weworkremotely.
+  // Wipe the entire leads table and sent_jobs dedup table so the next
+  // cron run treats every Upwork/Freelancer/Apollo lead as fresh.
   const { count: leadsDeleted, error: e1 } = await db
     .from('leads')
     .delete({ count: 'exact' })
-    .in('source', ['remotive', 'remoteok', 'weworkremotely']);
+    .gte('created_at', '2000-01-01'); // matches all rows
 
   if (e1) return NextResponse.json({ error: String(e1) }, { status: 500 });
 
-  // Also clear posts older than 30 days
-  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
-  const { count: postsDeleted, error: e2 } = await db
-    .from('posts')
+  const { count: sentDeleted, error: e2 } = await db
+    .from('sent_jobs')
     .delete({ count: 'exact' })
-    .lt('created_at', cutoff);
+    .gte('sent_at', '2000-01-01');
 
-  if (e2) console.error('[clear-stale] posts error:', e2);
+  if (e2) console.error('[clear-stale] sent_jobs error:', e2);
 
-  console.log(`[clear-stale] Removed ${leadsDeleted} stale leads, ${postsDeleted ?? 0} old posts`);
+  console.log(`[clear-stale] Reset: ${leadsDeleted} leads, ${sentDeleted ?? 0} sent_jobs`);
 
   return NextResponse.json({
     success: true,
     leadsDeleted,
-    postsDeleted: postsDeleted ?? 0,
+    sentJobsCleared: sentDeleted ?? 0,
   });
 }
