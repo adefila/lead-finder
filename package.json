@@ -9,11 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "15.3.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "@anthropic-ai/sdk": "^0.32.1",
     "@supabase/supabase-js": "^2.46.2",
+    "next": "15.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "resend": "^4.0.1",
     "xml2js": "^0.6.2"
   },
@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/xml2js": "^0.4.14",
     "eslint": "^9.0.0",
-    "eslint-config-next": "15.3.2",
+    "eslint-config-next": "15.3.5",
     "typescript": "^5.7.0"
   }
 }
