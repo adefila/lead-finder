@@ -1,41 +1,128 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as sb } from '@supabase/supabase-js';
+import type { Lead } from '@/types/lead';
+import type { Post } from '@/types/post';
 
-export function createClient() {
+function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Missing Supabase env vars');
-  return createSupabaseClient(url, key);
+  return sb(url, key);
 }
 
+// ─── Legacy dedup (sent_jobs) ─────────────────────────────────────────────────
+
 export async function getSentIds(days = 30): Promise<string[]> {
-  const supabase = createClient();
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-  const { data, error } = await supabase
-    .from('sent_jobs')
-    .select('id')
-    .gte('sent_at', since);
-
-  if (error) {
-    console.error('[supabase] getSentIds error:', error);
-    return [];
-  }
-
-  return (data ?? []).map((row: { id: string }) => row.id);
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data } = await db().from('sent_jobs').select('id').gte('sent_at', since);
+  return (data ?? []).map((r: { id: string }) => r.id);
 }
 
 export async function markSent(ids: string[]): Promise<void> {
-  if (ids.length === 0) return;
-  const supabase = createClient();
-  const rows = ids.map(id => ({ id, sent_at: new Date().toISOString() }));
+  if (!ids.length) return;
+  await db().from('sent_jobs').upsert(ids.map(id => ({ id, sent_at: new Date().toISOString() })), { onConflict: 'id' });
+}
 
-  const { error } = await supabase
-    .from('sent_jobs')
-    .upsert(rows, { onConflict: 'id' });
+// ─── Leads ───────────────────────────────────────────────────────────────────
 
-  if (error) {
-    console.error('[supabase] markSent error:', error);
-  } else {
-    console.log(`[supabase] Marked ${ids.length} jobs as sent`);
-  }
+export async function getExistingLeadIds(): Promise<string[]> {
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data } = await db().from('leads').select('id').gte('created_at', since);
+  return (data ?? []).map((r: { id: string }) => r.id);
+}
+
+export async function saveLeads(leads: Lead[]): Promise<void> {
+  if (!leads.length) return;
+  const rows = leads.map(l => ({
+    id: l.id,
+    source: l.source,
+    title: l.title,
+    company: l.company,
+    url: l.url,
+    description: l.description.slice(0, 600),
+    posted_at: l.postedAt,
+    score: l.score ?? 0,
+    draft_email: l.proposal ?? '',
+    status: 'new',
+  }));
+  const { error } = await db().from('leads').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) console.error('[supabase] saveLeads:', error);
+  else console.log(`[supabase] Saved ${leads.length} leads`);
+}
+
+export async function getLeads(limit = 100): Promise<Lead[]> {
+  const { data, error } = await db()
+    .from('leads')
+    .select('*')
+    .not('status', 'eq', 'skipped')
+    .order('score', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('[supabase] getLeads:', error); return []; }
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    source: r.source as Lead['source'],
+    title: String(r.title ?? ''),
+    company: String(r.company ?? ''),
+    description: String(r.description ?? ''),
+    url: String(r.url ?? ''),
+    postedAt: String(r.posted_at ?? ''),
+    score: Number(r.score ?? 0),
+    proposal: String(r.draft_email ?? ''),
+    status: r.status as Lead['status'],
+  }));
+}
+
+export async function updateLeadStatus(id: string, status: Lead['status']): Promise<void> {
+  await db().from('leads').update({ status }).eq('id', id);
+}
+
+// ─── Posts ───────────────────────────────────────────────────────────────────
+
+export async function getExistingPostIds(): Promise<string[]> {
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const { data } = await db().from('posts').select('id').gte('created_at', since);
+  return (data ?? []).map((r: { id: string }) => r.id);
+}
+
+export async function savePosts(posts: Post[]): Promise<void> {
+  if (!posts.length) return;
+  const rows = posts.map(p => ({
+    id: p.id,
+    platform: p.platform,
+    url: p.url,
+    title: p.title,
+    snippet: p.snippet.slice(0, 600),
+    author: p.author ?? '',
+    score: p.score ?? 0,
+    reply_draft: p.replyDraft ?? '',
+    status: 'new',
+  }));
+  const { error } = await db().from('posts').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) console.error('[supabase] savePosts:', error);
+  else console.log(`[supabase] Saved ${posts.length} posts`);
+}
+
+export async function getPosts(limit = 100): Promise<Post[]> {
+  const { data, error } = await db()
+    .from('posts')
+    .select('*')
+    .not('status', 'eq', 'done')
+    .order('score', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('[supabase] getPosts:', error); return []; }
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    platform: r.platform as Post['platform'],
+    url: String(r.url ?? ''),
+    title: String(r.title ?? ''),
+    snippet: String(r.snippet ?? ''),
+    author: String(r.author ?? ''),
+    score: Number(r.score ?? 0),
+    replyDraft: String(r.reply_draft ?? ''),
+    status: r.status as Post['status'],
+    createdAt: String(r.created_at ?? ''),
+  }));
+}
+
+export async function updatePostStatus(id: string, status: Post['status']): Promise<void> {
+  await db().from('posts').update({ status }).eq('id', id);
 }

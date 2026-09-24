@@ -1,284 +1,457 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { Lead } from '@/types/lead';
+import type { Post } from '@/types/post';
 
-const SOURCES = [
-  { name: 'Upwork RSS', desc: 'framer developer · figma to framer · web designer framer', color: '#14a800' },
-  { name: 'RemoteOK API', desc: 'design tag · filtered for Framer / web', color: '#00c853' },
-  { name: 'Remotive API', desc: 'framer + web designer searches', color: '#6d28d9' },
-  { name: 'We Work Remotely', desc: 'remote design jobs RSS', color: '#0288d1' },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type RunResult = {
-  success?: boolean;
-  stats?: { fetched?: number; fresh?: number; scored?: number; sent?: number };
-  durationMs?: number;
-  error?: string;
-  [key: string]: unknown;
+const SOURCE_LABEL: Record<Lead['source'], string> = {
+  upwork: 'Upwork',
+  remoteok: 'RemoteOK',
+  remotive: 'Remotive',
+  weworkremotely: 'We Work Remotely',
 };
 
-export default function Home() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [result, setResult] = useState<RunResult | null>(null);
+const SOURCE_COLOR: Record<Lead['source'], string> = {
+  upwork: '#14a800',
+  remoteok: '#00c853',
+  remotive: '#6d28d9',
+  weworkremotely: '#0288d1',
+};
 
-  async function triggerManual() {
-    setStatus('loading');
-    setResult(null);
+function scoreColor(s: number) {
+  if (s >= 80) return { bg: 'rgba(0,171,74,0.12)', fg: 'rgb(0,140,60)' };
+  if (s >= 60) return { bg: 'rgba(109,40,217,0.1)', fg: '#6d28d9' };
+  return { bg: 'rgba(0,0,0,0.06)', fg: '#545c68' };
+}
+
+function copied(setCopied: (v: boolean) => void) {
+  setCopied(true);
+  setTimeout(() => setCopied(false), 1500);
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ScoreBadge({ score }: { score: number }) {
+  const { bg, fg } = scoreColor(score);
+  return (
+    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', background: bg, color: fg, letterSpacing: '0.3px' }}>
+      {score}
+    </span>
+  );
+}
+
+function LeadCard({ lead, onApprove, onSkip }: {
+  lead: Lead;
+  onApprove: () => void;
+  onSkip: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(lead.proposal ?? '');
+  const [wasCopied, setWasCopied] = useState(false);
+
+  const lines = email.split('\n');
+  const subjectLine = lines.find(l => l.startsWith('Subject:')) ?? '';
+  const subject = subjectLine.replace('Subject:', '').trim();
+  const body = lines.filter(l => !l.startsWith('Subject:')).join('\n').replace(/^\n+/, '');
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
+      {/* Lead header row */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <ScoreBadge score={lead.score ?? 0} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {lead.company}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {lead.title}
+          </div>
+        </div>
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+          color: '#fff', background: SOURCE_COLOR[lead.source], padding: '2px 7px', flexShrink: 0,
+        }}>
+          {SOURCE_LABEL[lead.source]}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--fg-muted)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+      </div>
+
+      {open && (
+        <div style={{ padding: '0 20px 16px' }}>
+          {/* Description */}
+          <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
+            {lead.description.slice(0, 220)}{lead.description.length > 220 ? '…' : ''}
+          </p>
+
+          {/* Email draft */}
+          {email ? (
+            <div style={{ marginBottom: 12 }}>
+              {subject && (
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>
+                  SUBJECT: <span style={{ fontWeight: 500 }}>{subject}</span>
+                </div>
+              )}
+              <textarea
+                value={body || email}
+                onChange={e => setEmail(e.target.value)}
+                rows={6}
+                style={{
+                  width: '100%', fontSize: 12, lineHeight: 1.65, color: 'var(--fg)', background: 'var(--bg)',
+                  border: '1px solid var(--border)', padding: '10px 12px', resize: 'vertical',
+                  fontFamily: 'Inter, sans-serif', outline: 'none',
+                }}
+              />
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginBottom: 12 }}>No draft generated.</div>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <a
+              href={lead.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}
+            >
+              View post →
+            </a>
+            {email && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(email); copied(setWasCopied); }}
+                style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+              >
+                {wasCopied ? '✓ Copied' : 'Copy email'}
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={onSkip}
+              style={{ fontSize: 11, fontWeight: 600, padding: '5px 14px', background: 'none', border: '1px solid var(--border)', color: 'var(--fg-muted)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            >
+              Skip
+            </button>
+            <button
+              onClick={onApprove}
+              style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
+            >
+              Approve ✓
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PostCard({ post, onDone }: { post: Post; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [reply, setReply] = useState(post.replyDraft ?? '');
+  const [wasCopied, setWasCopied] = useState(false);
+
+  const platformColor = post.platform === 'reddit' ? '#ff4500' : '#f60';
+  const platformLabel = post.platform === 'reddit' ? 'Reddit' : 'HN';
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <ScoreBadge score={post.score ?? 0} />
+        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', background: platformColor, color: '#fff', flexShrink: 0 }}>
+          {platformLabel}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {post.title}
+          </div>
+          {post.author && (
+            <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1 }}>u/{post.author}</div>
+          )}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--fg-muted)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+      </div>
+
+      {open && (
+        <div style={{ padding: '0 18px 14px' }}>
+          <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
+            {post.snippet.slice(0, 280)}{post.snippet.length > 280 ? '…' : ''}
+          </p>
+
+          {reply && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>REPLY DRAFT</div>
+              <textarea
+                value={reply}
+                onChange={e => setReply(e.target.value)}
+                rows={4}
+                style={{
+                  width: '100%', fontSize: 12, lineHeight: 1.65, color: 'var(--fg)', background: 'var(--bg)',
+                  border: '1px solid var(--border)', padding: '10px 12px', resize: 'vertical',
+                  fontFamily: 'Inter, sans-serif', outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <a href={post.url} target="_blank" rel="noreferrer"
+              style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
+              Open post →
+            </a>
+            {reply && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(reply); copied(setWasCopied); }}
+                style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+              >
+                {wasCopied ? '✓ Copied' : 'Copy reply'}
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={onDone}
+              style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            >
+              Done ✓
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main dashboard ───────────────────────────────────────────────────────────
+
+type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
+
+export default function Home() {
+  const [tab, setTab] = useState<'leads' | 'posts'>('leads');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [l, p] = await Promise.all([
+      fetch('/api/leads').then(r => r.json()) as Promise<Lead[]>,
+      fetch('/api/posts').then(r => r.json()) as Promise<Post[]>,
+    ]).catch(() => [[], []]);
+    setLeads(l);
+    setPosts(p);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  async function runNow() {
+    setRunStatus('running');
+    setRunResult(null);
     try {
-      const res = await fetch('/api/cron', {
-        method: 'GET',
-        headers: { 'x-manual': 'true' },
-      });
+      const res = await fetch('/api/cron', { headers: { 'x-manual': 'true' } });
       const data = await res.json() as RunResult;
-      setResult(data);
-      setStatus(res.ok ? 'success' : 'error');
+      setRunResult(data);
+      setRunStatus(data.success ? 'done' : 'error');
+      if (data.success) await loadData();
     } catch (e) {
-      setResult({ error: String(e) });
-      setStatus('error');
+      setRunResult({ error: String(e) });
+      setRunStatus('error');
     }
   }
 
-  const stats = result?.stats;
+  async function approveLead(id: string) {
+    await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'approved' }) });
+    setLeads(prev => prev.filter(l => l.id !== id));
+  }
+
+  async function skipLead(id: string) {
+    await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'skipped' }) });
+    setLeads(prev => prev.filter(l => l.id !== id));
+  }
+
+  async function donePost(id: string) {
+    await fetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'done' }) });
+    setPosts(prev => prev.filter(p => p.id !== id));
+  }
+
+  const newLeads = leads.filter(l => l.status === 'new');
+  const approvedLeads = leads.filter(l => l.status === 'approved');
+  const newPosts = posts.filter(p => p.status === 'new' || p.status === 'open');
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-
-      {/* Top bar */}
+      {/* Topbar */}
       <header style={{
-        background: 'var(--dark-bg)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '0 32px',
-        height: 56,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        background: 'var(--dark-bg)', height: 52, padding: '0 28px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.4px', fontFamily: 'Inter, sans-serif' }}>
-            Lead Finder
-          </span>
-          <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase',
-            background: 'var(--accent-green)', color: '#fff',
-            padding: '2px 8px',
-          }}>
-            Live
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Lead Finder</span>
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '1.2px', textTransform: 'uppercase', background: 'var(--accent-green)', color: '#fff', padding: '2px 7px' }}>CRM</span>
         </div>
-        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
-          Samuel Adefila · adefilasamuel929@gmail.com
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Runs daily at 7am + 6pm UTC</span>
+          <button
+            onClick={runNow}
+            disabled={runStatus === 'running'}
+            style={{
+              fontSize: 12, fontWeight: 700, padding: '6px 16px',
+              background: runStatus === 'running' ? 'rgba(255,255,255,0.15)' : 'var(--accent-green)',
+              color: '#fff', border: 'none', cursor: runStatus === 'running' ? 'not-allowed' : 'pointer',
+              fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px',
+            }}
+          >
+            {runStatus === 'running' ? '⏳ Running…' : '▶ Run Now'}
+          </button>
+        </div>
       </header>
 
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
 
-        {/* Page title row */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--fg-secondary)', marginBottom: 6 }}>
-              CRM Dashboard
-            </p>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.6px', lineHeight: 1.2 }}>
-              Framer Job Leads
-            </h1>
+        {/* Run result banner */}
+        {runResult && runStatus !== 'idle' && runStatus !== 'running' && (
+          <div style={{
+            marginBottom: 20, padding: '12px 18px',
+            background: runStatus === 'done' ? 'rgba(0,171,74,0.08)' : 'rgba(220,38,38,0.08)',
+            border: `1px solid ${runStatus === 'done' ? 'rgba(0,171,74,0.2)' : 'rgba(220,38,38,0.2)'}`,
+            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: runStatus === 'done' ? 'var(--accent-green)' : '#dc2626' }}>
+              {runStatus === 'done' ? '✓ Run complete' : '✗ Run failed'}
+            </span>
+            {runResult.stats && Object.entries(runResult.stats).map(([k, v]) => (
+              <span key={k} style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>
+                <strong>{v}</strong> {k}
+              </span>
+            ))}
+            {runResult.durationMs && (
+              <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{(runResult.durationMs / 1000).toFixed(1)}s</span>
+            )}
+            {runResult.error && <span style={{ fontSize: 12, color: '#dc2626' }}>{runResult.error}</span>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-muted)', fontSize: 13 }}>
-            <span style={{ width: 7, height: 7, background: 'var(--accent-green)', borderRadius: '50%', display: 'inline-block' }} />
-            Auto-sends daily at <strong style={{ color: 'var(--fg-secondary)' }}>7am UTC</strong>
-          </div>
-        </div>
+        )}
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
           {[
-            { label: 'Fetched', value: stats?.fetched ?? '—', sub: 'from all sources' },
-            { label: 'Fresh', value: stats?.fresh ?? '—', sub: 'not seen before' },
-            { label: 'Scored', value: stats?.scored ?? '—', sub: 'passed AI filter' },
-            { label: 'Sent', value: stats?.sent ?? '—', sub: 'in your inbox' },
-          ].map((s) => (
-            <div key={s.label} style={{ background: 'var(--white)', padding: '24px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 10 }}>
-                {s.label}
+            { label: 'New Leads', value: newLeads.length, hint: 'awaiting review' },
+            { label: 'Approved', value: approvedLeads.length, hint: 'will reach out' },
+            { label: 'Posts to Reply', value: newPosts.length, hint: 'Reddit + HN' },
+            { label: 'Total Active', value: leads.length + posts.length, hint: 'in pipeline' },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'var(--white)', padding: '20px 18px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 8 }}>{s.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 4 }}>
+                {loading ? '—' : s.value}
               </div>
-              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--fg)', lineHeight: 1, marginBottom: 6, letterSpacing: '-1px' }}>
-                {s.value}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{s.sub}</div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{s.hint}</div>
             </div>
           ))}
         </div>
 
-        {/* Main grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, alignItems: 'start' }}>
+        {/* Two-column layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
 
-          {/* Left — run control + result */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Run card */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', padding: '28px 28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 4 }}>
-                    Manual Run
-                  </div>
-                  <p style={{ fontSize: 14, color: 'var(--fg-secondary)', margin: 0 }}>
-                    Fetch, score and email leads right now
-                  </p>
+          {/* Left — Email Leads */}
+          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
+            <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Email Leads</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
+                  {loading ? '—' : newLeads.length} waiting
+                  {approvedLeads.length > 0 && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent-green)', marginLeft: 8 }}>{approvedLeads.length} approved</span>}
                 </div>
-                <button
-                  onClick={triggerManual}
-                  disabled={status === 'loading'}
-                  style={{
-                    padding: '11px 28px',
-                    background: status === 'loading' ? 'var(--fg-secondary)' : 'var(--dark-bg)',
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: '0.4px',
-                    cursor: status === 'loading' ? 'not-allowed' : 'pointer',
-                    transition: 'opacity 0.15s',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  {status === 'loading' ? '⏳ Running…' : '▶ Run Now'}
-                </button>
               </div>
-
-              {status === 'loading' && (
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--fg-secondary)', fontSize: 14 }}>
-                    <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
-                    Fetching from 4 sources, scoring with Claude AI… (~30–60s)
-                  </div>
-                </div>
-              )}
-
-              {status !== 'idle' && status !== 'loading' && result && (
-                <div style={{
-                  background: status === 'success' ? 'rgba(0,171,74,0.05)' : 'rgba(220,38,38,0.05)',
-                  border: `1px solid ${status === 'success' ? 'rgba(0,171,74,0.2)' : 'rgba(220,38,38,0.2)'}`,
-                  padding: '18px 20px',
-                }}>
-                  <div style={{
-                    fontSize: 13, fontWeight: 700,
-                    color: status === 'success' ? 'var(--accent-green)' : '#dc2626',
-                    marginBottom: 12,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                  }}>
-                    <span>{status === 'success' ? '✓' : '✗'}</span>
-                    {status === 'success' ? 'Run complete — leads sent to your inbox' : 'Run failed'}
-                  </div>
-                  {stats && (
-                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
-                      {[
-                        { label: 'Fetched', v: stats.fetched },
-                        { label: 'Fresh', v: stats.fresh },
-                        { label: 'Scored', v: stats.scored },
-                        { label: 'Sent', v: stats.sent },
-                      ].map(s => (
-                        <div key={s.label}>
-                          <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase' }}>{s.label}</div>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.5px' }}>{s.v ?? '—'}</div>
-                        </div>
-                      ))}
-                      {result.durationMs && (
-                        <div>
-                          <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Duration</div>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.5px' }}>{(result.durationMs / 1000).toFixed(1)}s</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {result.error && (
-                    <pre style={{ fontSize: 12, color: '#dc2626', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
-                      {String(result.error)}
-                    </pre>
-                  )}
-                </div>
-              )}
+              <p style={{ fontSize: 11, color: 'var(--fg-muted)', maxWidth: 160, textAlign: 'right', lineHeight: 1.5 }}>
+                From Upwork, RemoteOK, Remotive, WWR — scored by AI
+              </p>
             </div>
 
-            {/* Cron schedule card */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', padding: '24px 28px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 16 }}>
-                Schedule
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: 'var(--border)', border: '1px solid var(--border)' }}>
-                {[
-                  { label: 'Frequency', value: 'Daily' },
-                  { label: 'Time', value: '7:00 AM UTC' },
-                  { label: 'Platform', value: 'Vercel Cron' },
-                ].map(s => (
-                  <div key={s.label} style={{ background: 'var(--bg)', padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>{s.value}</div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {loading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading leads…</div>
+              ) : newLeads.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>All caught up</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch new leads</div>
+                </div>
+              ) : (
+                newLeads.map(lead => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onApprove={() => approveLead(lead.id)}
+                    onSkip={() => skipLead(lead.id)}
+                  />
+                ))
+              )}
             </div>
-
           </div>
 
-          {/* Right — sources + pipeline */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Sources */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', padding: '24px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 16 }}>
-                Sources
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {SOURCES.map((s, i) => (
-                  <div key={s.name} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0',
-                    borderBottom: i < SOURCES.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}>
-                    <span style={{ width: 8, height: 8, background: s.color, borderRadius: '50%', marginTop: 5, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', marginBottom: 2 }}>{s.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-muted)', lineHeight: 1.5 }}>{s.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pipeline */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', padding: '24px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 16 }}>
-                Pipeline
-              </div>
-              {[
-                { step: '01', label: 'Fetch jobs', desc: 'Pull from 4 job boards via RSS + API' },
-                { step: '02', label: 'Deduplicate', desc: 'Filter against Supabase sent_jobs log' },
-                { step: '03', label: 'AI score', desc: 'Claude rates each lead 0–100 for relevance' },
-                { step: '04', label: 'Filter ≥ 40', desc: 'Keep top 50 high-relevance leads' },
-                { step: '05', label: 'Write proposals', desc: 'Claude drafts a personalised proposal' },
-                { step: '06', label: 'Email digest', desc: 'Resend delivers to your inbox' },
-              ].map((p, i) => (
-                <div key={p.step} style={{
-                  display: 'flex', gap: 12, paddingBottom: i < 5 ? 14 : 0,
-                  marginBottom: i < 5 ? 14 : 0,
-                  borderBottom: i < 5 ? '1px solid var(--border)' : 'none',
-                }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 800, color: 'var(--fg-muted)',
-                    letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0, width: 20,
-                  }}>
-                    {p.step}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', marginBottom: 1 }}>{p.label}</div>
-                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{p.desc}</div>
-                  </div>
+          {/* Right — Posts to Reply */}
+          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
+            <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Posts to Reply</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
+                  {loading ? '—' : newPosts.length} posts
                 </div>
-              ))}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--fg-muted)', maxWidth: 160, textAlign: 'right', lineHeight: 1.5 }}>
+                Reddit + HN — founders asking for web/Framer help
+              </p>
             </div>
 
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {loading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading posts…</div>
+              ) : newPosts.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No posts to reply to</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch posts from Reddit + HN</div>
+                </div>
+              ) : (
+                newPosts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onDone={() => donePost(post.id)}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Tab — Approved leads */}
+        {approvedLeads.length > 0 && (
+          <div style={{ marginTop: 20, border: '1px solid var(--border)', background: 'var(--white)' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--accent-green)', marginBottom: 2 }}>Approved Leads</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{approvedLeads.length} leads you plan to reach out to</div>
+            </div>
+            {approvedLeads.map(lead => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                onApprove={() => {}}
+                onSkip={() => skipLead(lead.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

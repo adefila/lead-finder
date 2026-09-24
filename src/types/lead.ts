@@ -8,4 +8,5 @@ export interface Lead {
   postedAt: string;
   score?: number;
   proposal?: string;
+  status?: 'new' | 'approved' | 'skipped';
 }
