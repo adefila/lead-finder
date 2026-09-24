@@ -39,8 +39,8 @@ async function searchPeople(params: Record<string, unknown>): Promise<ApolloPers
   try {
     const res = await fetch('https://api.apollo.io/v1/mixed_people/search', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({ ...params, api_key: apiKey }),
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': apiKey },
+      body: JSON.stringify(params),
       signal: AbortSignal.timeout(15000),
     });
 
