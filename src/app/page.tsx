@@ -11,6 +11,7 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   remoteok: 'RemoteOK',
   remotive: 'Remotive',
   weworkremotely: 'We Work Remotely',
+  apollo: 'Apollo',
 };
 
 const SOURCE_COLOR: Record<Lead['source'], string> = {
@@ -18,6 +19,7 @@ const SOURCE_COLOR: Record<Lead['source'], string> = {
   remoteok: '#00c853',
   remotive: '#6d28d9',
   weworkremotely: '#0288d1',
+  apollo: '#0f0f0f',
 };
 
 function scoreColor(s: number) {
@@ -48,29 +50,49 @@ function LeadCard({ lead, onApprove, onSkip }: {
   onSkip: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState(lead.proposal ?? '');
+  const [draft, setDraft] = useState(lead.proposal ?? '');
   const [wasCopied, setWasCopied] = useState(false);
 
-  const lines = email.split('\n');
+  const isApollo = lead.source === 'apollo' && !!lead.contactEmail;
+
+  const lines = draft.split('\n');
   const subjectLine = lines.find(l => l.startsWith('Subject:')) ?? '';
   const subject = subjectLine.replace('Subject:', '').trim();
   const body = lines.filter(l => !l.startsWith('Subject:')).join('\n').replace(/^\n+/, '');
 
+  // For Apollo leads: clicking "Send" opens Gmail/mail client with draft pre-filled
+  const mailtoHref = isApollo && lead.contactEmail
+    ? `mailto:${lead.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body || draft)}`
+    : null;
+
   return (
     <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
-      {/* Lead header row */}
+      {/* Header row */}
       <div
         onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}
       >
         <ScoreBadge score={lead.score ?? 0} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {lead.company}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {lead.title}
-          </div>
+          {isApollo ? (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {lead.contactName}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {lead.contactTitle} · {lead.company}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {lead.company}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {lead.title}
+              </div>
+            </>
+          )}
         </div>
         <span style={{
           fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
@@ -78,18 +100,28 @@ function LeadCard({ lead, onApprove, onSkip }: {
         }}>
           {SOURCE_LABEL[lead.source]}
         </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>{open ? 'Close' : 'View'}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>
+          {open ? 'Close' : 'View'}
+        </span>
       </div>
 
       {open && (
         <div style={{ padding: '0 20px 16px' }}>
+          {/* Apollo: show email address prominently */}
+          {isApollo && lead.contactEmail && (
+            <div style={{ marginBottom: 10, padding: '8px 12px', background: 'rgba(0,171,74,0.06)', border: '1px solid rgba(0,171,74,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgb(0,140,60)' }}>Email</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</span>
+            </div>
+          )}
+
           {/* Description */}
           <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
             {lead.description.slice(0, 220)}{lead.description.length > 220 ? '…' : ''}
           </p>
 
           {/* Email draft */}
-          {email ? (
+          {draft ? (
             <div style={{ marginBottom: 12 }}>
               {subject && (
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>
@@ -97,13 +129,13 @@ function LeadCard({ lead, onApprove, onSkip }: {
                 </div>
               )}
               <textarea
-                value={body || email}
-                onChange={e => setEmail(e.target.value)}
+                value={body || draft}
+                onChange={e => setDraft(e.target.value)}
                 rows={6}
                 style={{
                   width: '100%', fontSize: 12, lineHeight: 1.65, color: 'var(--fg)', background: 'var(--bg)',
                   border: '1px solid var(--border)', padding: '10px 12px', resize: 'vertical',
-                  fontFamily: 'Inter, sans-serif', outline: 'none',
+                  fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
                 }}
               />
             </div>
@@ -113,17 +145,15 @@ function LeadCard({ lead, onApprove, onSkip }: {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <a
-              href={lead.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}
-            >
-              View post
-            </a>
-            {email && (
+            {lead.url && (
+              <a href={lead.url} target="_blank" rel="noreferrer"
+                style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
+                {isApollo ? 'View website' : 'View post'}
+              </a>
+            )}
+            {draft && !isApollo && (
               <button
-                onClick={() => { navigator.clipboard.writeText(email); copied(setWasCopied); }}
+                onClick={() => { navigator.clipboard.writeText(draft); copied(setWasCopied); }}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
                 {wasCopied ? 'Copied' : 'Copy email'}
@@ -136,12 +166,23 @@ function LeadCard({ lead, onApprove, onSkip }: {
             >
               Skip
             </button>
-            <button
-              onClick={onApprove}
-              style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
-            >
-              Approve
-            </button>
+            {/* Apollo lead: "Send Email" opens Gmail pre-filled. Job board: "Approve" */}
+            {isApollo && mailtoHref ? (
+              <a
+                href={mailtoHref}
+                onClick={onApprove}
+                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--accent-green)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
+              >
+                Send Email
+              </a>
+            ) : (
+              <button
+                onClick={onApprove}
+                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
+              >
+                Approve
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -373,7 +414,7 @@ export default function Home() {
                 </div>
               </div>
               <p style={{ fontSize: 11, color: 'var(--fg-muted)', maxWidth: 160, textAlign: 'right', lineHeight: 1.5 }}>
-                From Upwork, RemoteOK, Remotive, WWR — scored by AI
+                Apollo contacts + job boards — scored by AI
               </p>
             </div>
 

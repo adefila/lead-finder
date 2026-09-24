@@ -68,34 +68,61 @@ ${JSON.stringify(input)}`,
 
 async function draftEmailBatch(batch: Lead[]): Promise<Map<string, string>> {
   const client = getClient();
+
+  // Apollo leads have a real name + company desc — personalise to them
+  // Job board leads get a proposal-style email
+  const isApolloLead = (l: Lead) => l.source === 'apollo' && !!l.contactEmail;
+
   const block = batch
-    .map((j, i) => `JOB ${i + 1} (ID: ${j.id}):\nTitle: ${j.title}\nCompany: ${j.company}\nSource: ${j.source}\nDescription: ${j.description.slice(0, 400)}`)
+    .map((j, i) => {
+      if (isApolloLead(j)) {
+        return `CONTACT ${i + 1} (ID: ${j.id}):\nName: ${j.contactName}\nTitle: ${j.contactTitle}\nCompany: ${j.company}\nCompany description: ${j.description.slice(0, 400)}\nWebsite: ${j.url}`;
+      }
+      return `JOB ${i + 1} (ID: ${j.id}):\nTitle: ${j.title}\nCompany: ${j.company}\nSource: ${j.source}\nDescription: ${j.description.slice(0, 400)}`;
+    })
     .join('\n\n---\n\n');
 
-  const msg = await client.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    messages: [{
-      role: 'user',
-      content: `Draft a short cold outreach email from Samuel Adefila for each job below.
+  const hasApollo = batch.some(isApolloLead);
+  const prompt = hasApollo
+    ? `Draft a short personalised cold email from Samuel Adefila to each person below. These are real people with real email addresses — make it feel like Samuel wrote it specifically to them.
 
 About Samuel: ${SAMUEL}
 
 Rules:
-- Start with a subject line on the first line: "Subject: ..."
-- Then a blank line, then the email body
+- Start with "Subject: ..." on line 1, then blank line, then body
+- Open with their first name: "Hi [FirstName],"
+- Under 130 words total
+- Reference their specific company or product — show you looked
+- Lead with value (what Samuel can do for their situation), not a resume
+- One soft CTA at the end ("Would love to show you a quick example — open to a call?")
+- Sign as Samuel (no surname in sign-off, just "Samuel")
+- No emojis, no "I hope this email finds you well", no "I came across your profile"
+
+Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}
+
+${block}`
+    : `Draft a short cold outreach email from Samuel Adefila for each job below.
+
+About Samuel: ${SAMUEL}
+
+Rules:
+- Start with "Subject: ..." on line 1, then blank line, then body
 - Under 150 words total
 - Reference something specific from the job/company description
-- Conversational and human — not a template
+- Conversational and human, not a template
 - Never open with "I saw your job posting"
-- Soft CTA at the end (e.g. "Worth a quick chat?")
+- Soft CTA at the end
 - Sign off as Samuel
-- No emojis anywhere in the subject or body
+- No emojis
 
-Return ONLY valid JSON, no explanation: {"JOB_ID": "Subject: ...\\n\\nBody...", ...}
+Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}
 
-${block}`,
-    }],
+${block}`;
+
+  const msg = await client.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
   });
 
   const result = new Map<string, string>();

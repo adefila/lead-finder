@@ -43,6 +43,9 @@ export async function saveLeads(leads: Lead[]): Promise<void> {
     score: l.score ?? 0,
     draft_email: l.proposal ?? '',
     status: 'new',
+    contact_email: l.contactEmail ?? null,
+    contact_name: l.contactName ?? null,
+    contact_title: l.contactTitle ?? null,
   }));
   const { error } = await db().from('leads').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
   if (error) console.error('[supabase] saveLeads:', error);
@@ -68,6 +71,9 @@ export async function getLeads(limit = 100): Promise<Lead[]> {
     score: Number(r.score ?? 0),
     proposal: String(r.draft_email ?? ''),
     status: r.status as Lead['status'],
+    contactEmail: r.contact_email ? String(r.contact_email) : undefined,
+    contactName: r.contact_name ? String(r.contact_name) : undefined,
+    contactTitle: r.contact_title ? String(r.contact_title) : undefined,
   }));
 }
 
