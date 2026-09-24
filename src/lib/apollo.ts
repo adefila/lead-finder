@@ -24,10 +24,12 @@ interface ApolloPerson {
 interface ApolloResponse {
   people?: ApolloPerson[];
   contacts?: ApolloPerson[];
+  pagination?: { total_entries?: number };
+  error?: string;
 }
 
 function isMasked(email: string): boolean {
-  return email.includes('*') || email.includes('[email');
+  return email.includes('*') || email.includes('[email') || email.includes('@example');
 }
 
 async function searchPeople(params: Record<string, unknown>): Promise<ApolloPerson[]> {
@@ -39,16 +41,25 @@ async function searchPeople(params: Record<string, unknown>): Promise<ApolloPers
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
       body: JSON.stringify({ ...params, api_key: apiKey }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     });
+
+    const text = await res.text();
     if (!res.ok) {
-      console.error('[apollo] HTTP', res.status, await res.text().catch(() => ''));
+      console.error('[apollo] HTTP', res.status, text.slice(0, 200));
       return [];
     }
-    const data = await res.json() as ApolloResponse;
-    return data.people ?? data.contacts ?? [];
+
+    let data: ApolloResponse;
+    try { data = JSON.parse(text); } catch { console.error('[apollo] JSON parse failed'); return []; }
+
+    if (data.error) { console.error('[apollo] API error:', data.error); return []; }
+
+    const people = data.people ?? data.contacts ?? [];
+    console.log(`[apollo] search returned ${people.length} people (total: ${data.pagination?.total_entries ?? '?'})`);
+    return people;
   } catch (e) {
-    console.error('[apollo] search error:', e);
+    console.error('[apollo] fetch error:', e);
     return [];
   }
 }
@@ -61,34 +72,28 @@ export async function fetchApolloLeads(): Promise<Lead[]> {
 
   console.log('[apollo] Searching for contacts...');
 
-  // Three searches targeting different buyer profiles for Samuel's services:
-  // 1. Founders at micro-startups — most likely to need a site and make the call fast
-  // 2. Marketing leads at seed-stage companies — own the website
-  // 3. CTOs/product heads at early teams launching something new
+  // Broad searches — we take whoever Apollo returns and let Claude draft a personalised email
   const searches = [
+    // Small startup founders who build products and need websites
     {
       per_page: 25,
       page: 1,
-      person_titles: ['Founder', 'Co-Founder', 'CEO', 'Solo Founder'],
+      person_titles: ['Founder', 'Co-Founder', 'CEO'],
       organization_num_employees_ranges: ['1,10'],
-      contact_email_status: ['verified'],
-      q_keywords: 'SaaS product startup',
     },
+    // Marketing / growth people who own the website
     {
       per_page: 15,
       page: 1,
-      person_titles: ['Head of Marketing', 'Marketing Lead', 'Growth Lead', 'CMO', 'VP Marketing'],
-      organization_num_employees_ranges: ['1,30'],
-      contact_email_status: ['verified'],
-      q_keywords: 'startup landing page website',
+      person_titles: ['Head of Marketing', 'CMO', 'VP Marketing', 'Growth Lead', 'Marketing Manager'],
+      organization_num_employees_ranges: ['1,50'],
     },
+    // Product people at very small teams
     {
       per_page: 15,
       page: 1,
-      person_titles: ['Founder', 'CEO', 'Product Manager', 'Head of Product'],
+      person_titles: ['Product Manager', 'Head of Product', 'CPO'],
       organization_num_employees_ranges: ['1,20'],
-      contact_email_status: ['verified'],
-      q_keywords: 'no-code design web app',
     },
   ];
 
@@ -98,7 +103,9 @@ export async function fetchApolloLeads(): Promise<Lead[]> {
     allPeople.push(...people);
   }
 
-  // Deduplicate by id, prefer contacts with revealed emails
+  console.log(`[apollo] ${allPeople.length} total people before dedup`);
+
+  // Dedup by id
   const seenIds = new Set<string>();
   const seenEmails = new Set<string>();
   const deduped = allPeople.filter(p => {
@@ -112,23 +119,21 @@ export async function fetchApolloLeads(): Promise<Lead[]> {
   });
 
   const withEmail = deduped.filter(p => p.email && !isMasked(p.email));
-  const withoutEmail = deduped.filter(p => !p.email || isMasked(p.email));
-  console.log(`[apollo] ${deduped.length} contacts (${withEmail.length} with email, ${withoutEmail.length} email locked)`);
+  const locked = deduped.filter(p => !p.email || isMasked(p.email));
+  console.log(`[apollo] ${deduped.length} unique: ${withEmail.length} with email, ${locked.length} locked`);
 
-  // Include up to 20 contacts without email so user can look them up on LinkedIn
-  const contacts = [...withEmail, ...withoutEmail.slice(0, 20)];
+  // Include verified emails first, then up to 20 locked contacts (user looks them up manually)
+  const contacts = [...withEmail, ...locked.slice(0, 20)];
 
   return contacts.map(p => {
-    const firstName = p.first_name ?? '';
-    const lastName = p.last_name ?? '';
-    const name = p.name ?? `${firstName} ${lastName}`.trim();
+    const name = p.name ?? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim();
     const company = p.organization?.name ?? 'Unknown';
     const website = p.organization?.website_url ?? '';
     const desc = p.organization?.short_description ?? '';
     const employees = p.organization?.estimated_num_employees;
     const industry = p.organization?.industry ?? '';
 
-    const descParts = [desc, industry && `Industry: ${industry}`, employees && `Team: ~${employees} people`].filter(Boolean);
+    const descParts = [desc, industry && `Industry: ${industry}`, employees && `~${employees} people`].filter(Boolean);
 
     return {
       id: `apollo-${p.id}`,
