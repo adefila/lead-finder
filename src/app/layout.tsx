@@ -1,17 +1,16 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Lead Finder',
-  description: 'Daily Framer job leads for Samuel Adefila',
+  title: 'Lead Finder — Samuel Adefila',
+  description: 'Daily Framer job leads dashboard',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: '#f3f4f6', color: '#111827' }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

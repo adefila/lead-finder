@@ -1,0 +1,31 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #F7F7F7;
+  --fg: #0f0f0f;
+  --fg-secondary: #545c68;
+  --fg-muted: #9ca3af;
+  --accent-green: rgb(0, 171, 74);
+  --accent-purple: #6d28d9;
+  --card-bg: rgb(235, 234, 230);
+  --dark-bg: #0f0f0f;
+  --white: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--accent-purple);
+  color: white;
+}
