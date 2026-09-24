@@ -23,25 +23,42 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
   console.log(`[claude] Scoring ${jobs.length} jobs...`);
 
   const client = getClient();
-  const input = jobs.map(j => ({ id: j.id, title: j.title, budgetAndBids: j.company, description: j.description.slice(0, 500), source: j.source }));
+  const input = jobs.map(j => ({
+    id: j.id,
+    source: j.source,
+    title: j.title,
+    context: j.company,
+    description: j.description.slice(0, 500),
+    hasEmail: !!j.contactEmail,
+    hasPhone: !!j.contactPhone,
+  }));
 
   const msg = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
     messages: [{
       role: 'user',
-      content: `You are ranking client website projects for this freelancer:
+      content: `You are ranking website leads for this freelancer:
 ${SAMUEL}
 
-Score each project 0-100 for how worth bidding on it is. Weigh three things:
-1. Fit: a marketing/business/portfolio/landing site he can build in Framer, Webflow or similar scores high. Heavy custom backend, booking systems, marketplaces or WordPress plugin dev score lower.
-2. Budget: USD 250+ fixed or USD 20+/hr is good. Tiny budgets (under USD 50, or INR under 12500) score lower.
-3. Competition: fewer bids so far is better. 70+ bids lowers the score.
-Use the full range. Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
+Score each lead 0-100 for how likely it is to turn into a paid website project. Use the full range.
+
+For source "freelancer" (a client posted a website project; "context" holds budget and bid count):
+- Fit: marketing/business/portfolio/landing sites he can build in Framer or Webflow score high. Heavy custom backend, booking systems, marketplaces or plugin dev score lower.
+- Budget: USD 250+ fixed or USD 20+/hr is good. Under USD 50, or INR under 12500, scores low.
+- Competition: fewer bids is better. 70+ bids lowers the score.
+
+For source "places" (a local business found on Google with no website or a weak one):
+- Established business (many Google reviews, good rating) with no website or a clearly outdated/broken one scores high.
+- Higher-ticket industries (dental, legal, med spa, real estate, architecture, contractors) score higher than low-margin ones.
+- hasEmail adds points (easy to reach). No email but a phone number is still workable.
+- Minor issues only (e.g. just an old copyright year) score lower.
+
+For source "apollo": founders/marketers at small companies; score on how likely their company needs a better site.
 
 Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
 
-Jobs:
+Leads:
 ${JSON.stringify(input)}`,
     }],
   });
@@ -67,29 +84,29 @@ ${JSON.stringify(input)}`,
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 }
 
-// ─── Cold email drafts ───────────────────────────────────────────────────────
+// ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-async function draftEmailBatch(batch: Lead[]): Promise<Map<string, string>> {
-  const client = getClient();
+type DraftKind = 'apollo' | 'freelancer' | 'places';
 
-  // Apollo leads have a real name + company desc — personalise to them
-  // Job board leads get a proposal-style email
-  const isApolloLead = (l: Lead) => l.source === 'apollo' && !!l.contactEmail;
+function draftKind(l: Lead): DraftKind {
+  if (l.source === 'places') return 'places';
+  if (l.source === 'apollo') return 'apollo';
+  return 'freelancer';
+}
 
-  const block = batch
-    .map((j, i) => {
-      if (isApolloLead(j)) {
-        return `CONTACT ${i + 1} (ID: ${j.id}):\nName: ${j.contactName}\nTitle: ${j.contactTitle}\nCompany: ${j.company}\nCompany description: ${j.description.slice(0, 400)}\nWebsite: ${j.url}`;
-      }
-      return `JOB ${i + 1} (ID: ${j.id}):\nTitle: ${j.title}\nCompany: ${j.company}\nSource: ${j.source}\nDescription: ${j.description.slice(0, 400)}`;
-    })
-    .join('\n\n---\n\n');
+function describe(l: Lead, i: number, kind: DraftKind): string {
+  if (kind === 'apollo') {
+    return `CONTACT ${i + 1} (ID: ${l.id}):\nName: ${l.contactName}\nTitle: ${l.contactTitle}\nCompany: ${l.company}\nCompany description: ${l.description.slice(0, 400)}\nWebsite: ${l.url}`;
+  }
+  if (kind === 'places') {
+    const channel = l.contactEmail ? 'EMAIL' : 'DM';
+    return `BUSINESS ${i + 1} (ID: ${l.id}):\nChannel: ${channel}\nBusiness: ${l.contactName}\nType and city: ${l.company}\nWebsite: ${l.contactLinks?.website ?? 'none'}\nFindings: ${l.description.slice(0, 500)}`;
+  }
+  return `PROJECT ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBudget and bids: ${l.company}\nBrief: ${l.description.slice(0, 700)}`;
+}
 
-  const hasApollo = batch.some(isApolloLead);
-  const prompt = hasApollo
-    ? `Draft a short personalised cold email from Samuel Adefila to each person below. These are real people with real email addresses — make it feel like Samuel wrote it specifically to them.
-
-About Samuel: ${SAMUEL}
+const PROMPTS: Record<DraftKind, string> = {
+  apollo: `Draft a short personalised cold email from Samuel Adefila to each person below. These are real people with real email addresses — make it feel like Samuel wrote it specifically to them.
 
 Rules:
 - Start with "Subject: ..." on line 1, then blank line, then body
@@ -97,16 +114,13 @@ Rules:
 - Under 130 words total
 - Reference their specific company or product — show you looked
 - Lead with value (what Samuel can do for their situation), not a resume
-- One soft CTA at the end ("Would love to show you a quick example — open to a call?")
-- Sign as Samuel (no surname in sign-off, just "Samuel")
+- One soft CTA at the end
+- Sign as Samuel
 - No emojis, no "I hope this email finds you well", no "I came across your profile"
 
-Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}
+Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}`,
 
-${block}`
-    : `Write a Freelancer.com bid proposal from Samuel Adefila for each project below. The client reads dozens of bids, so the first line must prove Samuel read their brief.
-
-About Samuel: ${SAMUEL}
+  freelancer: `Write a Freelancer.com bid proposal from Samuel Adefila for each project below. The client reads dozens of bids, so the first line must prove Samuel read their brief.
 
 Rules:
 - No subject line, no greeting like "Dear Sir"; open with "Hi," then go straight to their specific need
@@ -118,11 +132,28 @@ Rules:
 - Sign off as Samuel, with adefilasamuel.com
 - No emojis, no buzzwords, no "I am the perfect fit"
 
-Return ONLY valid JSON: {"ID": "proposal text", ...}
+Return ONLY valid JSON: {"ID": "proposal text", ...}`,
 
-${block}`;
+  places: `Write outreach from Samuel Adefila to each local business below. Samuel found them on Google Maps and checked their website. The findings list exactly what is wrong (or that they have no website).
 
-  const msg = await client.messages.create({
+Rules:
+- If Channel is EMAIL: start with "Subject: ..." on line 1 (specific, under 8 words, no clickbait), blank line, then the body. Under 120 words.
+- If Channel is DM: no subject line. Under 70 words; it will be sent as an Instagram/Facebook/LinkedIn message or website contact form.
+- Open with "Hi [Business name] team," then one genuine, specific observation (e.g. their strong Google rating) before the problem
+- State ONE concrete issue from the findings in plain, non-technical words and why it costs them customers (e.g. "on a phone the site is hard to read, and most people searching for a dentist are on their phone")
+- If they have no website: point out that people who find them on Google Maps have nowhere to go to learn more or book
+- Offer something low-commitment: a free homepage mockup or a quick 10-minute call
+- Sign as Samuel, adefilasamuel.com
+- Never invent facts beyond the findings. No emojis, no flattery, no "I hope this finds you well"
+
+Return ONLY valid JSON: {"ID": "message text", ...}`,
+};
+
+async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, string>> {
+  const block = batch.map((l, i) => describe(l, i, kind)).join('\n\n---\n\n');
+  const prompt = `${PROMPTS[kind]}\n\nAbout Samuel: ${SAMUEL}\n\n${block}`;
+
+  const msg = await getClient().messages.create({
     model: MODEL,
     max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
@@ -139,33 +170,30 @@ ${block}`;
       }
     }
   } catch (e) {
-    console.error('[claude] Email batch parse error:', e);
+    console.error(`[claude] ${kind} draft parse error:`, e);
   }
   return result;
 }
 
-export async function generateColdEmails(jobs: Lead[]): Promise<Lead[]> {
-  if (!jobs.length) return [];
-  console.log(`[claude] Drafting cold emails for ${jobs.length} leads...`);
+export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
+  if (!leads.length) return [];
+  console.log(`[claude] Drafting outreach for ${leads.length} leads...`);
 
+  const drafts = new Map<string, string>();
   const BATCH = 5;
-  const results = [...jobs];
-
-  for (let i = 0; i < jobs.length; i += BATCH) {
-    const batch = jobs.slice(i, i + BATCH);
-    try {
-      const map = await draftEmailBatch(batch);
-      for (const job of batch) {
-        const idx = results.findIndex(r => r.id === job.id);
-        if (idx !== -1 && map.has(job.id)) {
-          results[idx] = { ...results[idx], proposal: map.get(job.id) };
-        }
+  for (const kind of ['freelancer', 'places', 'apollo'] as DraftKind[]) {
+    const group = leads.filter(l => draftKind(l) === kind);
+    for (let i = 0; i < group.length; i += BATCH) {
+      try {
+        const map = await draftBatch(group.slice(i, i + BATCH), kind);
+        map.forEach((v, k) => drafts.set(k, v));
+      } catch (e) {
+        console.error(`[claude] ${kind} batch failed:`, e);
       }
-    } catch (e) {
-      console.error(`[claude] Email batch ${Math.floor(i / BATCH) + 1} failed:`, e);
     }
   }
-  return results;
+
+  return leads.map(l => (drafts.has(l.id) ? { ...l, proposal: drafts.get(l.id) } : l));
 }
 
 // Keep backward compat

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllJobs } from '@/lib/sources';
 import { fetchApolloLeads } from '@/lib/apollo';
+import { fetchPlacesLeads } from '@/lib/places';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads } from '@/lib/supabase';
 import { sendLeadsEmail } from '@/lib/email';
@@ -22,11 +23,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boardJobs, apolloLeads] = await Promise.all([
+    const [boardJobs, placesLeads, apolloLeads] = await Promise.all([
       fetchAllJobs(),
+      fetchPlacesLeads(),
       fetchApolloLeads(),
     ]);
-    const allJobs = [...boardJobs, ...apolloLeads];
+    const allJobs = [...boardJobs, ...placesLeads, ...apolloLeads];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -56,7 +58,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       stats: {
-        boardJobs: boardJobs.length,
+        freelancerProjects: boardJobs.length,
+        localBusinesses: placesLeads.length,
+        withEmail: placesLeads.filter(l => l.contactEmail).length,
         apolloContacts: apolloLeads.length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,

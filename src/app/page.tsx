@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
 import type { Lead } from '@/types/lead';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -12,6 +12,7 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   weworkremotely: 'We Work Remotely',
   apollo: 'Apollo',
   freelancer: 'Freelancer',
+  places: 'Local business',
 };
 
 const SOURCE_COLOR: Record<Lead['source'], string> = {
@@ -21,6 +22,7 @@ const SOURCE_COLOR: Record<Lead['source'], string> = {
   weworkremotely: '#0288d1',
   apollo: '#0f0f0f',
   freelancer: '#29b2fe',
+  places: '#4285f4',
 };
 
 function scoreColor(s: number) {
@@ -46,6 +48,45 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+const LINK_LABELS: [keyof NonNullable<Lead['contactLinks']>, string][] = [
+  ['maps', 'Google Maps'],
+  ['website', 'Website'],
+  ['linkedin', 'LinkedIn'],
+  ['instagram', 'Instagram'],
+  ['facebook', 'Facebook'],
+  ['twitter', 'X / Twitter'],
+];
+
+const chip: CSSProperties = {
+  fontSize: 11, fontWeight: 600, padding: '4px 10px', border: '1px solid var(--border)',
+  background: 'var(--white)', color: 'var(--fg)', textDecoration: 'none', display: 'inline-block',
+};
+
+function ContactPanel({ lead }: { lead: Lead }) {
+  const links = lead.contactLinks ?? {};
+  const row = (label: string, value: ReactNode) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--fg-muted)', width: 48, flexShrink: 0 }}>{label}</span>
+      {value}
+    </div>
+  );
+  return (
+    <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(0,171,74,0.05)', border: '1px solid rgba(0,171,74,0.15)', display: 'grid', gap: 6 }}>
+      {row('Email', lead.contactEmail
+        ? <a href={`mailto:${lead.contactEmail}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</a>
+        : <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>None found on their site. Use phone or a social DM.</span>)}
+      {lead.contactPhone && row('Phone', <a href={`tel:${lead.contactPhone.replace(/\s/g, '')}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactPhone}</a>)}
+      {row('Links', (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
+            <a key={k} href={links[k]} target="_blank" rel="noreferrer" style={chip}>{label}</a>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => void; onSkip: () => void }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(lead.proposal ?? '');
@@ -53,13 +94,14 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
 
   const isApollo = lead.source === 'apollo' && !!lead.contactEmail;
   const isFreelancer = lead.source === 'freelancer';
+  const isPlaces = lead.source === 'places';
 
   const lines = draft.split('\n');
   const subjectLine = lines.find(l => l.startsWith('Subject:')) ?? '';
   const subject = subjectLine.replace('Subject:', '').trim();
   const body = lines.filter(l => !l.startsWith('Subject:')).join('\n').replace(/^\n+/, '');
 
-  const mailtoHref = isApollo && lead.contactEmail
+  const mailtoHref = lead.contactEmail
     ? `mailto:${lead.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body || draft)}`
     : null;
 
@@ -105,6 +147,8 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
 
       {open && (
         <div style={{ padding: '0 20px 16px' }}>
+          {isPlaces && <ContactPanel lead={lead} />}
+
           {/* Apollo verified email */}
           {isApollo && (
             <div style={{
@@ -160,7 +204,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
             {lead.url && lead.url.startsWith('http') && (
               <a href={lead.url} target="_blank" rel="noreferrer"
                 style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
-                {isApollo ? 'View website' : 'View project'}
+                {isApollo ? 'View website' : isPlaces ? (lead.contactLinks?.website ? 'View website' : 'Open in Maps') : 'View project'}
               </a>
             )}
             {draft && !isApollo && (
@@ -168,7 +212,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
                 onClick={() => doCopy(draft, setWasCopied)}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                {wasCopied ? 'Copied' : isFreelancer ? 'Copy proposal' : 'Copy email'}
+                {wasCopied ? 'Copied' : isFreelancer ? 'Copy proposal' : isPlaces ? 'Copy message' : 'Copy email'}
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -178,7 +222,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
             >
               Skip
             </button>
-            {isApollo && mailtoHref ? (
+            {mailtoHref ? (
               <a
                 href={mailtoHref}
                 onClick={onApprove}
@@ -210,7 +254,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
                 onClick={onApprove}
                 style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
               >
-                Approve
+                {isPlaces ? 'Mark contacted' : 'Approve'}
               </button>
             )}
           </div>
@@ -372,7 +416,7 @@ export default function Home() {
               </div>
             </div>
             <p style={{ fontSize: 11, color: 'var(--fg-muted)', textAlign: 'right', lineHeight: 1.5 }}>
-              Freelancer.com website projects, ranked by<br />fit, budget and competition
+              Freelancer projects + local businesses with<br />no website or a weak one, ranked by AI
             </p>
           </div>
 

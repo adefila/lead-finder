@@ -46,6 +46,8 @@ export async function saveLeads(leads: Lead[]): Promise<void> {
     contact_email: l.contactEmail ?? null,
     contact_name: l.contactName ?? null,
     contact_title: l.contactTitle ?? null,
+    contact_phone: l.contactPhone ?? null,
+    contact_links: l.contactLinks ?? null,
   }));
   const { error } = await db().from('leads').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
   if (error) console.error('[supabase] saveLeads:', error);
@@ -74,6 +76,8 @@ export async function getLeads(limit = 100): Promise<Lead[]> {
     contactEmail: r.contact_email ? String(r.contact_email) : undefined,
     contactName: r.contact_name ? String(r.contact_name) : undefined,
     contactTitle: r.contact_title ? String(r.contact_title) : undefined,
+    contactPhone: r.contact_phone ? String(r.contact_phone) : undefined,
+    contactLinks: (r.contact_links as Lead['contactLinks']) ?? undefined,
   }));
 }
 
