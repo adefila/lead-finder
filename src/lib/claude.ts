@@ -86,6 +86,7 @@ Rules:
 - Never open with "I saw your job posting"
 - Soft CTA at the end (e.g. "Worth a quick chat?")
 - Sign off as Samuel
+- No emojis anywhere in the subject or body
 
 Return ONLY valid JSON, no explanation: {"JOB_ID": "Subject: ...\\n\\nBody...", ...}
 
@@ -210,6 +211,7 @@ Rules:
 - Sound like a real person, not marketing
 - Don't start with "As a Framer developer..."
 - Match the platform's casual tone
+- No emojis
 
 Return ONLY JSON, no explanation: {"POST_ID": "reply text", ...}
 

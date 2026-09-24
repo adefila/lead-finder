@@ -84,7 +84,6 @@ function buildEmailHtml(leads: Lead[]): string {
   <div style="max-width:600px;margin:0 auto;padding:24px 12px">
     <!-- header -->
     <div style="background:linear-gradient(135deg,#111827 0%,#1f2937 100%);border-radius:12px;padding:28px 28px 24px;margin-bottom:24px;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">🎯</div>
       <h1 style="margin:0 0 6px;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.3px">Your Framer Leads</h1>
       <p style="margin:0 0 12px;font-size:14px;color:#9ca3af">${date}</p>
       <div style="display:inline-block;background:rgba(255,255,255,0.1);border-radius:20px;padding:6px 16px;font-size:15px;color:#e5e7eb;font-weight:600">
@@ -105,7 +104,7 @@ function buildEmailHtml(leads: Lead[]): string {
 
 export async function sendLeadsEmail(leads: Lead[]): Promise<void> {
   const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const subject = `🎯 Your ${leads.length} Framer leads for ${date}`;
+  const subject = `Your ${leads.length} Framer leads for ${date}`;
   const html = buildEmailHtml(leads);
 
   console.log(`[email] Sending email with ${leads.length} leads...`);

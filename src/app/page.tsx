@@ -78,7 +78,7 @@ function LeadCard({ lead, onApprove, onSkip }: {
         }}>
           {SOURCE_LABEL[lead.source]}
         </span>
-        <span style={{ fontSize: 12, color: 'var(--fg-muted)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>{open ? 'Close' : 'View'}</span>
       </div>
 
       {open && (
@@ -119,14 +119,14 @@ function LeadCard({ lead, onApprove, onSkip }: {
               rel="noreferrer"
               style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}
             >
-              View post →
+              View post
             </a>
             {email && (
               <button
                 onClick={() => { navigator.clipboard.writeText(email); copied(setWasCopied); }}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                {wasCopied ? '✓ Copied' : 'Copy email'}
+                {wasCopied ? 'Copied' : 'Copy email'}
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -140,7 +140,7 @@ function LeadCard({ lead, onApprove, onSkip }: {
               onClick={onApprove}
               style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
             >
-              Approve ✓
+              Approve
             </button>
           </div>
         </div>
@@ -175,7 +175,7 @@ function PostCard({ post, onDone }: { post: Post; onDone: () => void }) {
             <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1 }}>u/{post.author}</div>
           )}
         </div>
-        <span style={{ fontSize: 12, color: 'var(--fg-muted)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>{open ? 'Close' : 'View'}</span>
       </div>
 
       {open && (
@@ -203,14 +203,14 @@ function PostCard({ post, onDone }: { post: Post; onDone: () => void }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <a href={post.url} target="_blank" rel="noreferrer"
               style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
-              Open post →
+              Open post
             </a>
             {reply && (
               <button
                 onClick={() => { navigator.clipboard.writeText(reply); copied(setWasCopied); }}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                {wasCopied ? '✓ Copied' : 'Copy reply'}
+                {wasCopied ? 'Copied' : 'Copy reply'}
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -218,7 +218,7 @@ function PostCard({ post, onDone }: { post: Post; onDone: () => void }) {
               onClick={onDone}
               style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
             >
-              Done ✓
+              Done
             </button>
           </div>
         </div>
@@ -311,7 +311,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px',
             }}
           >
-            {runStatus === 'running' ? '⏳ Running…' : '▶ Run Now'}
+            {runStatus === 'running' ? 'Running…' : 'Run Now'}
           </button>
         </div>
       </header>
@@ -327,7 +327,7 @@ export default function Home() {
             display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
           }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: runStatus === 'done' ? 'var(--accent-green)' : '#dc2626' }}>
-              {runStatus === 'done' ? '✓ Run complete' : '✗ Run failed'}
+              {runStatus === 'done' ? 'Run complete' : 'Run failed'}
             </span>
             {runResult.stats && Object.entries(runResult.stats).map(([k, v]) => (
               <span key={k} style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>
@@ -382,8 +382,7 @@ export default function Home() {
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading leads…</div>
               ) : newLeads.length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
-                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>All caught up</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No new leads</div>
                   <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch new leads</div>
                 </div>
               ) : (
@@ -418,8 +417,7 @@ export default function Home() {
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading posts…</div>
               ) : newPosts.length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
-                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No posts to reply to</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No posts yet</div>
                   <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch posts from Reddit + HN</div>
                 </div>
               ) : (
