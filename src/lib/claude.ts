@@ -192,9 +192,9 @@ export async function scoreAndDraftPosts(posts: Post[]): Promise<Post[]> {
 
 Samuel: ${SAMUEL}
 
-High score (60-100): person/startup actively looking for web design, Framer help, landing page, or designer; asking for recommendations; sharing a website problem; just launched a product.
-Medium score (30-59): discussions about web design tools, startup websites, design trends — could naturally plug Samuel's work.
-Low score (0-29): pure tech/engineering discussion, no web design angle, fully off-topic.
+High score (70-100): person/startup ACTIVELY HIRING or requesting a web designer, landing page, Framer/Webflow site, or website redesign; a client project on Upwork/Freelancer; "I need a website built"; just launched on Product Hunt (potential client needing a better site).
+Medium score (30-69): discussions about web design tools, startup websites, design trends — could naturally prompt Samuel to reach out.
+Low score (0-29): general tech/engineering discussion with no web design angle, no hiring intent, fully off-topic — AI tools, backend APIs, mobile apps.
 
 Return ONLY JSON array: [{"id": "...", "score": 0-100}]
 
