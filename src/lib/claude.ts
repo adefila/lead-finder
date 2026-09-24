@@ -6,9 +6,10 @@ const MODEL = 'claude-haiku-4-5-20251001';
 
 const SAMUEL = `
 Samuel Adefila is a Top-Rated Framer developer (Upwork, 100% Job Success Score, 50+ sites delivered).
-He specialises in Figma-to-Framer conversions, landing pages, marketing sites, template customisation.
+He specialises in: Figma-to-Framer conversions, landing pages, marketing sites, SaaS websites, portfolio sites, startup homepages, template customisation, Webflow migrations to Framer.
 Typical turnaround: 14 days. Portfolio: adefilasamuel.com.
-He works with startups, SaaS companies, agencies, and founders who need polished web presence fast.
+He works with startups, SaaS companies, agencies, solo founders, and anyone who needs a polished web presence fast.
+Good lead signals: needs a website, landing page, or redesign; mentions Framer/Figma/Webflow/no-code; is a founder or early-stage startup; launching a product; needs a designer or front-end developer for web.
 `.trim();
 
 function getClient() {
@@ -32,7 +33,10 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
       content: `You are helping this person find the best leads:
 ${SAMUEL}
 
-Score each job 0-100 for fit. High: Framer dev, Figma-to-Framer, landing pages, web design, no-code, UI/UX. Low: mobile apps, backend, unrelated tech.
+Score each job 0-100 for fit. Be generous — when in doubt, score higher so the human can decide.
+High (60-100): explicitly mentions Framer, Figma-to-Framer, landing page designer, web designer, marketing site, no-code, Webflow, startup website, portfolio site.
+Medium (30-59): web design broadly, UI/UX, front-end design, website redesign, creative direction, brand + web.
+Low (0-29): mobile apps, backend/API, iOS/Android, unrelated tech stack (React Native, Flutter, etc.), copywriting only.
 
 Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
 
@@ -55,7 +59,7 @@ ${JSON.stringify(input)}`,
   const map = new Map(scored.map(s => [s.id, s.score]));
   return jobs
     .map(j => ({ ...j, score: map.get(j.id) ?? 0 }))
-    .filter(j => (j.score ?? 0) >= 40)
+    .filter(j => (j.score ?? 0) >= 25)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 50);
 }
@@ -157,8 +161,9 @@ export async function scoreAndDraftPosts(posts: Post[]): Promise<Post[]> {
 
 Samuel: ${SAMUEL}
 
-High score: founder/startup looking for web design/Framer/landing page help, asking for designer recommendations, sharing a website pain point, launching a product and needs a site.
-Low score: unrelated to web design, already has a developer, pure tech discussion, off-topic.
+High score (60-100): person/startup actively looking for web design, Framer help, landing page, or designer; asking for recommendations; sharing a website problem; just launched a product.
+Medium score (30-59): discussions about web design tools, startup websites, design trends — could naturally plug Samuel's work.
+Low score (0-29): pure tech/engineering discussion, no web design angle, fully off-topic.
 
 Return ONLY JSON array: [{"id": "...", "score": 0-100}]
 
@@ -179,7 +184,7 @@ ${JSON.stringify(input)}`,
   const map = new Map(scored.map(s => [s.id, s.score]));
   const filtered = posts
     .map(p => ({ ...p, score: map.get(p.id) ?? 0 }))
-    .filter(p => (p.score ?? 0) >= 40)
+    .filter(p => (p.score ?? 0) >= 30)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 40);
 
