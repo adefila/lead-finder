@@ -98,19 +98,27 @@ export async function fetchApolloLeads(): Promise<Lead[]> {
     allPeople.push(...people);
   }
 
-  // Keep only contacts with unmasked, verified emails
-  const seen = new Set<string>();
-  const withEmails = allPeople.filter(p => {
-    if (!p.email || isMasked(p.email)) return false;
-    if (p.email_status !== 'verified' && p.email_status !== 'likely to engage') return false;
-    if (seen.has(p.email)) return false;
-    seen.add(p.email);
+  // Deduplicate by id, prefer contacts with revealed emails
+  const seenIds = new Set<string>();
+  const seenEmails = new Set<string>();
+  const deduped = allPeople.filter(p => {
+    if (!p.id || seenIds.has(p.id)) return false;
+    seenIds.add(p.id);
+    if (p.email && !isMasked(p.email)) {
+      if (seenEmails.has(p.email)) return false;
+      seenEmails.add(p.email);
+    }
     return true;
   });
 
-  console.log(`[apollo] ${withEmails.length} contacts with verified emails (from ${allPeople.length} total)`);
+  const withEmail = deduped.filter(p => p.email && !isMasked(p.email));
+  const withoutEmail = deduped.filter(p => !p.email || isMasked(p.email));
+  console.log(`[apollo] ${deduped.length} contacts (${withEmail.length} with email, ${withoutEmail.length} email locked)`);
 
-  return withEmails.map(p => {
+  // Include up to 20 contacts without email so user can look them up on LinkedIn
+  const contacts = [...withEmail, ...withoutEmail.slice(0, 20)];
+
+  return contacts.map(p => {
     const firstName = p.first_name ?? '';
     const lastName = p.last_name ?? '';
     const name = p.name ?? `${firstName} ${lastName}`.trim();
@@ -130,7 +138,7 @@ export async function fetchApolloLeads(): Promise<Lead[]> {
       url: website,
       source: 'apollo' as const,
       postedAt: new Date().toISOString(),
-      contactEmail: p.email,
+      contactEmail: p.email && !isMasked(p.email) ? p.email : undefined,
       contactName: name,
       contactTitle: p.title,
     };

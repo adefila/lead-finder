@@ -107,11 +107,20 @@ function LeadCard({ lead, onApprove, onSkip }: {
 
       {open && (
         <div style={{ padding: '0 20px 16px' }}>
-          {/* Apollo: show email address prominently */}
-          {isApollo && lead.contactEmail && (
-            <div style={{ marginBottom: 10, padding: '8px 12px', background: 'rgba(0,171,74,0.06)', border: '1px solid rgba(0,171,74,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgb(0,140,60)' }}>Email</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</span>
+          {/* Apollo: show email if available, otherwise prompt to find manually */}
+          {isApollo && (
+            <div style={{ marginBottom: 10, padding: '8px 12px', background: lead.contactEmail ? 'rgba(0,171,74,0.06)' : 'rgba(0,0,0,0.03)', border: `1px solid ${lead.contactEmail ? 'rgba(0,171,74,0.15)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {lead.contactEmail ? (
+                <>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgb(0,140,60)' }}>Email</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--fg-muted)' }}>Email locked</span>
+                  <span style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>Find on LinkedIn or Apollo dashboard</span>
+                </>
+              )}
             </div>
           )}
 
@@ -166,7 +175,6 @@ function LeadCard({ lead, onApprove, onSkip }: {
             >
               Skip
             </button>
-            {/* Apollo lead: "Send Email" opens Gmail pre-filled. Job board: "Approve" */}
             {isApollo && mailtoHref ? (
               <a
                 href={mailtoHref}
@@ -174,6 +182,15 @@ function LeadCard({ lead, onApprove, onSkip }: {
                 style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--accent-green)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
               >
                 Send Email
+              </a>
+            ) : isApollo ? (
+              <a
+                href="https://app.apollo.io/#/people"
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--fg-secondary)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
+              >
+                Find Email
               </a>
             ) : (
               <button

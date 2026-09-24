@@ -53,13 +53,17 @@ ${JSON.stringify(input)}`,
       if (match) scored = JSON.parse(match[0]);
     }
   } catch {
+    // Parsing failed — pass everything at score 50 so the human can review
     return jobs.map(j => ({ ...j, score: 50 })).slice(0, 50);
   }
 
+  // If Claude returned no scores, same fallback
+  if (!scored.length) return jobs.map(j => ({ ...j, score: 50 })).slice(0, 50);
+
   const map = new Map(scored.map(s => [s.id, s.score]));
   return jobs
-    .map(j => ({ ...j, score: map.get(j.id) ?? 0 }))
-    .filter(j => (j.score ?? 0) >= 25)
+    .map(j => ({ ...j, score: map.get(j.id) ?? 50 }))
+    .filter(j => (j.score ?? 0) >= 15)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 50);
 }
@@ -206,12 +210,18 @@ ${JSON.stringify(input)}`,
       const match = c.text.match(/\[[\s\S]*\]/);
       if (match) scored = JSON.parse(match[0]);
     }
-  } catch {}
+  } catch {
+    console.error('[claude] Post scoring parse failed, using fallback scores');
+  }
 
-  const map = new Map(scored.map(s => [s.id, s.score]));
+  // Fallback: if scoring failed or returned nothing, pass all posts at 50
+  const map = scored.length
+    ? new Map(scored.map(s => [s.id, s.score]))
+    : new Map(posts.map(p => [p.id, 50]));
+
   const filtered = posts
-    .map(p => ({ ...p, score: map.get(p.id) ?? 0 }))
-    .filter(p => (p.score ?? 0) >= 30)
+    .map(p => ({ ...p, score: map.get(p.id) ?? 50 }))
+    .filter(p => (p.score ?? 0) >= 20)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 40);
 

@@ -43,7 +43,6 @@ async function fetchRemotiveAll(): Promise<Lead[]> {
 async function fetchWeWorkRemotely(): Promise<Lead[]> {
   const feeds = [
     'https://weworkremotely.com/categories/remote-design-jobs.rss',
-    'https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss',
   ];
   const all: Lead[] = [];
   for (const feedUrl of feeds) {
@@ -75,7 +74,7 @@ async function fetchWeWorkRemotely(): Promise<Lead[]> {
 // ─── Working Nomads (free JSON API, works from Vercel) ───────────────────────
 
 async function fetchWorkingNomads(): Promise<Lead[]> {
-  const categories = ['design', 'front-end'];
+  const categories = ['design'];
   const all: Lead[] = [];
   for (const cat of categories) {
     try {
