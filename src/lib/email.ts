@@ -7,12 +7,14 @@ function sourceBadge(source: Lead['source']): string {
     remoteok: '#00c853',
     remotive: '#6200ea',
     weworkremotely: '#0288d1',
+    apollo: '#0f0f0f',
   };
   const label: Record<Lead['source'], string> = {
     upwork: 'Upwork',
     remoteok: 'RemoteOK',
     remotive: 'Remotive',
     weworkremotely: 'We Work Remotely',
+    apollo: 'Apollo',
   };
   const color = map[source] ?? '#555';
   const text = label[source] ?? source;
