@@ -154,7 +154,7 @@ function LeadCard({ lead, onApprove, onSkip }: {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {lead.url && (
+            {lead.url && lead.url.startsWith('http') && (
               <a href={lead.url} target="_blank" rel="noreferrer"
                 style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
                 {isApollo ? 'View website' : 'View post'}
