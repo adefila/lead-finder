@@ -4,7 +4,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo';
+  source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo' | 'freelancer';
   postedAt: string;
   score?: number;
   proposal?: string;

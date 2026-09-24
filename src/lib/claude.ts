@@ -23,20 +23,21 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
   console.log(`[claude] Scoring ${jobs.length} jobs...`);
 
   const client = getClient();
-  const input = jobs.map(j => ({ id: j.id, title: j.title, description: j.description.slice(0, 300), source: j.source }));
+  const input = jobs.map(j => ({ id: j.id, title: j.title, budgetAndBids: j.company, description: j.description.slice(0, 500), source: j.source }));
 
   const msg = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
     messages: [{
       role: 'user',
-      content: `You are helping this person find the best leads:
+      content: `You are ranking client website projects for this freelancer:
 ${SAMUEL}
 
-Score each job 0-100 for fit. Be generous — when in doubt, score higher so the human can decide.
-High (60-100): explicitly mentions Framer, Figma-to-Framer, landing page designer, web designer, marketing site, no-code, Webflow, startup website, portfolio site.
-Medium (30-59): web design broadly, UI/UX, front-end design, website redesign, creative direction, brand + web.
-Low (0-29): mobile apps, backend/API, iOS/Android, unrelated tech stack (React Native, Flutter, etc.), copywriting only.
+Score each project 0-100 for how worth bidding on it is. Weigh three things:
+1. Fit: a marketing/business/portfolio/landing site he can build in Framer, Webflow or similar scores high. Heavy custom backend, booking systems, marketplaces or WordPress plugin dev score lower.
+2. Budget: USD 250+ fixed or USD 20+/hr is good. Tiny budgets (under USD 50, or INR under 12500) score lower.
+3. Competition: fewer bids so far is better. 70+ bids lowers the score.
+Use the full range. Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
 
 Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
 
@@ -63,9 +64,7 @@ ${JSON.stringify(input)}`,
   const map = new Map(scored.map(s => [s.id, s.score]));
   return jobs
     .map(j => ({ ...j, score: map.get(j.id) ?? 50 }))
-    .filter(j => (j.score ?? 0) >= 15)
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .slice(0, 50);
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 }
 
 // ─── Cold email drafts ───────────────────────────────────────────────────────
@@ -105,21 +104,21 @@ Rules:
 Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}
 
 ${block}`
-    : `Draft a short cold outreach email from Samuel Adefila for each job below.
+    : `Write a Freelancer.com bid proposal from Samuel Adefila for each project below. The client reads dozens of bids, so the first line must prove Samuel read their brief.
 
 About Samuel: ${SAMUEL}
 
 Rules:
-- Start with "Subject: ..." on line 1, then blank line, then body
-- Under 150 words total
-- Reference something specific from the job/company description
-- Conversational and human, not a template
-- Never open with "I saw your job posting"
-- Soft CTA at the end
-- Sign off as Samuel
-- No emojis
+- No subject line, no greeting like "Dear Sir"; open with "Hi," then go straight to their specific need
+- Under 120 words
+- Line 1-2: restate their goal in your own words and name one concrete thing you would do for it
+- Mention one relevant past result or site type from Samuel's experience
+- Give a realistic timeline for this specific project
+- End with one short question about their project that invites a reply
+- Sign off as Samuel, with adefilasamuel.com
+- No emojis, no buzzwords, no "I am the perfect fit"
 
-Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}
+Return ONLY valid JSON: {"ID": "proposal text", ...}
 
 ${block}`;
 

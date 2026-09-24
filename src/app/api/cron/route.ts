@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllJobs } from '@/lib/sources';
 import { fetchApolloLeads } from '@/lib/apollo';
-import { generateColdEmails } from '@/lib/claude';
+import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads } from '@/lib/supabase';
 import { sendLeadsEmail } from '@/lib/email';
 
@@ -39,9 +39,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
-    // 3. Draft cold emails for all fresh leads (cap 40)
-    const jobsToProcess = freshJobs.slice(0, 40);
-    const jobsWithEmails = await generateColdEmails(jobsToProcess);
+    // 3. Rank (no filtering), then draft for the top 40
+    const ranked = await scoreJobs(freshJobs);
+    const jobsWithEmails = await generateColdEmails(ranked.slice(0, 40));
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);

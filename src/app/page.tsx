@@ -11,6 +11,7 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   remotive: 'Remotive',
   weworkremotely: 'We Work Remotely',
   apollo: 'Apollo',
+  freelancer: 'Freelancer',
 };
 
 const SOURCE_COLOR: Record<Lead['source'], string> = {
@@ -19,6 +20,7 @@ const SOURCE_COLOR: Record<Lead['source'], string> = {
   remotive: '#6d28d9',
   weworkremotely: '#0288d1',
   apollo: '#0f0f0f',
+  freelancer: '#29b2fe',
 };
 
 function scoreColor(s: number) {
@@ -50,6 +52,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
   const [wasCopied, setWasCopied] = useState(false);
 
   const isApollo = lead.source === 'apollo' && !!lead.contactEmail;
+  const isFreelancer = lead.source === 'freelancer';
 
   const lines = draft.split('\n');
   const subjectLine = lines.find(l => l.startsWith('Subject:')) ?? '';
@@ -165,7 +168,7 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
                 onClick={() => doCopy(draft, setWasCopied)}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                {wasCopied ? 'Copied' : 'Copy email'}
+                {wasCopied ? 'Copied' : isFreelancer ? 'Copy proposal' : 'Copy email'}
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -191,6 +194,16 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
                 style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--fg-secondary)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
               >
                 Find Email
+              </a>
+            ) : isFreelancer ? (
+              <a
+                href={lead.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => { navigator.clipboard.writeText(draft); onApprove(); }}
+                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--accent-green)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
+              >
+                Copy proposal &amp; bid
               </a>
             ) : (
               <button
@@ -359,7 +372,7 @@ export default function Home() {
               </div>
             </div>
             <p style={{ fontSize: 11, color: 'var(--fg-muted)', textAlign: 'right', lineHeight: 1.5 }}>
-              Upwork + Freelancer.com + Apollo<br />clients who need a website built
+              Freelancer.com website projects, ranked by<br />fit, budget and competition
             </p>
           </div>
 
@@ -368,7 +381,7 @@ export default function Home() {
           ) : newLeads.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No new leads</div>
-              <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Click Run Now to fetch fresh leads from Upwork and Freelancer</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Click Run Now to fetch fresh website projects</div>
             </div>
           ) : (
             newLeads.map(lead => (
