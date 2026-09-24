@@ -1,8 +1,6 @@
 import { Resend } from 'resend';
 import type { Lead } from '@/types/lead';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function sourceBadge(source: Lead['source']): string {
   const map: Record<Lead['source'], string> = {
     upwork: '#14a800',
@@ -112,6 +110,7 @@ export async function sendLeadsEmail(leads: Lead[]): Promise<void> {
 
   console.log(`[email] Sending email with ${leads.length} leads...`);
 
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const { data, error } = await resend.emails.send({
     from: 'Lead Finder <onboarding@resend.dev>',
     to: 'adefilasamuel929@gmail.com',

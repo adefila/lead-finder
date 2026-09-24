@@ -1,8 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-haiku-4-5-20251001';
+
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
   if (jobs.length === 0) return [];
@@ -15,6 +18,7 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
     source: j.source,
   }));
 
+  const client = getClient();
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
@@ -72,6 +76,7 @@ Description: ${j.description.slice(0, 400)}`
     )
     .join('\n\n---\n\n');
 
+  const client = getClient();
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
@@ -116,6 +121,7 @@ ${jobDescriptions}`,
 }
 
 export async function generateProposal(job: Lead): Promise<string> {
+  const client = getClient();
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 512,
