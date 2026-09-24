@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllJobs } from '@/lib/sources';
-import { fetchAllPosts } from '@/lib/posts';
 import { fetchApolloLeads } from '@/lib/apollo';
-import { generateColdEmails, scoreAndDraftPosts } from '@/lib/claude';
-import { getSentIds, markSent, getExistingLeadIds, saveLeads, getExistingPostIds, savePosts } from '@/lib/supabase';
+import { generateColdEmails } from '@/lib/claude';
+import { getSentIds, markSent, getExistingLeadIds, saveLeads } from '@/lib/supabase';
 import { sendLeadsEmail } from '@/lib/email';
 
 export const maxDuration = 300;
@@ -22,52 +21,37 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   console.log('[cron] Run started');
 
   try {
-    // 1. Fetch everything in parallel
-    const [boardJobs, apolloLeads, allPosts] = await Promise.all([
+    // 1. Fetch client project leads in parallel
+    const [boardJobs, apolloLeads] = await Promise.all([
       fetchAllJobs(),
       fetchApolloLeads(),
-      fetchAllPosts(),
     ]);
     const allJobs = [...boardJobs, ...apolloLeads];
 
     // 2. Dedup against Supabase
-    const [sentIds, existingLeadIds, existingPostIds] = await Promise.all([
+    const [sentIds, existingLeadIds] = await Promise.all([
       getSentIds(30),
       getExistingLeadIds(),
-      getExistingPostIds(),
     ]);
 
     const knownLeads = new Set([...sentIds, ...existingLeadIds]);
-    const knownPosts = new Set(existingPostIds);
-
     const freshJobs = allJobs.filter(j => !knownLeads.has(j.id));
-    const freshPosts = allPosts.filter(p => !knownPosts.has(p.id));
 
-    console.log(`[cron] Fresh: ${freshJobs.length} jobs, ${freshPosts.length} posts`);
+    console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
-    // 3. Job board leads: skip pre-scoring — draft emails for ALL fresh leads (cap 40).
-    //    Claude scoring was filtering out legit design jobs because Framer-specific
-    //    roles are rare. Let the user review and skip from the dashboard instead.
-    //    Apollo leads are always included as-is (already targeted at founder profile).
+    // 3. Draft cold emails for all fresh leads (cap 40)
     const jobsToProcess = freshJobs.slice(0, 40);
+    const jobsWithEmails = await generateColdEmails(jobsToProcess);
 
-    // 4. Draft emails + score posts in parallel
-    const [jobsWithEmails, scoredPosts] = await Promise.all([
-      generateColdEmails(jobsToProcess),
-      scoreAndDraftPosts(freshPosts),
-    ]);
-
-    // 5. Save to Supabase
-    await Promise.all([saveLeads(jobsWithEmails), savePosts(scoredPosts)]);
-
-    // 6. Send email digest + mark sent
+    // 4. Save + send digest
+    await saveLeads(jobsWithEmails);
     if (jobsWithEmails.length > 0) {
       await sendLeadsEmail(jobsWithEmails);
       await markSent(jobsWithEmails.map(j => j.id));
     }
 
     const durationMs = Date.now() - start;
-    console.log(`[cron] Done in ${(durationMs / 1000).toFixed(1)}s — ${jobsWithEmails.length} leads, ${scoredPosts.length} posts`);
+    console.log(`[cron] Done in ${(durationMs / 1000).toFixed(1)}s — ${jobsWithEmails.length} leads saved`);
 
     return NextResponse.json({
       success: true,
@@ -76,9 +60,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         apolloContacts: apolloLeads.length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
-        postsFetched: allPosts.length,
-        freshPosts: freshPosts.length,
-        postsSaved: scoredPosts.length,
       },
       durationMs,
     });

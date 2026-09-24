@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Lead } from '@/types/lead';
-import type { Post } from '@/types/post';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,27 +27,24 @@ function scoreColor(s: number) {
   return { bg: 'rgba(0,0,0,0.06)', fg: '#545c68' };
 }
 
-function copied(setCopied: (v: boolean) => void) {
+function doCopy(text: string, setCopied: (v: boolean) => void) {
+  navigator.clipboard.writeText(text);
   setCopied(true);
   setTimeout(() => setCopied(false), 1500);
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Lead card ────────────────────────────────────────────────────────────────
 
 function ScoreBadge({ score }: { score: number }) {
   const { bg, fg } = scoreColor(score);
   return (
-    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', background: bg, color: fg, letterSpacing: '0.3px' }}>
+    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', background: bg, color: fg, letterSpacing: '0.3px', flexShrink: 0 }}>
       {score}
     </span>
   );
 }
 
-function LeadCard({ lead, onApprove, onSkip }: {
-  lead: Lead;
-  onApprove: () => void;
-  onSkip: () => void;
-}) {
+function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => void; onSkip: () => void }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(lead.proposal ?? '');
   const [wasCopied, setWasCopied] = useState(false);
@@ -60,14 +56,13 @@ function LeadCard({ lead, onApprove, onSkip }: {
   const subject = subjectLine.replace('Subject:', '').trim();
   const body = lines.filter(l => !l.startsWith('Subject:')).join('\n').replace(/^\n+/, '');
 
-  // For Apollo leads: clicking "Send" opens Gmail/mail client with draft pre-filled
   const mailtoHref = isApollo && lead.contactEmail
     ? `mailto:${lead.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body || draft)}`
     : null;
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
-      {/* Header row */}
+      {/* Header */}
       <div
         onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}
@@ -86,10 +81,10 @@ function LeadCard({ lead, onApprove, onSkip }: {
           ) : (
             <>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.company}
+                {lead.title}
               </div>
               <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.title}
+                {lead.company}
               </div>
             </>
           )}
@@ -100,16 +95,21 @@ function LeadCard({ lead, onApprove, onSkip }: {
         }}>
           {SOURCE_LABEL[lead.source]}
         </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0 }}>
           {open ? 'Close' : 'View'}
         </span>
       </div>
 
       {open && (
         <div style={{ padding: '0 20px 16px' }}>
-          {/* Apollo: show email if available, otherwise prompt to find manually */}
+          {/* Apollo verified email */}
           {isApollo && (
-            <div style={{ marginBottom: 10, padding: '8px 12px', background: lead.contactEmail ? 'rgba(0,171,74,0.06)' : 'rgba(0,0,0,0.03)', border: `1px solid ${lead.contactEmail ? 'rgba(0,171,74,0.15)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{
+              marginBottom: 10, padding: '8px 12px',
+              background: lead.contactEmail ? 'rgba(0,171,74,0.06)' : 'rgba(0,0,0,0.03)',
+              border: `1px solid ${lead.contactEmail ? 'rgba(0,171,74,0.15)' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+            }}>
               {lead.contactEmail ? (
                 <>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgb(0,140,60)' }}>Email</span>
@@ -118,7 +118,7 @@ function LeadCard({ lead, onApprove, onSkip }: {
               ) : (
                 <>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--fg-muted)' }}>Email locked</span>
-                  <span style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>Find on LinkedIn or Apollo dashboard</span>
+                  <span style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>Find on LinkedIn or Apollo</span>
                 </>
               )}
             </div>
@@ -126,7 +126,7 @@ function LeadCard({ lead, onApprove, onSkip }: {
 
           {/* Description */}
           <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
-            {lead.description.slice(0, 220)}{lead.description.length > 220 ? '…' : ''}
+            {lead.description.slice(0, 280)}{lead.description.length > 280 ? '…' : ''}
           </p>
 
           {/* Email draft */}
@@ -157,12 +157,12 @@ function LeadCard({ lead, onApprove, onSkip }: {
             {lead.url && lead.url.startsWith('http') && (
               <a href={lead.url} target="_blank" rel="noreferrer"
                 style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
-                {isApollo ? 'View website' : 'View post'}
+                {isApollo ? 'View website' : 'View project'}
               </a>
             )}
             {draft && !isApollo && (
               <button
-                onClick={() => { navigator.clipboard.writeText(draft); copied(setWasCopied); }}
+                onClick={() => doCopy(draft, setWasCopied)}
                 style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
                 {wasCopied ? 'Copied' : 'Copy email'}
@@ -207,104 +207,22 @@ function LeadCard({ lead, onApprove, onSkip }: {
   );
 }
 
-function PostCard({ post, onDone }: { post: Post; onDone: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [reply, setReply] = useState(post.replyDraft ?? '');
-  const [wasCopied, setWasCopied] = useState(false);
-
-  const platformColor = post.platform === 'reddit' ? '#ff4500' : '#f60';
-  const platformLabel = post.platform === 'reddit' ? 'Reddit' : 'HN';
-
-  return (
-    <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', cursor: 'pointer', userSelect: 'none' }}
-      >
-        <ScoreBadge score={post.score ?? 0} />
-        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', background: platformColor, color: '#fff', flexShrink: 0 }}>
-          {platformLabel}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {post.title}
-          </div>
-          {post.author && (
-            <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1 }}>u/{post.author}</div>
-          )}
-        </div>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0, letterSpacing: '0.3px' }}>{open ? 'Close' : 'View'}</span>
-      </div>
-
-      {open && (
-        <div style={{ padding: '0 18px 14px' }}>
-          <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
-            {post.snippet.slice(0, 280)}{post.snippet.length > 280 ? '…' : ''}
-          </p>
-
-          {reply && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>REPLY DRAFT</div>
-              <textarea
-                value={reply}
-                onChange={e => setReply(e.target.value)}
-                rows={4}
-                style={{
-                  width: '100%', fontSize: 12, lineHeight: 1.65, color: 'var(--fg)', background: 'var(--bg)',
-                  border: '1px solid var(--border)', padding: '10px 12px', resize: 'vertical',
-                  fontFamily: 'Inter, sans-serif', outline: 'none',
-                }}
-              />
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <a href={post.url} target="_blank" rel="noreferrer"
-              style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
-              Open post
-            </a>
-            {reply && (
-              <button
-                onClick={() => { navigator.clipboard.writeText(reply); copied(setWasCopied); }}
-                style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-              >
-                {wasCopied ? 'Copied' : 'Copy reply'}
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={onDone}
-              style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 
 export default function Home() {
-  const [tab, setTab] = useState<'leads' | 'posts'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [runResult, setRunResult] = useState<RunResult | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [l, p] = await Promise.all([
-      fetch('/api/leads').then(r => r.json()) as Promise<Lead[]>,
-      fetch('/api/posts').then(r => r.json()) as Promise<Post[]>,
-    ]).catch(() => [[], []]);
-    setLeads(l);
-    setPosts(p);
+    try {
+      const l = await fetch('/api/leads').then(r => r.json()) as Lead[];
+      setLeads(l);
+    } catch { setLeads([]); }
     setLoading(false);
   }, []);
 
@@ -328,17 +246,15 @@ export default function Home() {
   async function clearStale() {
     try {
       const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
-      const data = await res.json() as { leadsDeleted?: number; postsDeleted?: number };
-      alert(`Cleared ${data.leadsDeleted ?? 0} stale leads and ${data.postsDeleted ?? 0} old posts.`);
+      const data = await res.json() as { leadsDeleted?: number };
+      alert(`Cleared ${data.leadsDeleted ?? 0} stale leads.`);
       await loadData();
-    } catch (e) {
-      alert('Error: ' + String(e));
-    }
+    } catch (e) { alert('Error: ' + String(e)); }
   }
 
   async function approveLead(id: string) {
     await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'approved' }) });
-    setLeads(prev => prev.filter(l => l.id !== id));
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status: 'approved' } : l));
   }
 
   async function skipLead(id: string) {
@@ -346,14 +262,8 @@ export default function Home() {
     setLeads(prev => prev.filter(l => l.id !== id));
   }
 
-  async function donePost(id: string) {
-    await fetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'done' }) });
-    setPosts(prev => prev.filter(p => p.id !== id));
-  }
-
   const newLeads = leads.filter(l => l.status === 'new');
   const approvedLeads = leads.filter(l => l.status === 'approved');
-  const newPosts = posts.filter(p => p.status === 'new' || p.status === 'open');
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -376,7 +286,7 @@ export default function Home() {
               fontSize: 12, fontWeight: 600, padding: '6px 14px',
               background: 'none', color: 'rgba(255,255,255,0.45)',
               border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px',
+              fontFamily: 'Inter, sans-serif',
             }}
           >
             Clear Stale
@@ -396,7 +306,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px 80px' }}>
 
         {/* Run result banner */}
         {runResult && runStatus !== 'idle' && runStatus !== 'running' && (
@@ -422,12 +332,11 @@ export default function Home() {
         )}
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
           {[
             { label: 'New Leads', value: newLeads.length, hint: 'awaiting review' },
-            { label: 'Approved', value: approvedLeads.length, hint: 'will reach out' },
-            { label: 'Posts to Reply', value: newPosts.length, hint: 'Reddit + HN' },
-            { label: 'Total Active', value: leads.length + posts.length, hint: 'in pipeline' },
+            { label: 'Approved', value: approvedLeads.length, hint: 'ready to send' },
+            { label: 'Total', value: leads.length, hint: 'in pipeline' },
           ].map(s => (
             <div key={s.label} style={{ background: 'var(--white)', padding: '20px 18px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 8 }}>{s.label}</div>
@@ -439,94 +348,43 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Two-column layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
-
-          {/* Left — Email Leads */}
-          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
-            <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Email Leads</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
-                  {loading ? '—' : newLeads.length} waiting
-                  {approvedLeads.length > 0 && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent-green)', marginLeft: 8 }}>{approvedLeads.length} approved</span>}
-                </div>
+        {/* New leads */}
+        <div style={{ border: '1px solid var(--border)', background: 'var(--white)', marginBottom: 20 }}>
+          <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Email Leads</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
+                {loading ? '—' : newLeads.length} waiting
               </div>
-              <p style={{ fontSize: 11, color: 'var(--fg-muted)', maxWidth: 160, textAlign: 'right', lineHeight: 1.5 }}>
-                Apollo contacts + job boards — scored by AI
-              </p>
             </div>
-
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading leads…</div>
-              ) : newLeads.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No new leads</div>
-                  <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch new leads</div>
-                </div>
-              ) : (
-                newLeads.map(lead => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    onApprove={() => approveLead(lead.id)}
-                    onSkip={() => skipLead(lead.id)}
-                  />
-                ))
-              )}
-            </div>
+            <p style={{ fontSize: 11, color: 'var(--fg-muted)', textAlign: 'right', lineHeight: 1.5 }}>
+              Upwork + Freelancer.com + Apollo<br />clients who need a website built
+            </p>
           </div>
 
-          {/* Right — Posts to Reply */}
-          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
-            <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Posts to Reply</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
-                  {loading ? '—' : newPosts.length} posts
-                </div>
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--fg-muted)', maxWidth: 160, textAlign: 'right', lineHeight: 1.5 }}>
-                Reddit + HN — founders asking for web/Framer help
-              </p>
+          {loading ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading…</div>
+          ) : newLeads.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No new leads</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Click Run Now to fetch fresh leads from Upwork and Freelancer</div>
             </div>
-
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading posts…</div>
-              ) : newPosts.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No posts yet</div>
-                  <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Run the cron to fetch posts from Reddit + HN</div>
-                </div>
-              ) : (
-                newPosts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onDone={() => donePost(post.id)}
-                  />
-                ))
-              )}
-            </div>
-          </div>
+          ) : (
+            newLeads.map(lead => (
+              <LeadCard key={lead.id} lead={lead} onApprove={() => approveLead(lead.id)} onSkip={() => skipLead(lead.id)} />
+            ))
+          )}
         </div>
 
-        {/* Tab — Approved leads */}
+        {/* Approved leads */}
         {approvedLeads.length > 0 && (
-          <div style={{ marginTop: 20, border: '1px solid var(--border)', background: 'var(--white)' }}>
+          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--accent-green)', marginBottom: 2 }}>Approved Leads</div>
-              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{approvedLeads.length} leads you plan to reach out to</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--accent-green)', marginBottom: 2 }}>Approved</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{approvedLeads.length} leads queued to send</div>
             </div>
             {approvedLeads.map(lead => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                onApprove={() => {}}
-                onSkip={() => skipLead(lead.id)}
-              />
+              <LeadCard key={lead.id} lead={lead} onApprove={() => {}} onSkip={() => skipLead(lead.id)} />
             ))}
           </div>
         )}
