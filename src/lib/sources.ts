@@ -33,16 +33,21 @@ async function fetchUpworkQuery(query: string): Promise<Lead[]> {
     const items = parsed?.rss?.channel?.item;
     if (!items) return [];
     const arr = Array.isArray(items) ? items : [items];
-    return arr.map((item: Record<string, string>) => {
-      const link = item.link ?? '';
+    return arr.map((item: Record<string, unknown>) => {
+      // Upwork RSS sometimes puts the URL in <guid> instead of <link>
+      const rawLink = String(item.link ?? '');
+      const rawGuid = typeof item.guid === 'object' && item.guid !== null
+        ? String((item.guid as Record<string, unknown>)._ ?? (item.guid as Record<string, unknown>)['#text'] ?? item.guid)
+        : String(item.guid ?? '');
+      const link = rawLink.startsWith('http') ? rawLink : rawGuid.startsWith('http') ? rawGuid : rawLink;
       return {
-        id: link || `upwork-${slugify(item.title ?? '')}`,
-        title: item.title ?? 'Untitled',
+        id: link || `upwork-${slugify(String(item.title ?? ''))}`,
+        title: String(item.title ?? 'Untitled'),
         company: 'Upwork Client',
-        description: stripHtml(item.description ?? item['content:encoded'] ?? '').slice(0, 700),
+        description: stripHtml(String(item.description ?? item['content:encoded'] ?? '')).slice(0, 700),
         url: link,
         source: 'upwork' as const,
-        postedAt: item.pubDate ?? new Date().toISOString(),
+        postedAt: String(item.pubDate ?? new Date().toISOString()),
       };
     });
   } catch (e) {

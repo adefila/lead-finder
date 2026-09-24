@@ -325,6 +325,17 @@ export default function Home() {
     }
   }
 
+  async function clearStale() {
+    try {
+      const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
+      const data = await res.json() as { leadsDeleted?: number; postsDeleted?: number };
+      alert(`Cleared ${data.leadsDeleted ?? 0} stale leads and ${data.postsDeleted ?? 0} old posts.`);
+      await loadData();
+    } catch (e) {
+      alert('Error: ' + String(e));
+    }
+  }
+
   async function approveLead(id: string) {
     await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'approved' }) });
     setLeads(prev => prev.filter(l => l.id !== id));
@@ -359,6 +370,17 @@ export default function Home() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Runs daily at 7am + 6pm UTC</span>
+          <button
+            onClick={clearStale}
+            style={{
+              fontSize: 12, fontWeight: 600, padding: '6px 14px',
+              background: 'none', color: 'rgba(255,255,255,0.45)',
+              border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px',
+            }}
+          >
+            Clear Stale
+          </button>
           <button
             onClick={runNow}
             disabled={runStatus === 'running'}
