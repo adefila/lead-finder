@@ -7,7 +7,7 @@ import {
   scoreClass, shortDate, statusOf, type SortKey,
 } from '@/lib/leadview';
 import { gmailComposeUrl, splitDraft } from '@/lib/compose';
-import { Icon } from '@/components/ui';
+import { Checkbox, Icon } from '@/components/ui';
 
 interface Props {
   leads: Lead[];
@@ -47,15 +47,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
         <thead>
           <tr>
             <th className="col-check">
-              <input
-                type="checkbox"
-                className="check"
-                aria-label="Select all leads"
-                checked={all}
-                ref={el => { if (el) el.indeterminate = picked > 0 && !all; }}
-                onChange={onToggleAll}
-                disabled={!leads.length}
-              />
+              <Checkbox label="Select all leads" checked={all} indeterminate={picked > 0 && !all} onChange={onToggleAll} />
             </th>
             <SortHeader label="Score" k="score" sort={sort} onSort={onSort} className="col-score" />
             <SortHeader label="Lead" k="name" sort={sort} onSort={onSort} className="col-lead" />
@@ -85,8 +77,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   exit={{ opacity: 0, transition: { duration: 0.15 } }}
                 >
                   <td className="col-check" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" className="check" aria-label={`Select ${l.title}`}
-                      checked={selection.has(l.id)} onChange={() => onToggle(l.id)} />
+                    <Checkbox label={`Select ${l.title}`} checked={selection.has(l.id)} onChange={() => onToggle(l.id)} />
                   </td>
                   <td className="col-score"><span className={scoreClass(l.score ?? 0)}>{l.score ?? '-'}</span></td>
                   <td className="col-lead">

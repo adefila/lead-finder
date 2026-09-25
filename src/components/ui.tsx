@@ -1,35 +1,69 @@
 'use client';
 
-import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import {
+  ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, Minus, Phone,
+  RefreshCw, Search, Send, Sparkles, Trash2, Undo2, X, type LucideIcon,
+} from 'lucide-react';
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
-const PATHS: Record<string, ReactNode> = {
-  mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>,
-  phone: <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />,
-  copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></>,
-  check: <path d="M20 6 9 17l-5-5" />,
-  x: <path d="M18 6 6 18M6 6l12 12" />,
-  undo: <><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></>,
-  send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
-  search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
-  sync: <><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16" /><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" /><path d="M21 3v5h-5M3 21v-5h5" /></>,
-  up: <path d="m6 15 6-6 6 6" />,
-  down: <path d="m6 9 6 6 6-6" />,
-  external: <><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>,
-  arrowRight: <path d="M5 12h14m-6-6 6 6-6 6" />,
-  arrowLeft: <path d="M19 12H5m6 6-6-6 6-6" />,
-  trash: <><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></>,
-  sparkle: <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z" />,
-};
+const ICONS = {
+  mail: Mail,
+  phone: Phone,
+  copy: Copy,
+  check: Check,
+  minus: Minus,
+  x: X,
+  undo: Undo2,
+  send: Send,
+  search: Search,
+  sync: RefreshCw,
+  up: ChevronUp,
+  down: ChevronDown,
+  external: ExternalLink,
+  arrowRight: ArrowRight,
+  arrowLeft: ArrowLeft,
+  trash: Trash2,
+  sparkle: Sparkles,
+} satisfies Record<string, LucideIcon>;
 
-export function Icon({ name, size = 14 }: { name: keyof typeof PATHS; size?: number }) {
+export type IconName = keyof typeof ICONS;
+
+export function Icon({ name, size = 15, strokeWidth = 2 }: { name: IconName; size?: number; strokeWidth?: number }) {
+  const Glyph = ICONS[name];
+  return <Glyph size={size} strokeWidth={strokeWidth} aria-hidden focusable={false} />;
+}
+
+export function Checkbox({ checked, indeterminate = false, onChange, label, disabled }: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  const state = indeterminate ? 'mixed' : checked;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {PATHS[name]}
-    </svg>
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={state}
+      aria-label={label}
+      disabled={disabled}
+      className={`checkbox${checked || indeterminate ? ' on' : ''}`}
+      onClick={e => { e.stopPropagation(); onChange(); }}
+    >
+      <AnimatePresence initial={false}>
+        {(checked || indeterminate) && (
+          <motion.span key={indeterminate ? 'minus' : 'check'} style={{ display: 'grid' }}
+            initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }}
+            transition={{ duration: 0.12 }}>
+            <Icon name={indeterminate ? 'minus' : 'check'} size={12} strokeWidth={3} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
   );
 }
 

@@ -279,7 +279,16 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .toast-action:hover { text-decoration: underline; }
 
 /* ── Selection & bulk actions ───────────── */
-.check { width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; vertical-align: middle; }
+.checkbox {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; vertical-align: middle;
+  border: 1.5px solid #c8c8c8; border-radius: 5px; background: var(--surface); color: #fff; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.checkbox:hover { border-color: #9a9a9a; }
+.checkbox:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 171, 74, 0.2); }
+.checkbox.on { background: var(--green); border-color: var(--green); }
+.checkbox.on:hover { background: var(--green-ink); border-color: var(--green-ink); }
+.checkbox:disabled { opacity: 0.4; cursor: default; }
 .bulk-bar { overflow: hidden; background: #f3faf6; border-bottom: 1px solid #d7eee1; }
 .bulk-inner { display: flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 13px; flex-wrap: wrap; }
 .link-btn.plain { color: var(--fg-2); }
