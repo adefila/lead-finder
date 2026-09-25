@@ -95,7 +95,23 @@ function draftKind(l: Lead): DraftKind {
   return 'freelancer';
 }
 
-function describe(l: Lead, i: number, kind: DraftKind): string {
+// Each local-business message gets a different way in. Reviews are only one option among many.
+const PLACES_ANGLES = [
+  'SITE DETAIL: open with something specific from their site text (a service they offer, how long they have been running, who they help, their story). If the site text has nothing usable, use their trade and city instead.',
+  'CUSTOMER VIEW: open by describing, in one or two sentences, what a customer experiences when they look them up on a phone today.',
+  'LOCAL: open with their town or neighbourhood and the people there searching for their kind of business.',
+  'STRAIGHT TO IT: no warm-up. First sentence states who Samuel is in a few words and why he is writing to them specifically.',
+  'THEIR GOAL: open with what a business like theirs usually wants more of (bookings, calls, enquiries, walk-ins) and connect it to what you noticed.',
+  'REPUTATION: open with how customers talk about them (review count or rating). Only use this if the findings mention reviews.',
+];
+
+function angleFor(l: Lead, slot: number): string {
+  const hasReviews = /review/i.test(l.description);
+  const pool = hasReviews ? PLACES_ANGLES : PLACES_ANGLES.slice(0, -1);
+  return pool[slot % pool.length];
+}
+
+function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
   if (kind === 'apollo') {
     return `CONTACT ${i + 1} (ID: ${l.id}):\nName: ${l.contactName}\nTitle: ${l.contactTitle}\nCompany: ${l.company}\nCompany description: ${l.description.slice(0, 400)}\nWebsite: ${l.url}`;
   }
@@ -104,6 +120,7 @@ function describe(l: Lead, i: number, kind: DraftKind): string {
     return [
       `BUSINESS ${i + 1} (ID: ${l.id}):`,
       `Channel: ${channel}`,
+      `Angle: ${angleFor(l, angleBase + i)}`,
       `Business name: ${l.title}`,
       `Type and city: ${l.company}`,
       `Website: ${l.contactLinks?.website ?? 'none'}`,
@@ -122,6 +139,7 @@ const VOICE = `Voice (strict, applies to every message):
 - No semicolons, no exclamation marks, no bullet points, no bold, no emojis, no ALL CAPS.
 - Never use: elevate, leverage, seamless, streamline, boost, unlock, transform, stunning, top-notch, cutting-edge, game-changer, delighted, reach out, touch base, circle back, synergy, I hope this finds you well, I came across, I wanted to, quick question.
 - Be specific and honest. Never exaggerate or promise results you can't know.
+- No flattery formulas ("says a lot about", "clearly passionate", "impressive work"). If you compliment, make it concrete and brief, and skip it entirely when there's nothing real to say.
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
 const PROMPTS: Record<DraftKind, string> = {
@@ -164,11 +182,14 @@ Step 2, write the message.
 - Greeting: "Hi [FirstName]," when you found a person (use "Hi Dr. [LastName]," for doctors and dentists). If no person but it's clearly a team, "Hi [Business name] team,". Otherwise "Hi there,".
 - If Channel is EMAIL: line 1 is "Subject: ..." (under 7 words, about their business, no clickbait), blank line, then body under 110 words.
 - If Channel is DM: no subject line, under 65 words. It goes out as an Instagram, Facebook or LinkedIn message.
-- One real, specific observation first (their review count and rating, what they specialise in, something from their site text).
-- Then ONE issue from the findings in plain words, and what it costs them (e.g. "on a phone the text is tiny, and that's where most people look up a vet").
-- No website: say people who find them on Google Maps have nowhere to go to see their work or book.
-- Offer one easy next step: a free homepage mockup, no strings.
+- Open the way the "Angle" line says. Every business gets a different angle on purpose, so the batch never reads like one template.
+- Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
+- Mention ONE issue from the findings in plain, non-technical words and what it costs them in customers (e.g. "on a phone the text is tiny, and that's where most people look up a vet"). Never use words like HTTPS, SEO, viewport, load time or optimisation.
+- No website: say people who find them on Google Maps have nowhere to see their work or get in touch.
+- Offer ONE easy next step and vary it between messages: a free homepage mockup, a short list of three fixes, a quick look at how their site shows on a phone, or a ten-minute call. Don't reuse "no strings attached" in every message.
+- Vary length (some messages 60 words, some closer to 100) and sentence rhythm. Write it the way Samuel would type it himself, not as a sales script.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
+- Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
 - Never state anything that isn't in the findings or site text.
 
 ${VOICE}
@@ -179,7 +200,9 @@ Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "O
 type Draft = { message: string; name?: string; role?: string };
 
 async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, Draft>> {
-  const block = batch.map((l, i) => describe(l, i, kind)).join('\n\n---\n\n');
+  // Random start per batch: neighbours differ, and a rewrite gets a fresh angle.
+  const angleBase = Math.floor(Math.random() * PLACES_ANGLES.length);
+  const block = batch.map((l, i) => describe(l, i, kind, angleBase)).join('\n\n---\n\n');
   const prompt = `${PROMPTS[kind]}\n\nAbout Samuel: ${SAMUEL}\n\n${block}`;
 
   const msg = await getClient().messages.create({
