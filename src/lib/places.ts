@@ -89,6 +89,7 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
   let issues: string[] = [];
   let emails: string[] = [];
   let links: Lead['contactLinks'] = { maps: p.googleMapsUri };
+  let siteText: string | undefined;
 
   if (!p.websiteUri) {
     headline = 'No website';
@@ -100,17 +101,18 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     issues = report.issues;
     emails = report.emails;
     links = { ...links, website: p.websiteUri, ...report.links };
+    siteText = report.siteText;
   }
 
   return {
     id: `places-${p.id}`,
-    title: `${name} — ${headline}`,
+    title: name,
     company: `${type} · ${city}`,
-    description: [...facts, `Issues found: ${issues.join('; ')}.`].filter(Boolean).join('. '),
+    description: [headline, ...facts, `Issues found: ${issues.join('; ')}`].filter(Boolean).join('. ') + '.',
     url: p.websiteUri ?? p.googleMapsUri ?? '',
     source: 'places',
     postedAt: new Date().toISOString(),
-    contactName: name,
+    siteText,
     contactEmail: emails[0],
     contactPhone: p.internationalPhoneNumber,
     contactLinks: links,

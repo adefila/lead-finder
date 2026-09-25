@@ -7,6 +7,9 @@ export interface ContactLinks {
   facebook?: string;
 }
 
+export const LEAD_STATUSES = ['new', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
+export type LeadStatus = typeof LEAD_STATUSES[number];
+
 export interface Lead {
   id: string;
   title: string;
@@ -15,12 +18,16 @@ export interface Lead {
   url: string;
   source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo' | 'freelancer' | 'places';
   postedAt: string;
+  createdAt?: string;
   score?: number;
   proposal?: string;
-  status?: 'new' | 'approved' | 'skipped';
+  // 'approved' means the lead has been contacted
+  status?: LeadStatus;
   contactEmail?: string;
   contactName?: string;
   contactTitle?: string;
   contactPhone?: string;
   contactLinks?: ContactLinks;
+  // In-memory only during a cron run: visible text from the business's site, used to find the owner's name
+  siteText?: string;
 }

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
+import { humanize } from '@/lib/compose';
 import type { Post } from '@/types/post';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -100,56 +101,81 @@ function describe(l: Lead, i: number, kind: DraftKind): string {
   }
   if (kind === 'places') {
     const channel = l.contactEmail ? 'EMAIL' : 'DM';
-    return `BUSINESS ${i + 1} (ID: ${l.id}):\nChannel: ${channel}\nBusiness: ${l.contactName}\nType and city: ${l.company}\nWebsite: ${l.contactLinks?.website ?? 'none'}\nFindings: ${l.description.slice(0, 500)}`;
+    return [
+      `BUSINESS ${i + 1} (ID: ${l.id}):`,
+      `Channel: ${channel}`,
+      `Business name: ${l.title}`,
+      `Type and city: ${l.company}`,
+      `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Findings: ${l.description.slice(0, 500)}`,
+      `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
+    ].join('\n');
   }
   return `PROJECT ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBudget and bids: ${l.company}\nBrief: ${l.description.slice(0, 700)}`;
 }
 
+const VOICE = `Voice (strict, applies to every message):
+- Write like a real person typing a quick note to one other person. Plain words, short sentences, contractions (I'm, you're, it's).
+- Never use em dashes or en dashes. Use a comma or a full stop instead.
+- No semicolons, no exclamation marks, no bullet points, no bold.
+- Never use: elevate, leverage, seamless, streamline, boost, unlock, transform, stunning, top-notch, cutting-edge, game-changer, delighted, reach out, touch base, I hope this finds you well, I came across, I wanted to.
+- Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
+
 const PROMPTS: Record<DraftKind, string> = {
-  apollo: `Draft a short personalised cold email from Samuel Adefila to each person below. These are real people with real email addresses — make it feel like Samuel wrote it specifically to them.
+  apollo: `Draft a short personalised cold email from Samuel Adefila to each person below.
 
 Rules:
-- Start with "Subject: ..." on line 1, then blank line, then body
-- Open with their first name: "Hi [FirstName],"
-- Under 130 words total
-- Reference their specific company or product — show you looked
-- Lead with value (what Samuel can do for their situation), not a resume
-- One soft CTA at the end
-- Sign as Samuel
-- No emojis, no "I hope this email finds you well", no "I came across your profile"
+- Line 1 is "Subject: ..." (lowercase-feeling, under 7 words, specific to them), then a blank line, then the body
+- Open with "Hi [FirstName],"
+- Under 110 words
+- Mention something specific about their company, then what Samuel would do for their site
+- End with one easy question
+- Sign off "Samuel"
+
+${VOICE}
 
 Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}`,
 
   freelancer: `Write a Freelancer.com bid proposal from Samuel Adefila for each project below. The client reads dozens of bids, so the first line must prove Samuel read their brief.
 
 Rules:
-- No subject line, no greeting like "Dear Sir"; open with "Hi," then go straight to their specific need
-- Under 120 words
-- Line 1-2: restate their goal in your own words and name one concrete thing you would do for it
-- Mention one relevant past result or site type from Samuel's experience
-- Give a realistic timeline for this specific project
-- End with one short question about their project that invites a reply
-- Sign off as Samuel, with adefilasamuel.com
-- No emojis, no buzzwords, no "I am the perfect fit"
+- No subject line. Open with "Hi," then go straight to their specific need
+- Under 110 words
+- Restate their goal in your own words and name one concrete thing you'd do for it
+- Mention one relevant site type Samuel has built
+- Give a realistic timeline for this project
+- End with one short question about their project
+- Sign off "Samuel" and on the next line "adefilasamuel.com"
+
+${VOICE}
 
 Return ONLY valid JSON: {"ID": "proposal text", ...}`,
 
-  places: `Write outreach from Samuel Adefila to each local business below. Samuel found them on Google Maps and checked their website. The findings list exactly what is wrong (or that they have no website).
+  places: `Write outreach from Samuel Adefila to each local business below. He found them on Google Maps and looked at their website. "Findings" lists what's wrong, or that they have no website. "Site text" is text scraped from their site.
 
-Rules:
-- If Channel is EMAIL: start with "Subject: ..." on line 1 (specific, under 8 words, no clickbait), blank line, then the body. Under 120 words.
-- If Channel is DM: no subject line. Under 70 words; it will be sent as an Instagram/Facebook/LinkedIn message or website contact form.
-- Open with "Hi [Business name] team," then one genuine, specific observation (e.g. their strong Google rating) before the problem
-- State ONE concrete issue from the findings in plain, non-technical words and why it costs them customers (e.g. "on a phone the site is hard to read, and most people searching for a dentist are on their phone")
-- If they have no website: point out that people who find them on Google Maps have nowhere to go to learn more or book
-- Offer something low-commitment: a free homepage mockup or a quick 10-minute call
-- Sign as Samuel, adefilasamuel.com
-- Never invent facts beyond the findings. No emojis, no flattery, no "I hope this finds you well"
+Step 1, find the person. Look in the business name and site text for the owner, founder, principal or lead practitioner.
+- Only use a name when it's clear they run the place: "founded by", "owner", "principal", "Dr. X" at a solo practice, "Hi, I'm X", or a business named after a person (e.g. "Sarah Kim Interiors").
+- Never guess or pick a random staff member. If unsure, leave name empty.
 
-Return ONLY valid JSON: {"ID": "message text", ...}`,
+Step 2, write the message.
+- Greeting: "Hi [FirstName]," when you found a person (use "Hi Dr. [LastName]," for doctors and dentists). If no person but it's clearly a team, "Hi [Business name] team,". Otherwise "Hi there,".
+- If Channel is EMAIL: line 1 is "Subject: ..." (under 7 words, about their business, no clickbait), blank line, then body under 110 words.
+- If Channel is DM: no subject line, under 65 words. It goes out as an Instagram, Facebook or LinkedIn message.
+- One real, specific observation first (their review count and rating, what they specialise in, something from their site text).
+- Then ONE issue from the findings in plain words, and what it costs them (e.g. "on a phone the text is tiny, and that's where most people look up a vet").
+- No website: say people who find them on Google Maps have nowhere to go to see their work or book.
+- Offer one easy next step: a free homepage mockup, no strings.
+- Sign off "Samuel" and on the next line "adefilasamuel.com".
+- Never state anything that isn't in the findings or site text.
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Owner / Founder / Dentist etc, or empty string", "message": "..."}, ...}`,
 };
 
-async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, string>> {
+type Draft = { message: string; name?: string; role?: string };
+
+async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, Draft>> {
   const block = batch.map((l, i) => describe(l, i, kind)).join('\n\n---\n\n');
   const prompt = `${PROMPTS[kind]}\n\nAbout Samuel: ${SAMUEL}\n\n${block}`;
 
@@ -159,14 +185,17 @@ async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, s
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const result = new Map<string, string>();
+  const result = new Map<string, Draft>();
   try {
     const c = msg.content[0];
     if (c.type === 'text') {
       const match = c.text.match(/\{[\s\S]*\}/);
       if (match) {
-        const parsed = JSON.parse(match[0]) as Record<string, string>;
-        for (const [id, draft] of Object.entries(parsed)) result.set(id, draft);
+        const parsed = JSON.parse(match[0]) as Record<string, string | Draft>;
+        for (const [id, value] of Object.entries(parsed)) {
+          const draft = typeof value === 'string' ? { message: value } : value;
+          if (draft?.message) result.set(id, { ...draft, message: humanize(draft.message) });
+        }
       }
     }
   } catch (e) {
@@ -179,7 +208,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
   if (!leads.length) return [];
   console.log(`[claude] Drafting outreach for ${leads.length} leads...`);
 
-  const drafts = new Map<string, string>();
+  const drafts = new Map<string, Draft>();
   const BATCH = 5;
   for (const kind of ['freelancer', 'places', 'apollo'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
@@ -193,7 +222,19 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     }
   }
 
-  return leads.map(l => (drafts.has(l.id) ? { ...l, proposal: drafts.get(l.id) } : l));
+  const named = [...drafts.values()].filter(d => d.name?.trim()).length;
+  if (named) console.log(`[claude] Found owner/founder names for ${named} leads`);
+
+  return leads.map(l => {
+    const d = drafts.get(l.id);
+    if (!d) return l;
+    return {
+      ...l,
+      proposal: d.message,
+      contactName: d.name?.trim() || l.contactName,
+      contactTitle: d.role?.trim() || l.contactTitle,
+    };
+  });
 }
 
 // Keep backward compat

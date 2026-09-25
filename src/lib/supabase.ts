@@ -1,5 +1,5 @@
 import { createClient as sb } from '@supabase/supabase-js';
-import type { Lead } from '@/types/lead';
+import type { Lead, LeadStatus } from '@/types/lead';
 import type { Post } from '@/types/post';
 
 function db() {
@@ -54,12 +54,11 @@ export async function saveLeads(leads: Lead[]): Promise<void> {
   else console.log(`[supabase] Saved ${leads.length} leads`);
 }
 
-export async function getLeads(limit = 100): Promise<Lead[]> {
+export async function getLeads(limit = 1000): Promise<Lead[]> {
   const { data, error } = await db()
     .from('leads')
     .select('*')
-    .not('status', 'eq', 'skipped')
-    .order('score', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
   if (error) { console.error('[supabase] getLeads:', error); return []; }
   return (data ?? []).map((r: Record<string, unknown>) => ({
@@ -70,6 +69,7 @@ export async function getLeads(limit = 100): Promise<Lead[]> {
     description: String(r.description ?? ''),
     url: String(r.url ?? ''),
     postedAt: String(r.posted_at ?? ''),
+    createdAt: r.created_at ? String(r.created_at) : undefined,
     score: Number(r.score ?? 0),
     proposal: String(r.draft_email ?? ''),
     status: r.status as Lead['status'],
@@ -81,8 +81,9 @@ export async function getLeads(limit = 100): Promise<Lead[]> {
   }));
 }
 
-export async function updateLeadStatus(id: string, status: Lead['status']): Promise<void> {
-  await db().from('leads').update({ status }).eq('id', id);
+export async function updateLeadStatus(id: string, status: LeadStatus): Promise<string | null> {
+  const { error } = await db().from('leads').update({ status }).eq('id', id);
+  return error ? error.message : null;
 }
 
 // ─── Posts ───────────────────────────────────────────────────────────────────

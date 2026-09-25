@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
-import type { Lead } from '@/types/lead';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Lead, LeadStatus } from '@/types/lead';
+import { gmailComposeUrl, mailtoUrl, splitDraft } from '@/lib/compose';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Labels & helpers ─────────────────────────────────────────────────────────
 
 const SOURCE_LABEL: Record<Lead['source'], string> = {
   upwork: 'Upwork',
@@ -15,248 +16,227 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   places: 'Local business',
 };
 
-const SOURCE_COLOR: Record<Lead['source'], string> = {
-  upwork: '#14a800',
-  remoteok: '#00c853',
-  remotive: '#6d28d9',
-  weworkremotely: '#0288d1',
-  apollo: '#0f0f0f',
-  freelancer: '#29b2fe',
-  places: '#4285f4',
+const STATUS_LABEL: Record<LeadStatus, string> = {
+  new: 'To contact',
+  approved: 'Contacted',
+  replied: 'Replied',
+  won: 'Won',
+  lost: 'Lost',
+  skipped: 'Skipped',
 };
 
-function scoreColor(s: number) {
-  if (s >= 80) return { bg: 'rgba(0,171,74,0.12)', fg: 'rgb(0,140,60)' };
-  if (s >= 60) return { bg: 'rgba(109,40,217,0.1)', fg: '#6d28d9' };
-  return { bg: 'rgba(0,0,0,0.06)', fg: '#545c68' };
-}
+const HEADLINES = ['No website', 'Outdated website', 'Website broken'];
 
-function doCopy(text: string, setCopied: (v: boolean) => void) {
-  navigator.clipboard.writeText(text);
-  setCopied(true);
-  setTimeout(() => setCopied(false), 1500);
-}
-
-// ─── Lead card ────────────────────────────────────────────────────────────────
-
-function ScoreBadge({ score }: { score: number }) {
-  const { bg, fg } = scoreColor(score);
-  return (
-    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', background: bg, color: fg, letterSpacing: '0.3px', flexShrink: 0 }}>
-      {score}
-    </span>
-  );
-}
-
-const LINK_LABELS: [keyof NonNullable<Lead['contactLinks']>, string][] = [
-  ['maps', 'Google Maps'],
-  ['website', 'Website'],
-  ['linkedin', 'LinkedIn'],
+const LINK_LABELS = [
   ['instagram', 'Instagram'],
   ['facebook', 'Facebook'],
-  ['twitter', 'X / Twitter'],
-];
+  ['linkedin', 'LinkedIn'],
+  ['twitter', 'X'],
+  ['website', 'Website'],
+  ['maps', 'Google Maps'],
+] as const;
 
-const chip: CSSProperties = {
-  fontSize: 11, fontWeight: 600, padding: '4px 10px', border: '1px solid var(--border)',
-  background: 'var(--white)', color: 'var(--fg)', textDecoration: 'none', display: 'inline-block',
-};
+type Tab = 'new' | 'approved' | 'replied' | 'won' | 'history';
 
-function ContactPanel({ lead }: { lead: Lead }) {
-  const links = lead.contactLinks ?? {};
-  const row = (label: string, value: ReactNode) => (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--fg-muted)', width: 48, flexShrink: 0 }}>{label}</span>
-      {value}
-    </div>
-  );
+const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
+
+function headlineOf(l: Lead): string | null {
+  if (l.source !== 'places') return null;
+  const first = l.description.split('. ')[0];
+  return HEADLINES.includes(first) ? first : null;
+}
+
+function whyText(l: Lead): string {
+  const h = headlineOf(l);
+  return h ? l.description.slice(h.length + 2) : l.description;
+}
+
+function shortDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function dayKey(iso?: string): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : 'unknown';
+}
+
+function scoreClass(s: number): string {
+  if (s >= 75) return 'score hi';
+  if (s >= 55) return 'score mid';
+  return 'score';
+}
+
+function humanKey(k: string): string {
+  return k.replace(/([A-Z])/g, ' $1').toLowerCase();
+}
+
+function pct(part: number, whole: number): string {
+  return whole ? `${Math.round((part / whole) * 100)}%` : '0%';
+}
+
+// ─── Funnel ───────────────────────────────────────────────────────────────────
+
+function Funnel({ leads }: { leads: Lead[] }) {
+  const count = (...s: LeadStatus[]) => leads.filter(l => s.includes(statusOf(l))).length;
+  const found = leads.length;
+  const contacted = count('approved', 'replied', 'won', 'lost');
+  const replied = count('replied', 'won', 'lost');
+  const won = count('won');
+  const stages = [
+    { label: 'Found', value: found, meta: `${count('new')} waiting to contact` },
+    { label: 'Contacted', value: contacted, meta: `${pct(contacted, found)} of found` },
+    { label: 'Replied', value: replied, meta: `${pct(replied, contacted)} reply rate` },
+    { label: 'Won', value: won, meta: `${pct(won, replied)} of replies` },
+  ];
+
   return (
-    <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(0,171,74,0.05)', border: '1px solid rgba(0,171,74,0.15)', display: 'grid', gap: 6 }}>
-      {row('Email', lead.contactEmail
-        ? <a href={`mailto:${lead.contactEmail}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</a>
-        : <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>None found on their site. Use phone or a social DM.</span>)}
-      {lead.contactPhone && row('Phone', <a href={`tel:${lead.contactPhone.replace(/\s/g, '')}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactPhone}</a>)}
-      {row('Links', (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
-            <a key={k} href={links[k]} target="_blank" rel="noreferrer" style={chip}>{label}</a>
-          ))}
-        </div>
-      ))}
-    </div>
+    <section>
+      <div className="section-head">
+        <span className="section-title">Pipeline</span>
+        <span className="section-sub">{count('skipped')} skipped · {count('lost')} lost</span>
+      </div>
+      <div className="funnel">
+        {stages.map(s => (
+          <div key={s.label} className="stage">
+            <span className="stage-label">{s.label}</span>
+            <span className="stage-value">{s.value}</span>
+            <span className="stage-meta">{s.meta}</span>
+            <div className="stage-track" aria-hidden>
+              <div className="stage-fill" style={{ width: found ? `${(s.value / found) * 100}%` : 0 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
-function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => void; onSkip: () => void }) {
+// ─── Lead row ─────────────────────────────────────────────────────────────────
+
+function LeadRow({ lead, showDate, onStatus }: {
+  lead: Lead;
+  showDate: boolean;
+  onStatus: (status: LeadStatus) => void;
+}) {
+  const initial = useMemo(() => splitDraft(lead.proposal ?? ''), [lead.proposal]);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(lead.proposal ?? '');
-  const [wasCopied, setWasCopied] = useState(false);
+  const [subject, setSubject] = useState(initial.subject);
+  const [body, setBody] = useState(initial.body);
+  const [copied, setCopied] = useState(false);
 
-  const isApollo = lead.source === 'apollo' && !!lead.contactEmail;
-  const isFreelancer = lead.source === 'freelancer';
-  const isPlaces = lead.source === 'places';
+  const status = statusOf(lead);
+  const headline = headlineOf(lead);
+  const links = lead.contactLinks ?? {};
+  const email = lead.contactEmail;
+  const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
 
-  const lines = draft.split('\n');
-  const subjectLine = lines.find(l => l.startsWith('Subject:')) ?? '';
-  const subject = subjectLine.replace('Subject:', '').trim();
-  const body = lines.filter(l => !l.startsWith('Subject:')).join('\n').replace(/^\n+/, '');
+  function copy() {
+    navigator.clipboard.writeText(body);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
-  const mailtoHref = lead.contactEmail
-    ? `mailto:${lead.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body || draft)}`
-    : null;
+  const markContacted = () => { if (status === 'new') onStatus('approved'); };
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border)', background: open ? '#fafafa' : 'var(--white)' }}>
-      {/* Header */}
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', cursor: 'pointer', userSelect: 'none' }}
-      >
-        <ScoreBadge score={lead.score ?? 0} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {isApollo ? (
-            <>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.contactName}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.contactTitle} · {lead.company}
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.title}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {lead.company}
-              </div>
-            </>
-          )}
-        </div>
-        <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
-          color: '#fff', background: SOURCE_COLOR[lead.source], padding: '2px 7px', flexShrink: 0,
-        }}>
-          {SOURCE_LABEL[lead.source]}
+    <div className={`row${open ? ' open' : ''}`}>
+      <button className="row-head" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        <span className={scoreClass(lead.score ?? 0)}>{lead.score ?? '-'}</span>
+        <span style={{ minWidth: 0 }}>
+          <div className="row-title">{lead.title}</div>
+          <div className="row-meta">
+            <span>{SOURCE_LABEL[lead.source]}</span>
+            <span className="sep">/</span>
+            <span>{lead.company}</span>
+            {person && <><span className="sep">/</span><span>{person}{lead.contactTitle ? `, ${lead.contactTitle}` : ''}</span></>}
+            {showDate && lead.createdAt && <><span className="sep">/</span><span>{shortDate(lead.createdAt)}</span></>}
+          </div>
         </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', flexShrink: 0 }}>
-          {open ? 'Close' : 'View'}
+        <span className="row-right">
+          {headline && <span className="pill warn">{headline}</span>}
+          {email && <span className="pill green">Email</span>}
+          {lead.contactPhone && <span className="pill">Phone</span>}
+          <span className="chev" aria-hidden>{open ? '−' : '+'}</span>
         </span>
-      </div>
+      </button>
 
       {open && (
-        <div style={{ padding: '0 20px 16px' }}>
-          {isPlaces && <ContactPanel lead={lead} />}
-
-          {/* Apollo verified email */}
-          {isApollo && (
-            <div style={{
-              marginBottom: 10, padding: '8px 12px',
-              background: lead.contactEmail ? 'rgba(0,171,74,0.06)' : 'rgba(0,0,0,0.03)',
-              border: `1px solid ${lead.contactEmail ? 'rgba(0,171,74,0.15)' : 'var(--border)'}`,
-              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-            }}>
-              {lead.contactEmail ? (
-                <>
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgb(0,140,60)' }}>Email</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', fontFamily: 'monospace' }}>{lead.contactEmail}</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--fg-muted)' }}>Email locked</span>
-                  <span style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>Find on LinkedIn or Apollo</span>
-                </>
+        <div className="detail">
+          <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+            <div className="card">
+              <span className="card-title">Contact</span>
+              {person && <div className="kv"><span>Person</span><span>{person}{lead.contactTitle ? `, ${lead.contactTitle}` : ''}</span></div>}
+              <div className="kv">
+                <span>Email</span>
+                {email ? <a className="mono" href={gmailComposeUrl(email, subject, body)} target="_blank" rel="noreferrer">{email}</a>
+                  : <span className="muted">{lead.source === 'freelancer' ? 'Hidden by Freelancer, reply through a bid' : 'None found on their site'}</span>}
+              </div>
+              {lead.contactPhone && (
+                <div className="kv"><span>Phone</span><a className="mono" href={`tel:${lead.contactPhone.replace(/\s/g, '')}`}>{lead.contactPhone}</a></div>
               )}
-            </div>
-          )}
-
-          {/* Description */}
-          <p style={{ fontSize: 12, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 12, borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
-            {lead.description.slice(0, 280)}{lead.description.length > 280 ? '…' : ''}
-          </p>
-
-          {/* Email draft */}
-          {draft ? (
-            <div style={{ marginBottom: 12 }}>
-              {subject && (
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>
-                  SUBJECT: <span style={{ fontWeight: 500 }}>{subject}</span>
+              {LINK_LABELS.some(([k]) => links[k]) && (
+                <div className="kv">
+                  <span>Links</span>
+                  <div className="link-row">
+                    {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
+                      <a key={k} className="btn btn-sm" href={links[k]} target="_blank" rel="noreferrer">{label}</a>
+                    ))}
+                  </div>
                 </div>
               )}
-              <textarea
-                value={body || draft}
-                onChange={e => setDraft(e.target.value)}
-                rows={6}
-                style={{
-                  width: '100%', fontSize: 12, lineHeight: 1.65, color: 'var(--fg)', background: 'var(--bg)',
-                  border: '1px solid var(--border)', padding: '10px 12px', resize: 'vertical',
-                  fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
-                }}
-              />
+              {lead.source === 'freelancer' && (
+                <div className="kv"><span>Project</span><a href={lead.url} target="_blank" rel="noreferrer">Open on Freelancer</a></div>
+              )}
             </div>
-          ) : (
-            <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginBottom: 12 }}>No draft generated.</div>
-          )}
+            <div className="card">
+              <span className="card-title">Why this lead</span>
+              <p className="why">{whyText(lead).slice(0, 600)}</p>
+            </div>
+          </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {lead.url && lead.url.startsWith('http') && (
-              <a href={lead.url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 12, color: 'var(--fg-secondary)', textDecoration: 'underline', marginRight: 4 }}>
-                {isApollo ? 'View website' : isPlaces ? (lead.contactLinks?.website ? 'View website' : 'Open in Maps') : 'View project'}
-              </a>
+          <div className="card">
+            <span className="card-title">{lead.source === 'freelancer' ? 'Bid proposal' : email ? 'Email' : 'Message (DM, call notes or contact form)'}</span>
+            {(email || subject) && (
+              <label>
+                <span className="field-label">Subject</span>
+                <input className="field" value={subject} onChange={e => setSubject(e.target.value)} />
+              </label>
             )}
-            {draft && !isApollo && (
-              <button
-                onClick={() => doCopy(draft, setWasCopied)}
-                style={{ fontSize: 11, fontWeight: 600, padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg-secondary)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-              >
-                {wasCopied ? 'Copied' : isFreelancer ? 'Copy proposal' : isPlaces ? 'Copy message' : 'Copy email'}
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={onSkip}
-              style={{ fontSize: 11, fontWeight: 600, padding: '5px 14px', background: 'none', border: '1px solid var(--border)', color: 'var(--fg-muted)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-            >
-              Skip
-            </button>
-            {mailtoHref ? (
-              <a
-                href={mailtoHref}
-                onClick={onApprove}
-                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--accent-green)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
-              >
-                Send Email
-              </a>
-            ) : isApollo ? (
-              <a
-                href="https://app.apollo.io/#/people"
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--fg-secondary)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
-              >
-                Find Email
-              </a>
-            ) : isFreelancer ? (
-              <a
-                href={lead.url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => { navigator.clipboard.writeText(draft); onApprove(); }}
-                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--accent-green)', color: '#fff', textDecoration: 'none', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px', display: 'inline-block' }}
-              >
-                Copy proposal &amp; bid
-              </a>
-            ) : (
-              <button
-                onClick={onApprove}
-                style={{ fontSize: 11, fontWeight: 700, padding: '5px 16px', background: 'var(--dark-bg)', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}
-              >
-                {isPlaces ? 'Mark contacted' : 'Approve'}
-              </button>
-            )}
+            <label>
+              <span className="field-label">Message</span>
+              <textarea className="field" rows={10} value={body} onChange={e => setBody(e.target.value)} />
+            </label>
+
+            <div className="actions">
+              {status === 'new' && email && (
+                <>
+                  <a className="btn btn-primary" href={gmailComposeUrl(email, subject, body)} target="_blank" rel="noreferrer" onClick={markContacted}>Send in Gmail</a>
+                  <a className="btn" href={mailtoUrl(email, subject, body)} onClick={markContacted}>Mail app</a>
+                </>
+              )}
+              {status === 'new' && !email && lead.source === 'freelancer' && (
+                <a className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer" onClick={() => { copy(); markContacted(); }}>Copy and open bid</a>
+              )}
+              {status === 'new' && !email && lead.source !== 'freelancer' && (
+                <button className="btn btn-dark" onClick={markContacted}>Mark contacted</button>
+              )}
+              {status === 'approved' && <button className="btn btn-primary" onClick={() => onStatus('replied')}>Got a reply</button>}
+              {status === 'replied' && (
+                <>
+                  <button className="btn btn-primary" onClick={() => onStatus('won')}>Won the project</button>
+                  <button className="btn" onClick={() => onStatus('lost')}>Lost</button>
+                </>
+              )}
+              {status !== 'new' && email && (
+                <a className="btn" href={gmailComposeUrl(email, subject, body)} target="_blank" rel="noreferrer">Open in Gmail</a>
+              )}
+              <button className="btn" onClick={copy}>{copied ? 'Copied' : 'Copy message'}</button>
+              <span className="spacer" />
+              {status === 'new' && <button className="btn btn-quiet" onClick={() => onStatus('skipped')}>Skip</button>}
+              {status === 'approved' && <button className="btn btn-quiet" onClick={() => onStatus('new')}>Move back</button>}
+            </div>
           </div>
         </div>
       )}
@@ -264,21 +244,82 @@ function LeadCard({ lead, onApprove, onSkip }: { lead: Lead; onApprove: () => vo
   );
 }
 
-// ─── Main dashboard ───────────────────────────────────────────────────────────
+// ─── History ──────────────────────────────────────────────────────────────────
+
+function History({ leads }: { leads: Lead[] }) {
+  const [openDay, setOpenDay] = useState<string | null>(null);
+  const days = useMemo(() => {
+    const map = new Map<string, Lead[]>();
+    for (const l of leads) {
+      const k = dayKey(l.createdAt);
+      map.set(k, [...(map.get(k) ?? []), l]);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [leads]);
+
+  if (!days.length) return <div className="empty"><strong>No history yet</strong>Runs will show up here by day.</div>;
+
+  return (
+    <>
+      {days.map(([day, list]) => {
+        const n = (...s: LeadStatus[]) => list.filter(l => s.includes(statusOf(l))).length;
+        const label = day === 'unknown' ? 'Unknown date'
+          : new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const isOpen = openDay === day;
+        return (
+          <div key={day} className="row">
+            <button className="day-head" onClick={() => setOpenDay(isOpen ? null : day)} aria-expanded={isOpen}>
+              <span className="day-title">{label}</span>
+              <span className="day-stats">
+                <span className="pill">{list.length} found</span>
+                {(() => {
+                  const withEmail = list.filter(l => l.contactEmail).length;
+                  return <span className={`pill${withEmail ? ' green' : ''}`}>{withEmail} with email</span>;
+                })()}
+                <span className="pill">{n('approved', 'replied', 'won', 'lost')} contacted</span>
+                <span className="pill">{n('replied', 'won', 'lost')} replied</span>
+                {n('won') > 0 && <span className="pill dark">{n('won')} won</span>}
+              </span>
+            </button>
+            {isOpen && [...list].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map(l => (
+              <div key={l.id} className="mini">
+                <span className="mini-title">{l.title}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{SOURCE_LABEL[l.source]}</span>
+                <span className={`pill${statusOf(l) === 'won' ? ' dark' : statusOf(l) === 'new' ? '' : ' green'}`}>{STATUS_LABEL[statusOf(l)]}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'new', label: 'To contact' },
+  { id: 'approved', label: 'Contacted' },
+  { id: 'replied', label: 'Replied' },
+  { id: 'won', label: 'Won' },
+  { id: 'history', label: 'History' },
+];
 
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [tab, setTab] = useState<Tab>('new');
+  const [source, setSource] = useState<Lead['source'] | 'all'>('all');
+  const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const l = await fetch('/api/leads').then(r => r.json()) as Lead[];
-      setLeads(l);
+      const res = await fetch('/api/leads');
+      setLeads(await res.json() as Lead[]);
     } catch { setLeads([]); }
     setLoading(false);
   }, []);
@@ -286,167 +327,117 @@ export default function Home() {
   useEffect(() => { loadData(); }, [loadData]);
 
   async function runNow() {
-    setRunStatus('running');
+    setRunning(true);
     setRunResult(null);
     try {
       const res = await fetch('/api/cron', { headers: { 'x-manual': 'true' } });
       const data = await res.json() as RunResult;
       setRunResult(data);
-      setRunStatus(data.success ? 'done' : 'error');
       if (data.success) await loadData();
     } catch (e) {
       setRunResult({ error: String(e) });
-      setRunStatus('error');
+    }
+    setRunning(false);
+  }
+
+  async function reset() {
+    if (!confirm('Delete all leads (including contacted and won) and reset dedup history?')) return;
+    const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
+    const data = await res.json() as { leadsDeleted?: number; error?: string };
+    alert(data.error ? `Error: ${data.error}` : `Deleted ${data.leadsDeleted ?? 0} leads.`);
+    await loadData();
+  }
+
+  async function setStatus(id: string, status: LeadStatus) {
+    const before = leads;
+    setLeads(prev => prev.map(l => (l.id === id ? { ...l, status } : l)));
+    const res = await fetch('/api/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    if (!res.ok) {
+      setLeads(before);
+      const { error } = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+      alert(`Could not update the lead: ${error}`);
     }
   }
 
-  async function clearStale() {
-    if (!confirm('Delete all leads (including approved) and reset dedup history? The next Run Now will fetch everything fresh.')) return;
-    try {
-      const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
-      const data = await res.json() as { leadsDeleted?: number };
-      alert(`Cleared ${data.leadsDeleted ?? 0} stale leads.`);
-      await loadData();
-    } catch (e) { alert('Error: ' + String(e)); }
-  }
-
-  async function approveLead(id: string) {
-    await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'approved' }) });
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status: 'approved' } : l));
-  }
-
-  async function skipLead(id: string) {
-    await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'skipped' }) });
-    setLeads(prev => prev.filter(l => l.id !== id));
-  }
-
-  const newLeads = leads.filter(l => l.status === 'new');
-  const approvedLeads = leads.filter(l => l.status === 'approved');
+  const sources = useMemo(() => [...new Set(leads.map(l => l.source))], [leads]);
+  const scoped = useMemo(() => (source === 'all' ? leads : leads.filter(l => l.source === source)), [leads, source]);
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const l of scoped) c[statusOf(l)] = (c[statusOf(l)] ?? 0) + 1;
+    return c;
+  }, [scoped]);
+  const visible = useMemo(() => {
+    const list = scoped.filter(l => statusOf(l) === tab);
+    return tab === 'new'
+      ? list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      : list.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  }, [scoped, tab]);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Topbar */}
-      <header style={{
-        background: 'var(--dark-bg)', height: 52, padding: '0 28px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-        position: 'sticky', top: 0, zIndex: 10,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Lead Finder</span>
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '1.2px', textTransform: 'uppercase', background: 'var(--accent-green)', color: '#fff', padding: '2px 7px' }}>CRM</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Runs daily at 7am + 6pm UTC</span>
-          <button
-            onClick={clearStale}
-            style={{
-              fontSize: 12, fontWeight: 600, padding: '6px 14px',
-              background: 'none', color: 'rgba(255,255,255,0.45)',
-              border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            Reset Leads
-          </button>
-          <button
-            onClick={runNow}
-            disabled={runStatus === 'running'}
-            style={{
-              fontSize: 12, fontWeight: 700, padding: '6px 16px',
-              background: runStatus === 'running' ? 'rgba(255,255,255,0.15)' : 'var(--accent-green)',
-              color: '#fff', border: 'none', cursor: runStatus === 'running' ? 'not-allowed' : 'pointer',
-              fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px',
-            }}
-          >
-            {runStatus === 'running' ? 'Running…' : 'Run Now'}
-          </button>
+    <>
+      <header className="topbar">
+        <div className="brand"><span className="brand-dot" />Lead Finder</div>
+        <div className="topbar-actions">
+          <span className="topbar-note">Auto-runs 07:00 and 18:00 UTC</span>
+          <button className="btn btn-sm btn-ghost-dark" onClick={reset}>Reset</button>
+          <button className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>{running ? 'Running…' : 'Run now'}</button>
         </div>
       </header>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px 80px' }}>
-
-        {/* Run result banner */}
-        {runResult && runStatus !== 'idle' && runStatus !== 'running' && (
-          <div style={{
-            marginBottom: 20, padding: '12px 18px',
-            background: runStatus === 'done' ? 'rgba(0,171,74,0.08)' : 'rgba(220,38,38,0.08)',
-            border: `1px solid ${runStatus === 'done' ? 'rgba(0,171,74,0.2)' : 'rgba(220,38,38,0.2)'}`,
-            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-          }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: runStatus === 'done' ? 'var(--accent-green)' : '#dc2626' }}>
-              {runStatus === 'done' ? 'Run complete' : 'Run failed'}
-            </span>
+      <main className="page">
+        {runResult && (
+          <div className={`banner${runResult.success ? '' : ' error'}`}>
+            <strong>{runResult.success ? 'Run complete' : 'Run failed'}</strong>
             {runResult.stats && Object.entries(runResult.stats).map(([k, v]) => (
-              <span key={k} style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>
-                <strong>{v}</strong> {k}
-              </span>
+              <span key={k}><strong>{v}</strong> {humanKey(k)}</span>
             ))}
-            {runResult.durationMs && (
-              <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{(runResult.durationMs / 1000).toFixed(1)}s</span>
-            )}
-            {runResult.error && <span style={{ fontSize: 12, color: '#dc2626' }}>{runResult.error}</span>}
+            {runResult.durationMs && <span>{(runResult.durationMs / 1000).toFixed(0)}s</span>}
+            {runResult.error && <span>{runResult.error}</span>}
           </div>
         )}
 
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
-          {[
-            { label: 'New Leads', value: newLeads.length, hint: 'awaiting review' },
-            { label: 'Approved', value: approvedLeads.length, hint: 'ready to send' },
-            { label: 'Total', value: leads.length, hint: 'in pipeline' },
-          ].map(s => (
-            <div key={s.label} style={{ background: 'var(--white)', padding: '20px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 8 }}>{s.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 4 }}>
-                {loading ? '—' : s.value}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{s.hint}</div>
-            </div>
-          ))}
-        </div>
+        <Funnel leads={scoped} />
 
-        {/* New leads */}
-        <div style={{ border: '1px solid var(--border)', background: 'var(--white)', marginBottom: 20 }}>
-          <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: 3 }}>Email Leads</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--fg)' }}>
-                {loading ? '—' : newLeads.length} waiting
-              </div>
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--fg-muted)', textAlign: 'right', lineHeight: 1.5 }}>
-              Freelancer projects + local businesses with<br />no website or a weak one, ranked by AI
-            </p>
+        <div className="toolbar">
+          <div className="tabs" role="tablist">
+            {TABS.map(t => (
+              <button key={t.id} className="tab" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
+                {t.label}
+                {t.id !== 'history' && <span className="tab-count">{counts[t.id] ?? 0}</span>}
+              </button>
+            ))}
           </div>
-
-          {loading ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>Loading…</div>
-          ) : newLeads.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--fg-secondary)', fontWeight: 600 }}>No new leads</div>
-              <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}>Click Run Now to fetch fresh website projects</div>
+          {sources.length > 1 && (
+            <div className="filters">
+              <button className="chip" aria-pressed={source === 'all'} onClick={() => setSource('all')}>All sources</button>
+              {sources.map(s => (
+                <button key={s} className="chip" aria-pressed={source === s} onClick={() => setSource(s)}>{SOURCE_LABEL[s]}</button>
+              ))}
             </div>
-          ) : (
-            newLeads.map(lead => (
-              <LeadCard key={lead.id} lead={lead} onApprove={() => approveLead(lead.id)} onSkip={() => skipLead(lead.id)} />
-            ))
           )}
         </div>
 
-        {/* Approved leads */}
-        {approvedLeads.length > 0 && (
-          <div style={{ border: '1px solid var(--border)', background: 'var(--white)' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--accent-green)', marginBottom: 2 }}>Approved</div>
-              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{approvedLeads.length} leads queued to send</div>
+        <div className="panel">
+          {loading ? (
+            <div className="empty">Loading leads…</div>
+          ) : tab === 'history' ? (
+            <History leads={scoped} />
+          ) : visible.length === 0 ? (
+            <div className="empty">
+              <strong>Nothing here yet</strong>
+              {tab === 'new' ? 'Click Run now to find new leads.' : `Leads you move to ${STATUS_LABEL[tab]} will show up here.`}
             </div>
-            {approvedLeads.map(lead => (
-              <LeadCard key={lead.id} lead={lead} onApprove={() => {}} onSkip={() => skipLead(lead.id)} />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+          ) : (
+            visible.map(l => (
+              <LeadRow key={l.id} lead={l} showDate={tab !== 'new'} onStatus={s => setStatus(l.id, s)} />
+            ))
+          )}
+        </div>
+      </main>
+    </>
   );
 }

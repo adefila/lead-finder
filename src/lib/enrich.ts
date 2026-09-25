@@ -5,6 +5,7 @@ export interface SiteReport {
   emails: string[];
   links: ContactLinks;
   issues: string[];
+  siteText?: string;
 }
 
 const MAX_BYTES = 600_000;
@@ -62,10 +63,34 @@ function extractLinks(html: string): ContactLinks {
   return links;
 }
 
-function findContactPage(html: string, base: string): string | null {
-  const m = html.match(/href=["']([^"']*(contact|about)[^"']*)["']/i);
-  if (!m) return null;
-  try { return new URL(m[1], base).toString(); } catch { return null; }
+function findPage(html: string, base: string, pattern: RegExp): string | null {
+  for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+    if (!pattern.test(m[1])) continue;
+    try {
+      const url = new URL(m[1], base);
+      if (url.hostname === new URL(base).hostname) return url.toString();
+    } catch { /* skip malformed */ }
+  }
+  return null;
+}
+
+function visibleText(html: string): string {
+  return html
+    .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;|&rsquo;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function structuredNames(html: string): string[] {
+  const names = new Set<string>();
+  for (const m of html.matchAll(/"(founder|author|employee|member)"\s*:\s*\[?\s*\{[^}]*?"name"\s*:\s*"([^"]{3,60})"/gi)) {
+    names.add(`${m[1]}: ${m[2]}`);
+  }
+  return [...names];
 }
 
 function detectIssues(html: string, finalUrl: string): string[] {
@@ -89,24 +114,37 @@ export async function analyzeWebsite(url: string): Promise<SiteReport> {
   if (home.kind === 'dead') return { reachable: false, emails: [], links: {}, issues: ['website is down or broken'] };
   if (home.kind === 'unknown') return { reachable: null, emails: [], links: {}, issues: [] };
 
-  let emails = extractEmails(home.html);
+  const emails = extractEmails(home.html);
   const links = extractLinks(home.html);
   const issues = detectIssues(home.html, home.finalUrl);
+  const names = structuredNames(home.html);
 
-  if (!emails.length) {
-    const contactUrl = findContactPage(home.html, home.finalUrl);
-    if (contactUrl) {
-      const contact = await getHtml(contactUrl);
-      if (contact.kind === 'ok') {
-        emails = extractEmails(contact.html);
-        const extra = extractLinks(contact.html);
-        for (const k of Object.keys(extra) as (keyof ContactLinks)[]) links[k] ??= extra[k];
-      }
-    }
+  const aboutUrl = findPage(home.html, home.finalUrl, /about|team|our-story|meet|staff|doctor|bio/i);
+  const contactUrl = emails.length ? null : findPage(home.html, home.finalUrl, /contact/i);
+  const [about, contact] = await Promise.all([
+    aboutUrl ? getHtml(aboutUrl) : null,
+    contactUrl && contactUrl !== aboutUrl ? getHtml(contactUrl) : null,
+  ]);
+
+  let aboutText = '';
+  for (const page of [about, contact]) {
+    if (page?.kind !== 'ok') continue;
+    emails.push(...extractEmails(page.html));
+    names.push(...structuredNames(page.html));
+    const extra = extractLinks(page.html);
+    for (const k of Object.keys(extra) as (keyof ContactLinks)[]) links[k] ??= extra[k];
+    if (page === about) aboutText = visibleText(page.html).slice(0, 1500);
   }
 
   const host = new URL(home.finalUrl).hostname.replace(/^www\./, '');
-  emails.sort((a, b) => Number(b.endsWith(host)) - Number(a.endsWith(host)));
+  const unique = [...new Set(emails)];
+  unique.sort((a, b) => Number(b.endsWith(host)) - Number(a.endsWith(host)));
 
-  return { reachable: true, emails: [...new Set(emails)].slice(0, 3), links, issues };
+  const siteText = [
+    names.length ? `Structured data: ${[...new Set(names)].join('; ')}` : '',
+    `Homepage: ${visibleText(home.html).slice(0, 900)}`,
+    aboutText ? `About page: ${aboutText}` : '',
+  ].filter(Boolean).join('\n');
+
+  return { reachable: true, emails: unique.slice(0, 3), links, issues, siteText };
 }
