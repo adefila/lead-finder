@@ -45,8 +45,7 @@ a { color: inherit; }
   max-width: 1440px; margin: 0 auto; height: 60px; padding: 0 32px;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
-.brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+.brand { font-family: var(--font-script), cursive; font-weight: 700; font-size: 26px; line-height: 1; letter-spacing: 0; font-feature-settings: normal; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 .gmail-chip {
   display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px; border-radius: 15px;

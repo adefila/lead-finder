@@ -244,7 +244,7 @@ export default function Home() {
     <MotionConfig reducedMotion="user">
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand"><span className="brand-dot" />Lead Finder</div>
+          <div className="brand">Lead Finder</div>
           <div className="topbar-actions">
             {gmail?.connected ? (
               <button className="gmail-chip" onClick={() => syncGmail(false)} disabled={syncing} title={`Connected as ${gmail.email ?? ''}`}>

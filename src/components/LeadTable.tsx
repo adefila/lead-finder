@@ -39,6 +39,8 @@ function SortHeader({ label, k, sort, onSort, className }: {
 export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText, selection, onToggle, onToggleAll }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
   const all = leads.length > 0 && picked === leads.length;
+
+  if (!leads.length) return <div className="empty"><strong>Nothing here</strong>{emptyText}</div>;
   return (
     <div className="table-wrap">
       <table className="crm">
@@ -66,9 +68,6 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
           </tr>
         </thead>
         <tbody>
-          {leads.length === 0 && (
-            <tr><td colSpan={9} className="empty-cell"><strong>Nothing here</strong>{emptyText}</td></tr>
-          )}
           <AnimatePresence initial={false}>
             {leads.map((l, i) => {
               const status = statusOf(l);
