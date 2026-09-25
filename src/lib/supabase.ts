@@ -1,6 +1,7 @@
 import { createClient as sb } from '@supabase/supabase-js';
 import type { Lead, LeadStatus } from '@/types/lead';
 import type { Post } from '@/types/post';
+import { humanize } from '@/lib/compose';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,18 +55,28 @@ export async function saveLeads(leads: Lead[]): Promise<void> {
   else console.log(`[supabase] Saved ${leads.length} leads`);
 }
 
+// Leads saved before the title format changed read "Name — Outdated website".
+const LEGACY_HEADLINE = /\s+[—–-]\s+(No website|Outdated website|Website broken)$/;
+
 function rowToLead(r: Record<string, unknown>): Lead {
+  let title = String(r.title ?? '');
+  let description = String(r.description ?? '');
+  const legacy = title.match(LEGACY_HEADLINE);
+  if (legacy) {
+    title = title.slice(0, legacy.index).trim();
+    if (!description.startsWith(legacy[1])) description = `${legacy[1]}. ${description}`;
+  }
   return {
     id: String(r.id),
     source: r.source as Lead['source'],
-    title: String(r.title ?? ''),
+    title,
     company: String(r.company ?? ''),
-    description: String(r.description ?? ''),
+    description,
     url: String(r.url ?? ''),
     postedAt: String(r.posted_at ?? ''),
     createdAt: r.created_at ? String(r.created_at) : undefined,
     score: Number(r.score ?? 0),
-    proposal: String(r.draft_email ?? ''),
+    proposal: humanize(String(r.draft_email ?? '')),
     status: r.status as Lead['status'],
     contactEmail: r.contact_email ? String(r.contact_email) : undefined,
     contactName: r.contact_name ? String(r.contact_name) : undefined,
@@ -114,6 +125,14 @@ export async function getSetting(key: string): Promise<string | null> {
 export async function setSetting(key: string, value: string): Promise<void> {
   const { error } = await db().from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   if (error) throw new Error(`setSetting ${key}: ${error.message}`);
+}
+
+export async function deleteLeads(ids: string[]): Promise<string | null> {
+  const { error } = await db().from('leads').delete().in('id', ids);
+  if (error) return error.message;
+  // Keep deleted leads out of future runs.
+  await markSent(ids);
+  return null;
 }
 
 export async function markFollowedUp(id: string): Promise<string | null> {

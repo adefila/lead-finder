@@ -17,6 +17,9 @@ interface Props {
   onOpen: (id: string) => void;
   onStatus: (id: string, status: LeadStatus) => void;
   emptyText: string;
+  selection: Set<string>;
+  onToggle: (id: string) => void;
+  onToggleAll: () => void;
 }
 
 function SortHeader({ label, k, sort, onSort, className }: {
@@ -33,25 +36,38 @@ function SortHeader({ label, k, sort, onSort, className }: {
   );
 }
 
-export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText }: Props) {
+export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText, selection, onToggle, onToggleAll }: Props) {
+  const picked = leads.filter(l => selection.has(l.id)).length;
+  const all = leads.length > 0 && picked === leads.length;
   return (
     <div className="table-wrap">
       <table className="crm">
         <thead>
           <tr>
+            <th className="col-check">
+              <input
+                type="checkbox"
+                className="check"
+                aria-label="Select all leads"
+                checked={all}
+                ref={el => { if (el) el.indeterminate = picked > 0 && !all; }}
+                onChange={onToggleAll}
+                disabled={!leads.length}
+              />
+            </th>
             <SortHeader label="Score" k="score" sort={sort} onSort={onSort} className="col-score" />
-            <SortHeader label="Lead" k="name" sort={sort} onSort={onSort} />
-            <th>Contact</th>
-            <th>Source</th>
-            <th>Status</th>
-            <SortHeader label="Next step" k="next" sort={sort} onSort={onSort} />
+            <SortHeader label="Lead" k="name" sort={sort} onSort={onSort} className="col-lead" />
+            <th className="col-contact">Contact</th>
+            <th className="col-source">Source</th>
+            <th className="col-status">Status</th>
+            <SortHeader label="Next step" k="next" sort={sort} onSort={onSort} className="col-next" />
             <SortHeader label="Added" k="added" sort={sort} onSort={onSort} className="col-date" />
             <th className="col-actions"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={8} className="empty-cell"><strong>Nothing here</strong>{emptyText}</td></tr>
+            <tr><td colSpan={9} className="empty-cell"><strong>Nothing here</strong>{emptyText}</td></tr>
           )}
           <AnimatePresence initial={false}>
             {leads.map((l, i) => {
@@ -63,12 +79,16 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
               return (
                 <motion.tr
                   key={l.id}
-                  className={selectedId === l.id ? 'selected' : ''}
+                  className={[selectedId === l.id && 'selected', selection.has(l.id) && 'picked'].filter(Boolean).join(' ')}
                   onClick={() => onOpen(l.id)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1, transition: { duration: 0.25, delay: Math.min(i, 12) * 0.02 } }}
                   exit={{ opacity: 0, transition: { duration: 0.15 } }}
                 >
+                  <td className="col-check" onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" className="check" aria-label={`Select ${l.title}`}
+                      checked={selection.has(l.id)} onChange={() => onToggle(l.id)} />
+                  </td>
                   <td className="col-score"><span className={scoreClass(l.score ?? 0)}>{l.score ?? '-'}</span></td>
                   <td className="col-lead">
                     <div className="cell-title">{l.title}</div>
@@ -86,9 +106,9 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                       {!l.contactEmail && l.contactPhone && <span className="ci-text">{l.contactPhone}</span>}
                     </div>
                   </td>
-                  <td><span className="source">{SOURCE_LABEL[l.source]}</span></td>
-                  <td><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
-                  <td className={step.urgent ? 'next urgent' : 'next'}>{step.text || <span className="muted">-</span>}</td>
+                  <td className="col-source"><span className="source">{SOURCE_LABEL[l.source]}</span></td>
+                  <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
+                  <td className={step.urgent ? 'col-next next urgent' : 'col-next next'}>{step.text || <span className="muted">-</span>}</td>
                   <td className="col-date muted">{shortDate(l.createdAt)}</td>
                   <td className="col-actions" onClick={e => e.stopPropagation()}>
                     <div className="row-actions">

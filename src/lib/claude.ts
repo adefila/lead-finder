@@ -115,10 +115,13 @@ function describe(l: Lead, i: number, kind: DraftKind): string {
 }
 
 const VOICE = `Voice (strict, applies to every message):
-- Write like a real person typing a quick note to one other person. Plain words, short sentences, contractions (I'm, you're, it's).
-- Never use em dashes or en dashes. Use a comma or a full stop instead.
-- No semicolons, no exclamation marks, no bullet points, no bold.
-- Never use: elevate, leverage, seamless, streamline, boost, unlock, transform, stunning, top-notch, cutting-edge, game-changer, delighted, reach out, touch base, I hope this finds you well, I came across, I wanted to.
+- Warm, clear and professional: an experienced freelancer writing to a business owner he respects. It should read like one person wrote it by hand for this one reader.
+- Plain English and full sentences. Contractions are fine. No slang, no hype, no jokes, no over-familiarity.
+- Short paragraphs of one to three sentences, with a blank line between them.
+- Never use em dashes or en dashes (— or –) anywhere, including the subject. Use a comma, a full stop or "and" instead.
+- No semicolons, no exclamation marks, no bullet points, no bold, no emojis, no ALL CAPS.
+- Never use: elevate, leverage, seamless, streamline, boost, unlock, transform, stunning, top-notch, cutting-edge, game-changer, delighted, reach out, touch base, circle back, synergy, I hope this finds you well, I came across, I wanted to, quick question.
+- Be specific and honest. Never exaggerate or promise results you can't know.
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
 const PROMPTS: Record<DraftKind, string> = {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
@@ -20,6 +20,8 @@ const PATHS: Record<string, ReactNode> = {
   external: <><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>,
   arrowRight: <path d="M5 12h14m-6-6 6 6-6 6" />,
   arrowLeft: <path d="M19 12H5m6 6-6-6 6-6" />,
+  trash: <><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></>,
+  sparkle: <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z" />,
 };
 
 export function Icon({ name, size = 14 }: { name: keyof typeof PATHS; size?: number }) {
@@ -67,5 +69,73 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
         </motion.span>
       </AnimatePresence>
     </button>
+  );
+}
+
+export interface DropdownOption<T extends string> { value: T; label: string; count?: number }
+
+export function Dropdown<T extends string>({ value, options, onChange, label }: {
+  value: T;
+  options: DropdownOption<T>[];
+  onChange: (value: T) => void;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const current = options.find(o => o.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    setActive(Math.max(0, options.findIndex(o => o.value === value)));
+    const onDown = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open, options, value]);
+
+  function choose(v: T) {
+    onChange(v);
+    setOpen(false);
+  }
+
+  function onKey(e: ReactKeyboardEvent) {
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      setActive(i => (i + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
+    }
+    if ((e.key === 'Enter' || e.key === ' ') && open) { e.preventDefault(); choose(options[active].value); }
+  }
+
+  return (
+    <div className="dropdown" ref={root} onKeyDown={onKey}>
+      <button type="button" className={`dropdown-btn${open ? ' open' : ''}`} aria-haspopup="listbox" aria-expanded={open}
+        aria-label={label} onClick={() => setOpen(o => !o)}>
+        <span className="dropdown-value">{current?.label}</span>
+        <motion.span className="dropdown-chev" animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18 }}>
+          <Icon name="down" size={14} />
+        </motion.span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul className="dropdown-menu" role="listbox" aria-label={label}
+            initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.14 }}>
+            {options.map((o, i) => (
+              <li key={o.value} role="option" aria-selected={o.value === value}
+                className={`dropdown-item${i === active ? ' active' : ''}`}
+                onMouseEnter={() => setActive(i)} onMouseDown={e => e.preventDefault()} onClick={() => choose(o.value)}>
+                <span>{o.label}</span>
+                <span className="dropdown-meta">
+                  {o.count !== undefined && <span className="dropdown-count">{o.count}</span>}
+                  <span className="dropdown-check">{o.value === value && <Icon name="check" size={13} />}</span>
+                </span>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

@@ -28,9 +28,11 @@ interface Props {
   onNext?: () => void;
   onStatus: (status: LeadStatus) => void;
   onFollowedUp: () => void;
+  onUpdate: (patch: Partial<Lead>) => void;
+  onDelete: () => void;
 }
 
-function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFollowedUp }: Props) {
+function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFollowedUp, onUpdate, onDelete }: Props) {
   const initial = useMemo(() => splitDraft(lead.proposal ?? ''), [lead.proposal]);
   const [subject, setSubject] = useState(initial.subject);
   const [body, setBody] = useState(initial.body);
@@ -71,6 +73,26 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   useEffect(() => {
     if (isFollowUp && !followUpLoaded && !drafting) writeFollowUp();
   }, [isFollowUp, followUpLoaded, drafting, writeFollowUp]);
+
+  const [redrafting, setRedrafting] = useState(false);
+  async function redraft() {
+    setRedrafting(true);
+    try {
+      const res = await fetch('/api/redraft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: lead.id }),
+      });
+      const data = await res.json() as { proposal?: string; contactName?: string; contactTitle?: string; error?: string };
+      if (!data.proposal) { alert(data.error ?? 'Could not rewrite the draft'); return; }
+      const next = splitDraft(data.proposal);
+      setSubject(next.subject);
+      setBody(next.body);
+      onUpdate({ proposal: data.proposal, contactName: data.contactName, contactTitle: data.contactTitle });
+    } finally {
+      setRedrafting(false);
+    }
+  }
 
   const markContacted = () => { if (status === 'new') onStatus('approved'); };
   const sent = () => (isFollowUp ? onFollowedUp() : markContacted());
@@ -196,6 +218,11 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               )}
               {isFollowUp && !email && <Btn className="btn btn-dark" onClick={onFollowedUp}>Mark followed up</Btn>}
               {isFollowUp && <Btn className="btn" onClick={writeFollowUp} disabled={drafting}>Rewrite</Btn>}
+              {status === 'new' && (
+                <Btn className="btn" onClick={redraft} disabled={redrafting}>
+                  <Icon name="sparkle" />{redrafting ? 'Rewriting…' : 'Rewrite draft'}
+                </Btn>
+              )}
               {status === 'approved' && !isFollowUp && email && (
                 <a className="btn" href={gmail} target="_blank" rel="noreferrer">Open in Gmail</a>
               )}
@@ -208,6 +235,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('lost')}>Lost</Btn>}
               {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skipped</Btn>}
               {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />To contact</Btn>}
+              <span className="spacer" />
+              <Btn className="btn btn-sm btn-danger" onClick={onDelete}><Icon name="trash" />Delete</Btn>
             </div>
           </section>
 

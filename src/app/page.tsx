@@ -11,7 +11,7 @@ import { Funnel } from '@/components/Funnel';
 import { History } from '@/components/History';
 import { LeadTable } from '@/components/LeadTable';
 import { LeadDrawer } from '@/components/LeadDrawer';
-import { Btn, Icon } from '@/components/ui';
+import { Btn, Dropdown, Icon } from '@/components/ui';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type GmailStatus = { configured: boolean; connected: boolean; email?: string | null; lastSync?: string | null };
@@ -41,6 +41,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [sortOverride, setSortOverride] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
@@ -137,9 +138,9 @@ export default function Home() {
     }
   }
 
-  const setStatus = (id: string, status: LeadStatus) => {
+  const setStatus = (id: string, status: LeadStatus, quiet = false) => {
     const previous = leads.find(l => l.id === id);
-    if (status === 'approved' && previous && statusOf(previous) === 'new') {
+    if (!quiet && status === 'approved' && previous && statusOf(previous) === 'new') {
       notify(`${previous.title} marked as contacted`, { label: 'Undo', run: () => setStatus(id, 'new') });
     }
     return patch(id, { status }, l => ({
@@ -155,6 +156,38 @@ export default function Home() {
     followUps: (l.followUps ?? 0) + 1,
     contactedAt: new Date().toISOString(),
   }));
+
+  async function removeLeads(ids: string[]) {
+    const names = leads.filter(l => ids.includes(l.id)).map(l => l.title);
+    const what = ids.length === 1 ? `"${names[0]}"` : `${ids.length} leads`;
+    if (!confirm(`Delete ${what}? This can't be undone, and they won't come back in future runs.`)) return false;
+
+    const res = await fetch('/api/leads', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+      alert(`Could not delete: ${error}`);
+      return false;
+    }
+    setLeads(prev => prev.filter(l => !ids.includes(l.id)));
+    setSelection(prev => new Set([...prev].filter(id => !ids.includes(id))));
+    notify(`Deleted ${what}`);
+    return true;
+  }
+
+  function bulkStatus(ids: string[], status: LeadStatus) {
+    const before = new Map(leads.filter(l => ids.includes(l.id)).map(l => [l.id, statusOf(l)]));
+    for (const id of ids) setStatus(id, status, true);
+    setSelection(new Set());
+    const verb = { approved: 'marked as sent', skipped: 'skipped', new: 'restored' }[status as string] ?? 'updated';
+    notify(`${ids.length} lead${ids.length > 1 ? 's' : ''} ${verb}`, {
+      label: 'Undo',
+      run: () => before.forEach((s, id) => setStatus(id, s, true)),
+    });
+  }
 
   // ── Derived lists ────────────────────────────────────────────────────────────
   const sources = useMemo(() => [...new Set(leads.map(l => l.source))], [leads]);
@@ -181,6 +214,22 @@ export default function Home() {
     setView(v);
     setSortOverride(null);
     setMode('table');
+    setSelection(new Set());
+  }
+
+  const picked = rows.filter(l => selection.has(l.id));
+  const pickedIds = picked.map(l => l.id);
+
+  function toggle(id: string) {
+    setSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelection(picked.length === rows.length ? new Set() : new Set(rows.map(l => l.id)));
   }
 
   // After acting on a lead in the drawer, move to the next lead in the list.
@@ -251,10 +300,15 @@ export default function Home() {
                 <input placeholder="Search name, company, email" value={search} onChange={e => setSearch(e.target.value)} />
               </label>
               {sources.length > 1 && (
-                <select className="select" value={source} onChange={e => setSource(e.target.value as Lead['source'] | 'all')} aria-label="Source">
-                  <option value="all">All sources</option>
-                  {sources.map(s => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
-                </select>
+                <Dropdown<Lead['source'] | 'all'>
+                  label="Source"
+                  value={source}
+                  onChange={v => { setSource(v); setSelection(new Set()); }}
+                  options={[
+                    { value: 'all', label: 'All sources', count: leads.length },
+                    ...sources.map(s => ({ value: s, label: SOURCE_LABEL[s], count: leads.filter(l => l.source === s).length })),
+                  ]}
+                />
               )}
               <div className="seg" role="group" aria-label="Layout">
                 <button aria-pressed={mode === 'table'} onClick={() => setMode('table')}>Table</button>
@@ -262,6 +316,37 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          <AnimatePresence>
+            {mode === 'table' && picked.length > 0 && (
+              <motion.div className="bulk-bar" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="bulk-inner">
+                  <strong>{picked.length} selected</strong>
+                  <button className="link-btn plain" onClick={() => setSelection(new Set())}>Clear</button>
+                  <span className="spacer" />
+                  {picked.some(l => statusOf(l) === 'new') && (
+                    <>
+                      <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
+                        <Icon name="check" />Mark as sent
+                      </Btn>
+                      <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'skipped')}>
+                        <Icon name="x" />Skip
+                      </Btn>
+                    </>
+                  )}
+                  {picked.some(l => ['skipped', 'lost'].includes(statusOf(l))) && (
+                    <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => ['skipped', 'lost'].includes(statusOf(l))).map(l => l.id), 'new')}>
+                      <Icon name="undo" />Restore
+                    </Btn>
+                  )}
+                  <Btn className="btn btn-sm btn-danger" onClick={() => removeLeads(pickedIds)}>
+                    <Icon name="trash" />Delete {picked.length}
+                  </Btn>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {loading ? (
             <div className="empty">Loading leads…</div>
@@ -276,6 +361,9 @@ export default function Home() {
               onOpen={setSelectedId}
               onStatus={setStatus}
               emptyText={search ? 'No leads match your search.' : EMPTY_TEXT[view]}
+              selection={selection}
+              onToggle={toggle}
+              onToggleAll={toggleAll}
             />
           )}
           {!loading && mode === 'table' && rows.length > 0 && (
@@ -300,6 +388,12 @@ export default function Home() {
             onNext={selectedIndex >= 0 && selectedIndex < rows.length - 1 ? () => setSelectedId(rows[selectedIndex + 1].id) : undefined}
             onStatus={s => actAndAdvance(selected.id, () => setStatus(selected.id, s), !inView({ ...selected, status: s }, view))}
             onFollowedUp={() => actAndAdvance(selected.id, () => followedUp(selected.id), view === 'followup')}
+            onUpdate={p => setLeads(prev => prev.map(l => (l.id === selected.id ? { ...l, ...p } : l)))}
+            onDelete={() => {
+              const idx = rows.findIndex(l => l.id === selected.id);
+              const nextId = rows[idx + 1]?.id ?? rows[idx - 1]?.id ?? null;
+              removeLeads([selected.id]).then(ok => { if (ok) setSelectedId(nextId); });
+            }}
           />
         )}
       </AnimatePresence>
