@@ -10,6 +10,12 @@ function db() {
   return sb(url, key);
 }
 
+// Turn missing-column errors into a clear next step.
+function explain(message: string): string {
+  const col = message.match(/Could not find the '([a-z_]+)' column/)?.[1];
+  return col ? 'Your database is missing the "' + col + '" column. Run the setup SQL in Supabase, then try again.' : message;
+}
+
 // ─── Legacy dedup (sent_jobs) ─────────────────────────────────────────────────
 
 export async function getSentIds(days = 30): Promise<string[]> {
@@ -109,12 +115,12 @@ export async function updateLeadStatus(id: string, status: LeadStatus): Promise<
   if (status === 'approved') Object.assign(patch, { contacted_at: new Date().toISOString(), follow_ups: 0 });
   if (status === 'new') Object.assign(patch, { contacted_at: null, follow_ups: 0 });
   const { error } = await db().from('leads').update(patch).eq('id', id);
-  return error ? error.message : null;
+  return error ? explain(error.message) : null;
 }
 
 export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {
   const { error } = await db().from('leads').update(patch).eq('id', id);
-  return error ? error.message : null;
+  return error ? explain(error.message) : null;
 }
 
 export async function getSetting(key: string): Promise<string | null> {
@@ -129,7 +135,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function deleteLeads(ids: string[]): Promise<string | null> {
   const { error } = await db().from('leads').delete().in('id', ids);
-  if (error) return error.message;
+  if (error) return explain(error.message);
   // Keep deleted leads out of future runs.
   await markSent(ids);
   return null;
@@ -142,7 +148,7 @@ export async function markFollowedUp(id: string): Promise<string | null> {
     .from('leads')
     .update({ follow_ups: (lead.followUps ?? 0) + 1, contacted_at: new Date().toISOString() })
     .eq('id', id);
-  return error ? error.message : null;
+  return error ? explain(error.message) : null;
 }
 
 // ─── Posts ───────────────────────────────────────────────────────────────────

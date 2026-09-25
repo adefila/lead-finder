@@ -17,6 +17,7 @@ interface Props {
   onOpen: (id: string) => void;
   onStatus: (id: string, status: LeadStatus) => void;
   emptyText: string;
+  pageKey: number;
   selection: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
@@ -36,7 +37,7 @@ function SortHeader({ label, k, sort, onSort, className }: {
   );
 }
 
-export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText, selection, onToggle, onToggleAll }: Props) {
+export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText, pageKey, selection, onToggle, onToggleAll }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
   const all = leads.length > 0 && picked === leads.length;
 
@@ -59,7 +60,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
             <th className="col-actions"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody key={pageKey}>
           <AnimatePresence initial={false}>
             {leads.map((l, i) => {
               const status = statusOf(l);

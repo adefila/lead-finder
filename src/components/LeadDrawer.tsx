@@ -10,6 +10,7 @@ import {
   shortDate, statusOf, whyText,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
+import { useFeedback } from '@/components/feedback';
 
 const LINK_LABELS = [
   ['instagram', 'Instagram'],
@@ -38,6 +39,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const [body, setBody] = useState(initial.body);
   const [drafting, setDrafting] = useState(false);
   const [followUpLoaded, setFollowUpLoaded] = useState(false);
+  const { toast } = useFeedback();
 
   const status = statusOf(lead);
   const fu = followUpState(lead);
@@ -63,12 +65,12 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         if (initial.subject) setSubject(initial.subject.startsWith('Re:') ? initial.subject : `Re: ${initial.subject}`);
         setFollowUpLoaded(true);
       } else {
-        alert(data.error ?? 'Could not draft the follow-up');
+        toast(data.error ?? 'Could not draft the follow-up', { tone: 'error' });
       }
     } finally {
       setDrafting(false);
     }
-  }, [lead.id, initial.subject]);
+  }, [lead.id, initial.subject, toast]);
 
   useEffect(() => {
     if (isFollowUp && !followUpLoaded && !drafting) writeFollowUp();
@@ -84,7 +86,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         body: JSON.stringify({ id: lead.id }),
       });
       const data = await res.json() as { proposal?: string; contactName?: string; contactTitle?: string; error?: string };
-      if (!data.proposal) { alert(data.error ?? 'Could not rewrite the draft'); return; }
+      if (!data.proposal) { toast(data.error ?? 'Could not rewrite the draft', { tone: 'error' }); return; }
+      toast('Draft rewritten', { tone: 'success' });
       const next = splitDraft(data.proposal);
       setSubject(next.subject);
       setBody(next.body);
