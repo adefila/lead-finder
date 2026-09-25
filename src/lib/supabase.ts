@@ -101,6 +101,21 @@ export async function updateLeadStatus(id: string, status: LeadStatus): Promise<
   return error ? error.message : null;
 }
 
+export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {
+  const { error } = await db().from('leads').update(patch).eq('id', id);
+  return error ? error.message : null;
+}
+
+export async function getSetting(key: string): Promise<string | null> {
+  const { data } = await db().from('app_settings').select('value').eq('key', key).maybeSingle();
+  return (data as { value?: string } | null)?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const { error } = await db().from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) throw new Error(`setSetting ${key}: ${error.message}`);
+}
+
 export async function markFollowedUp(id: string): Promise<string | null> {
   const lead = await getLeadById(id);
   if (!lead) return 'Lead not found';

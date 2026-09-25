@@ -5,6 +5,7 @@ import { fetchPlacesLeads } from '@/lib/places';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
+import { syncGmail } from '@/lib/gmail';
 import { sendLeadsEmail } from '@/lib/email';
 
 export const maxDuration = 300;
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);
+    const gmail = await syncGmail();
     const followUpsDue = (await getLeads()).filter(needsAttention).length;
     if (jobsWithEmails.length > 0 || followUpsDue > 0) {
       await sendLeadsEmail(jobsWithEmails, followUpsDue);
@@ -67,6 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
         followUpsDue,
+        ...(gmail.connected ? { gmailContacted: gmail.contacted, gmailReplies: gmail.replied } : {}),
       },
       durationMs,
     });
