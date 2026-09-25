@@ -191,6 +191,9 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               {status === 'new' && !email && lead.source !== 'freelancer' && (
                 <Btn className="btn btn-dark" onClick={markContacted}>Mark contacted</Btn>
               )}
+              {status === 'new' && (email || lead.source === 'freelancer') && (
+                <Btn className="btn" onClick={markContacted}><Icon name="check" />Mark as sent</Btn>
+              )}
               {isFollowUp && !email && <Btn className="btn btn-dark" onClick={onFollowedUp}>Mark followed up</Btn>}
               {isFollowUp && <Btn className="btn" onClick={writeFollowUp} disabled={drafting}>Rewrite</Btn>}
               {status === 'approved' && !isFollowUp && email && (

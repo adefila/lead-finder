@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import type { Lead } from '@/types/lead';
-import { gmailComposeUrl, mailtoUrl, splitDraft } from '@/lib/compose';
+import { splitDraft } from '@/lib/compose';
+import { sendLink } from '@/lib/tracking';
 
 const SOURCE_LABEL: Record<Lead['source'], string> = {
   upwork: 'Upwork',
@@ -27,17 +28,15 @@ function button(href: string, label: string, primary: boolean): string {
 }
 
 function actions(lead: Lead): string {
-  const draft = lead.proposal ?? '';
-  const { subject, body } = splitDraft(draft);
   const links = lead.contactLinks ?? {};
   const out: string[] = [];
 
   if (lead.contactEmail) {
     const who = lead.contactName?.split(' ')[0] ?? lead.title;
-    out.push(button(gmailComposeUrl(lead.contactEmail, subject, body), `Email ${esc(who)} in Gmail`, true));
-    out.push(button(mailtoUrl(lead.contactEmail, subject, body), 'Mail app', false));
+    out.push(button(sendLink(lead.id, 'gmail'), `Email ${esc(who)} in Gmail`, true));
+    out.push(button(sendLink(lead.id, 'mail'), 'Mail app', false));
   } else if (lead.source === 'freelancer') {
-    out.push(button(lead.url, 'Open project and bid', true));
+    out.push(button(sendLink(lead.id, 'bid'), 'Open project and bid', true));
   }
   if (lead.contactPhone) out.push(button(`tel:${lead.contactPhone.replace(/\s/g, '')}`, `Call ${esc(lead.contactPhone)}`, !lead.contactEmail));
   for (const [key, label] of [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['linkedin', 'LinkedIn'], ['twitter', 'X']] as const) {
@@ -93,7 +92,7 @@ function buildEmailHtml(leads: Lead[], followUpsDue: number): string {
     ${followUpsDue ? `<a href="https://lead-finder-one-self.vercel.app" style="display:block;margin-top:12px;padding:14px 18px;background:#fff4e5;border:1px solid #f3d9b1;color:#6b4000;font-size:14px;text-decoration:none"><strong>${followUpsDue} follow-up${followUpsDue === 1 ? '' : 's'} due.</strong> Open the Follow up tab to send them.</a>` : ''}
     ${section('Ready to email', withEmail)}
     ${section('Bid, call or DM', rest)}
-    <div style="text-align:center;padding:16px 0;font-size:12px;color:#9a9a9a">Lead Finder &middot; lead-finder-one-self.vercel.app</div>
+    <div style="text-align:center;padding:16px 0;font-size:12px;color:#9a9a9a">Send and bid buttons mark the lead as contacted in Lead Finder.<br>Lead Finder &middot; lead-finder-one-self.vercel.app</div>
   </div>
 </body></html>`;
 }

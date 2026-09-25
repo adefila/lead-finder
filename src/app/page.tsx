@@ -45,13 +45,13 @@ export default function Home() {
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const notify = useCallback((msg: string) => {
-    setToast(msg);
+  const notify = useCallback((text: string, action?: { label: string; run: () => void }) => {
+    setToast({ text, action });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 4500);
+    toastTimer.current = setTimeout(() => setToast(null), action ? 6000 : 4500);
   }, []);
 
   const loadData = useCallback(async () => {
@@ -137,12 +137,18 @@ export default function Home() {
     }
   }
 
-  const setStatus = (id: string, status: LeadStatus) => patch(id, { status }, l => ({
-    ...l,
-    status,
-    ...(status === 'approved' ? { contactedAt: new Date().toISOString(), followUps: 0 } : {}),
-    ...(status === 'new' ? { contactedAt: undefined, followUps: 0 } : {}),
-  }));
+  const setStatus = (id: string, status: LeadStatus) => {
+    const previous = leads.find(l => l.id === id);
+    if (status === 'approved' && previous && statusOf(previous) === 'new') {
+      notify(`${previous.title} marked as contacted`, { label: 'Undo', run: () => setStatus(id, 'new') });
+    }
+    return patch(id, { status }, l => ({
+      ...l,
+      status,
+      ...(status === 'approved' ? { contactedAt: new Date().toISOString(), followUps: 0 } : {}),
+      ...(status === 'new' ? { contactedAt: undefined, followUps: 0 } : {}),
+    }));
+  };
 
   const followedUp = (id: string) => patch(id, { action: 'followed_up' }, l => ({
     ...l,
@@ -199,16 +205,6 @@ export default function Home() {
                 </motion.span>
                 {syncing ? 'Syncing Gmail…' : `Gmail synced ${relativeTime(gmail.lastSync) || 'never'}`}
               </button>
-            ) : gmail ? (
-              <a className="gmail-chip off" href={gmail.configured ? '/api/gmail/connect' : undefined}
-                onClick={e => {
-                  if (!gmail.configured) {
-                    e.preventDefault();
-                    alert('Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel, redeploy, then connect.');
-                  }
-                }}>
-                <Icon name="mail" size={13} />Connect Gmail
-              </a>
             ) : null}
             <Btn className="btn btn-sm btn-ghost-dark" onClick={reset}>Reset</Btn>
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>{running ? 'Running…' : 'Run now'}</Btn>
@@ -312,7 +308,10 @@ export default function Home() {
         {toast && (
           <motion.div className="toast" role="status"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}>
-            {toast}
+            {toast.text}
+            {toast.action && (
+              <button className="toast-action" onClick={() => { toast.action!.run(); setToast(null); }}>{toast.action.label}</button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

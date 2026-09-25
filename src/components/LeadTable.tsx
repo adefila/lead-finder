@@ -99,6 +99,11 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                         </a>
                       )}
                       {status === 'new' && (
+                        <button className="icon-btn" title="Mark as sent" aria-label="Mark as sent" onClick={() => onStatus(l.id, 'approved')}>
+                          <Icon name="check" />
+                        </button>
+                      )}
+                      {status === 'new' && (
                         <button className="icon-btn" title="Skip" aria-label="Skip" onClick={() => onStatus(l.id, 'skipped')}>
                           <Icon name="x" />
                         </button>
