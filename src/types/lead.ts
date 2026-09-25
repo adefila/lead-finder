@@ -28,6 +28,9 @@ export interface Lead {
   contactTitle?: string;
   contactPhone?: string;
   contactLinks?: ContactLinks;
+  // When the lead was last touched (first contact or latest follow-up)
+  contactedAt?: string;
+  followUps?: number;
   // In-memory only during a cron run: visible text from the business's site, used to find the owner's name
   siteText?: string;
 }

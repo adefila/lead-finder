@@ -54,14 +54,8 @@ export async function saveLeads(leads: Lead[]): Promise<void> {
   else console.log(`[supabase] Saved ${leads.length} leads`);
 }
 
-export async function getLeads(limit = 1000): Promise<Lead[]> {
-  const { data, error } = await db()
-    .from('leads')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) { console.error('[supabase] getLeads:', error); return []; }
-  return (data ?? []).map((r: Record<string, unknown>) => ({
+function rowToLead(r: Record<string, unknown>): Lead {
+  return {
     id: String(r.id),
     source: r.source as Lead['source'],
     title: String(r.title ?? ''),
@@ -78,11 +72,42 @@ export async function getLeads(limit = 1000): Promise<Lead[]> {
     contactTitle: r.contact_title ? String(r.contact_title) : undefined,
     contactPhone: r.contact_phone ? String(r.contact_phone) : undefined,
     contactLinks: (r.contact_links as Lead['contactLinks']) ?? undefined,
-  }));
+    contactedAt: r.contacted_at ? String(r.contacted_at) : undefined,
+    followUps: Number(r.follow_ups ?? 0),
+  };
+}
+
+export async function getLeads(limit = 1000): Promise<Lead[]> {
+  const { data, error } = await db()
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('[supabase] getLeads:', error); return []; }
+  return (data ?? []).map(rowToLead);
+}
+
+export async function getLeadById(id: string): Promise<Lead | null> {
+  const { data, error } = await db().from('leads').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return rowToLead(data);
 }
 
 export async function updateLeadStatus(id: string, status: LeadStatus): Promise<string | null> {
-  const { error } = await db().from('leads').update({ status }).eq('id', id);
+  const patch: Record<string, unknown> = { status };
+  if (status === 'approved') Object.assign(patch, { contacted_at: new Date().toISOString(), follow_ups: 0 });
+  if (status === 'new') Object.assign(patch, { contacted_at: null, follow_ups: 0 });
+  const { error } = await db().from('leads').update(patch).eq('id', id);
+  return error ? error.message : null;
+}
+
+export async function markFollowedUp(id: string): Promise<string | null> {
+  const lead = await getLeadById(id);
+  if (!lead) return 'Lead not found';
+  const { error } = await db()
+    .from('leads')
+    .update({ follow_ups: (lead.followUps ?? 0) + 1, contacted_at: new Date().toISOString() })
+    .eq('id', id);
   return error ? error.message : null;
 }
 

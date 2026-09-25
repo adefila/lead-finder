@@ -237,6 +237,47 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
   });
 }
 
+// ─── Follow-ups ──────────────────────────────────────────────────────────────
+
+export async function draftFollowUp(lead: Lead): Promise<string> {
+  const number = (lead.followUps ?? 0) + 1;
+  const since = lead.contactedAt
+    ? Math.max(1, Math.round((Date.now() - new Date(lead.contactedAt).getTime()) / 86400000))
+    : null;
+  const channel = lead.source === 'freelancer' ? 'a Freelancer.com message on his bid'
+    : lead.contactEmail ? 'an email reply in the same thread' : 'a short DM';
+  const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
+
+  const prompt = `Samuel Adefila contacted this lead${since ? ` ${since} days ago` : ''} and hasn't heard back. Write follow-up number ${number} of 2, sent as ${channel}.
+
+Lead: ${lead.title} (${lead.company})${person ? `\nPerson: ${person}${lead.contactTitle ? `, ${lead.contactTitle}` : ''}` : ''}
+What we know: ${lead.description.slice(0, 400)}
+
+His first message:
+"""
+${lead.proposal ?? ''}
+"""
+
+Rules:
+- No subject line. Start with the same greeting style as the first message.
+- Follow-up 1: under 60 words. Don't repeat the first message. Add one new, useful thing (a quick idea for their homepage, or offer to send the free mockup this week). End with a yes/no question.
+- Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
+- Never guilt-trip ("just bumping this", "did you see my email"). No fake urgency.
+- Sign off "Samuel".
+
+${VOICE}
+
+Return ONLY the message text.`;
+
+  const msg = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const c = msg.content[0];
+  return c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
+}
+
 // Keep backward compat
 export async function generateAllProposals(jobs: Lead[]): Promise<Lead[]> {
   return generateColdEmails(jobs);

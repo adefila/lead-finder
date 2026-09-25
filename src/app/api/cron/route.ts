@@ -3,7 +3,8 @@ import { fetchAllJobs } from '@/lib/sources';
 import { fetchApolloLeads } from '@/lib/apollo';
 import { fetchPlacesLeads } from '@/lib/places';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
-import { getSentIds, markSent, getExistingLeadIds, saveLeads } from '@/lib/supabase';
+import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
+import { needsAttention } from '@/lib/followup';
 import { sendLeadsEmail } from '@/lib/email';
 
 export const maxDuration = 300;
@@ -47,8 +48,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);
-    if (jobsWithEmails.length > 0) {
-      await sendLeadsEmail(jobsWithEmails);
+    const followUpsDue = (await getLeads()).filter(needsAttention).length;
+    if (jobsWithEmails.length > 0 || followUpsDue > 0) {
+      await sendLeadsEmail(jobsWithEmails, followUpsDue);
       await markSent(jobsWithEmails.map(j => j.id));
     }
 
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         apolloContacts: apolloLeads.length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
+        followUpsDue,
       },
       durationMs,
     });

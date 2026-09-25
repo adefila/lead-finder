@@ -74,7 +74,7 @@ function leadCard(lead: Lead): string {
   </div>`;
 }
 
-function buildEmailHtml(leads: Lead[]): string {
+function buildEmailHtml(leads: Lead[], followUpsDue: number): string {
   const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const withEmail = leads.filter(l => l.contactEmail);
   const rest = leads.filter(l => !l.contactEmail);
@@ -90,6 +90,7 @@ function buildEmailHtml(leads: Lead[]): string {
       <div style="font-size:20px;font-weight:800;color:#fff">${leads.length} new lead${leads.length === 1 ? '' : 's'}</div>
       <div style="font-size:13px;color:#9a9a9a;margin-top:4px">${date} &middot; ${withEmail.length} ready to email</div>
     </div>
+    ${followUpsDue ? `<a href="https://lead-finder-one-self.vercel.app" style="display:block;margin-top:12px;padding:14px 18px;background:#fff4e5;border:1px solid #f3d9b1;color:#6b4000;font-size:14px;text-decoration:none"><strong>${followUpsDue} follow-up${followUpsDue === 1 ? '' : 's'} due.</strong> Open the Follow up tab to send them.</a>` : ''}
     ${section('Ready to email', withEmail)}
     ${section('Bid, call or DM', rest)}
     <div style="text-align:center;padding:16px 0;font-size:12px;color:#9a9a9a">Lead Finder &middot; lead-finder-one-self.vercel.app</div>
@@ -97,10 +98,14 @@ function buildEmailHtml(leads: Lead[]): string {
 </body></html>`;
 }
 
-export async function sendLeadsEmail(leads: Lead[]): Promise<void> {
+export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<void> {
   const sorted = [...leads].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const ready = leads.filter(l => l.contactEmail).length;
-  const subject = `${leads.length} new leads, ${ready} ready to email`;
+  const parts = [
+    leads.length ? `${leads.length} new leads, ${ready} ready to email` : '',
+    followUpsDue ? `${followUpsDue} follow-up${followUpsDue === 1 ? '' : 's'} due` : '',
+  ].filter(Boolean);
+  const subject = parts.join(' · ');
 
   console.log(`[email] Sending digest with ${leads.length} leads...`);
   const resend = new Resend(process.env.RESEND_API_KEY);
@@ -108,7 +113,7 @@ export async function sendLeadsEmail(leads: Lead[]): Promise<void> {
     from: 'Lead Finder <onboarding@resend.dev>',
     to: 'adefilasamuel929@gmail.com',
     subject,
-    html: buildEmailHtml(sorted),
+    html: buildEmailHtml(sorted, followUpsDue),
   });
 
   if (error) {
