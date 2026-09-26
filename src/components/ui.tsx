@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, Check, Clock, Eye, EyeOff, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, Minus, Phone,
+  ArrowLeft, ArrowRight, Check, Clock, Eye, EyeOff, LogOut, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, Minus, Phone,
   RefreshCw, Search, Send, Sparkles, Trash2, Undo2, X, type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +30,7 @@ const ICONS = {
   clock: Clock,
   eye: Eye,
   eyeOff: EyeOff,
+  logout: LogOut,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

@@ -67,7 +67,6 @@ export default function Home() {
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
   const [sendingNow, setSendingNow] = useState(false);
-  const [testingMail, setTestingMail] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
@@ -202,18 +201,9 @@ export default function Home() {
 
   useEffect(() => { refreshOutbox(); }, [refreshOutbox]);
 
-  async function testMail() {
-    setTestingMail(true);
-    try {
-      const res = await fetch('/api/outbox/test', { method: 'POST', headers: { 'x-manual': 'true' } });
-      const r = await res.json() as { ok?: boolean; to?: string; error?: string };
-      if (r.ok) toast(`Test email sent to ${r.to} and inbox access works. Check your inbox.`, { tone: 'success' });
-      else fail(`Mail test failed: ${r.error}`);
-    } catch (e) {
-      fail(`Mail test failed: ${String(e)}`);
-    } finally {
-      setTestingMail(false);
-    }
+  async function logOut() {
+    await fetch('/api/login', { method: 'DELETE' }).catch(() => null);
+    window.location.href = '/login';
   }
 
   async function sendNextNow() {
@@ -222,7 +212,7 @@ export default function Home() {
       const res = await fetch('/api/outbox', { headers: { 'x-manual': 'true' } });
       const r = await res.json() as OutboxRun;
       if (r.error) fail(`Send failed: ${r.error}`);
-      else if (r.sent) toast(`Sent ${r.sent.kind === 'follow-up' ? 'follow-up to' : 'to'} ${r.sent.title}`, { tone: 'success' });
+      else if (r.sent) toast(r.sent.kind === 'test' ? `Test email for ${r.sent.title} sent to your inbox` : `Sent ${r.sent.kind === 'follow-up' ? 'follow-up to' : 'to'} ${r.sent.title}`, { tone: 'success' });
       else toast(r.skipped ?? 'Nothing to send right now');
       if (r.replies) toast(`${r.replies} repl${r.replies > 1 ? 'ies' : 'y'} found in your inbox`, { tone: 'success' });
       await Promise.all([loadData(), refreshOutbox()]);
@@ -365,12 +355,6 @@ export default function Home() {
                   : `${outbox.queued} queued · ${outbox.sentToday}/${outbox.limit} today`}
               </button>
             )}
-            {outbox && (
-              <button className="gmail-chip icon-chip" onClick={testMail} disabled={testingMail}
-                title="Send a test email to yourself" aria-label="Send a test email to yourself">
-                {testingMail ? <Icon name="sync" size={13} /> : <Icon name="mail" size={13} />}
-              </button>
-            )}
             {gmail?.connected ? (
               <button className="gmail-chip" onClick={() => syncGmail(false)} disabled={syncing} title={`Connected as ${gmail.email ?? ''}`}>
                 <motion.span style={{ display: 'grid' }} animate={{ rotate: syncing ? 360 : 0 }}
@@ -381,6 +365,7 @@ export default function Home() {
               </button>
             ) : null}
             <Btn className="btn btn-sm btn-ghost-dark" onClick={reset}>Reset</Btn>
+            <Btn className="btn btn-sm btn-ghost-dark" onClick={logOut} aria-label="Log out" title="Log out"><Icon name="logout" size={14} />Log out</Btn>
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>{running ? 'Running…' : 'Run now'}</Btn>
           </div>
         </div>

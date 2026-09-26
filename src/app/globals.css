@@ -376,7 +376,6 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .note.info-note { background: #eef4ff; color: #1d4ed8; }
 .note.error-note { background: #fdecec; color: #b42318; }
 
-.gmail-chip.icon-chip { padding: 0; width: 30px; justify-content: center; }
 
 /* ── Login ──────────────────────────────── */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }

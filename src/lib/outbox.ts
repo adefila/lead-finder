@@ -7,6 +7,9 @@ import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 15);
+// MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
+// and leaves the lead untouched so the real send still happens later.
+const TEST_MODE = process.env.MAIL_TEST_MODE === 'true';
 const WINDOW_START = 9;
 const WINDOW_END = 16;
 
@@ -49,7 +52,7 @@ export interface OutboxResult {
   replies: number;
   optOuts: number;
   bounced: number;
-  sent?: { id: string; title: string; kind: 'first' | 'follow-up' };
+  sent?: { id: string; title: string; kind: 'first' | 'follow-up' | 'test' };
   skipped?: string;
   error?: string;
 }
@@ -104,6 +107,22 @@ export async function runOutbox(): Promise<OutboxResult> {
 
   // 2. Daily cap.
   if (result.sentToday >= DAILY_LIMIT) return { ...result, skipped: `Daily limit of ${DAILY_LIMIT} reached` };
+
+  if (TEST_MODE) {
+    const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
+    if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
+    const { subject, body } = splitDraft(next.proposal ?? '');
+    await sendMail(cfg, {
+      to: cfg.user,
+      subject: `[Test, would go to ${next.contactEmail}] ${subject || `${next.title} website`}`,
+      text: `Lead Finder test mode. In normal mode this email goes to ${next.contactEmail} (${next.title}). Nothing was sent to them and the lead is unchanged.
+
+----------
+
+${body}`,
+    });
+    return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
+  }
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUp = leads.find(l =>
