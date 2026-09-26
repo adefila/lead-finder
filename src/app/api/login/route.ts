@@ -4,11 +4,12 @@ import { SESSION_COOKIE, safeEqual, sessionToken } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const expected = process.env.DASHBOARD_PASSWORD;
+  // Trim both sides: a pasted env value often carries a stray space or line break.
+  const expected = process.env.DASHBOARD_PASSWORD?.trim();
   if (!expected) return NextResponse.json({ error: 'Set DASHBOARD_PASSWORD in Vercel first' }, { status: 500 });
 
   const { password } = await req.json().catch(() => ({})) as { password?: unknown };
-  const given = typeof password === 'string' ? password : '';
+  const given = typeof password === 'string' ? password.trim() : '';
 
   if (!safeEqual(await sessionToken(given), await sessionToken(expected))) {
     await new Promise(r => setTimeout(r, 1000));

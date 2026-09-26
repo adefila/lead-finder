@@ -9,7 +9,7 @@ const TIMER_ROUTES = ['/api/cron', '/api/outbox'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const password = process.env.DASHBOARD_PASSWORD;
+  const password = process.env.DASHBOARD_PASSWORD?.trim();
   if (!password) return NextResponse.next();
 
   if (PUBLIC.some(p => pathname === p || pathname.startsWith(`${p}/`))) return NextResponse.next();

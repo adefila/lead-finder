@@ -2,12 +2,13 @@
 
 import { useState, type FormEvent } from 'react';
 import { motion } from 'motion/react';
-import { EASE } from '@/components/ui';
+import { EASE, Icon } from '@/components/ui';
 
 export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [show, setShow] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -34,11 +35,15 @@ export default function LoginPage() {
       <motion.form className="login-card" onSubmit={submit}
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}>
         <div className="brand login-brand">Lead Finder</div>
-        <label>
-          <span className="field-label">Password</span>
-          <input className="field" type="password" autoFocus autoComplete="current-password" value={password}
-            onChange={e => { setPassword(e.target.value); setError(''); }} aria-invalid={!!error} />
-        </label>
+        <label htmlFor="password" className="login-label">Password</label>
+        <div className="password-field">
+          <input id="password" className="field" type={show ? 'text' : 'password'} autoFocus autoComplete="current-password"
+            value={password} onChange={e => { setPassword(e.target.value); setError(''); }} aria-invalid={!!error} />
+          <button type="button" className="reveal-btn" onClick={() => setShow(s => !s)}
+            aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} title={show ? 'Hide password' : 'Show password'}>
+            <Icon name={show ? 'eyeOff' : 'eye'} size={16} />
+          </button>
+        </div>
         {error && <p className="login-error" role="alert">{error}</p>}
         <button className="btn btn-primary login-btn" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Log in'}</button>
       </motion.form>

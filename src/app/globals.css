@@ -384,3 +384,18 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .login-brand { color: var(--fg); text-align: center; margin-bottom: 6px; }
 .login-error { font-size: 13px; color: #b42318; }
 .login-btn { width: 100%; height: 38px; }
+
+.login-label {
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-2);
+  margin-bottom: -6px;
+}
+.password-field { position: relative; }
+.password-field .field { padding-right: 42px; height: 40px; }
+.reveal-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 6px;
+  background: none; color: var(--fg-3); cursor: pointer;
+}
+.reveal-btn:hover { color: var(--fg); background: #f2f2f2; }
+.reveal-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 171, 74, 0.2); }
