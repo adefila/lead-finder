@@ -20,18 +20,6 @@ type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { t
 type GmailStatus = { configured: boolean; connected: boolean; email?: string | null; lastSync?: string | null };
 type SyncResult = { connected: boolean; contacted: number; followUps: number; replied: number; error?: string };
 
-const EMPTY_TEXT: Record<View, string> = {
-  new: 'Click Run now to find new leads.',
-  approved: 'Leads you contact show up here.',
-  followup: 'Nothing due. Follow-ups appear 3 days after you contact someone.',
-  replied: 'Leads that reply show up here.',
-  won: 'Projects you win show up here.',
-  lost: 'Leads you close as lost show up here.',
-  skipped: 'Leads you skip show up here. You can restore them anytime.',
-  all: 'No leads yet. Click Run now.',
-  queued: 'Queue leads with an email and Lead Finder sends them from your inbox, a few each weekday.',
-};
-
 const PAGE_SIZE = 15;
 
 // Page indexes to show, with null for a gap: 0 … 4 5 6 … 11
@@ -476,7 +464,7 @@ export default function Home() {
               selectedId={selectedId}
               onOpen={setSelectedId}
               onStatus={setStatus}
-              emptyText={search ? 'No leads match your search.' : EMPTY_TEXT[view]}
+              emptyKind={search.trim() ? 'search' : view}
               selection={selection}
               onToggle={toggle}
               onToggleAll={toggleAll}

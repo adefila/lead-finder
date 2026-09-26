@@ -7,6 +7,7 @@ import {
   scoreClass, shortDate, statusOf, type SortKey,
 } from '@/lib/leadview';
 import { Checkbox, Icon } from '@/components/ui';
+import { EmptyState, type EmptyKind } from '@/components/EmptyState';
 
 interface Props {
   leads: Lead[];
@@ -15,7 +16,7 @@ interface Props {
   selectedId: string | null;
   onOpen: (id: string) => void;
   onStatus: (id: string, status: LeadStatus) => void;
-  emptyText: string;
+  emptyKind: EmptyKind;
   pageKey: number;
   selection: Set<string>;
   onToggle: (id: string) => void;
@@ -36,11 +37,11 @@ function SortHeader({ label, k, sort, onSort, className }: {
   );
 }
 
-export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyText, pageKey, selection, onToggle, onToggleAll }: Props) {
+export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, pageKey, selection, onToggle, onToggleAll }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
   const all = leads.length > 0 && picked === leads.length;
 
-  if (!leads.length) return <div className="empty"><strong>Nothing here</strong>{emptyText}</div>;
+  if (!leads.length) return <EmptyState kind={emptyKind} />;
   return (
     <div className="table-wrap">
       <table className="crm">

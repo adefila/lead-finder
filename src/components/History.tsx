@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import { SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, dayKey, statusOf } from '@/lib/leadview';
 import { EASE } from '@/components/ui';
+import { EmptyState } from '@/components/EmptyState';
 
 export function History({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => void }) {
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export function History({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string)
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [leads]);
 
-  if (!days.length) return <div className="empty"><strong>No history yet</strong>Runs will show up here by day.</div>;
+  if (!days.length) return <EmptyState kind="history" />;
 
   return (
     <div className="panel">

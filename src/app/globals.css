@@ -398,3 +398,28 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 }
 .reveal-btn:hover { color: var(--fg); background: #f2f2f2; }
 .reveal-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 171, 74, 0.2); }
+
+/* ── Empty states ───────────────────────── */
+.empty-state { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 48px 20px 72px; }
+.empty-art { width: min(320px, 78vw); height: auto; margin-bottom: 8px; overflow: visible; }
+.empty-title { font-size: 18px; font-weight: 600; color: var(--fg); letter-spacing: -0.2px; }
+.empty-body { font-size: 13px; color: var(--fg-3); max-width: 340px; line-height: 1.6; }
+.ill-halo { fill: #f1f6f3; }
+.ill-shadow { fill: #ececec; }
+.ill-line, .ill-card, .ill-soft, .ill-accent, .ill-accent-thin, .ill-trail, .ill-check, .ill-on-accent, .ill-spark {
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+.ill-line { stroke: #1a1a1a; stroke-width: 2.2; }
+.ill-fill { fill: #ffffff; }
+.ill-card { stroke: #1a1a1a; stroke-width: 2.2; fill: #ffffff; }
+.ill-soft { stroke: #c9ccd1; stroke-width: 2.4; }
+.ill-accent { stroke: var(--green); stroke-width: 3; }
+.ill-accent-thin { stroke: var(--green); stroke-width: 2.2; }
+.ill-trail { stroke: #b8bcc2; stroke-width: 2; stroke-dasharray: 3 6; }
+.ill-dot { fill: var(--green); }
+.ill-badge { fill: var(--green); }
+.ill-badge-shape { fill: var(--green); stroke: none; }
+.ill-check, .ill-on-accent { stroke: #ffffff; stroke-width: 2.6; }
+.ill-accent-box { fill: var(--green-tint); stroke: var(--green); stroke-width: 2; }
+.ill-spark { stroke: #c9ccd1; stroke-width: 2; }
+.ill-ghost { fill: none; stroke: #d6d8dc; stroke-width: 2; stroke-dasharray: 4 5; }
