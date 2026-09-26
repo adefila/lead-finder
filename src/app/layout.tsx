@@ -10,6 +10,7 @@ const script = Dancing_Script({ subsets: ['latin'], weight: ['700'], variable: '
 export const metadata: Metadata = {
   title: 'Lead Finder',
   description: 'Website leads for Samuel Adefila',
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
