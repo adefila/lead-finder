@@ -374,3 +374,5 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .gmail-chip.muted-chip { color: #8d8d8d; }
 .note.info-note { background: #eef4ff; color: #1d4ed8; }
 .note.error-note { background: #fdecec; color: #b42318; }
+
+.gmail-chip.icon-chip { padding: 0; width: 30px; justify-content: center; }

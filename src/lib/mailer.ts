@@ -92,3 +92,17 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   }
   return found;
 }
+
+// Proves both halves work: sends a note to yourself over SMTP, then opens the inbox over IMAP.
+export async function testMailSetup(cfg: MailConfig): Promise<{ sent: boolean; inbox: boolean }> {
+  await sendMail(cfg, {
+    to: cfg.user,
+    subject: 'Lead Finder test email',
+    text: 'This is a test from Lead Finder. If you can read this, sending works.\n\nYou can delete this email.',
+  });
+  const client = new ImapFlow({ host: cfg.imapHost, port: 993, secure: true, auth: { user: cfg.user, pass: cfg.pass }, logger: false });
+  await client.connect();
+  await client.mailboxOpen('INBOX');
+  await client.logout().catch(() => undefined);
+  return { sent: true, inbox: true };
+}
