@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, VIEWS, defaultSort, inView, matchesSearch, relativeTime, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, VIEWS, defaultSort, inView, matchesSearch, sortLeads, statusOf,
   type SortKey, type View,
 } from '@/lib/leadview';
 import { Funnel } from '@/components/Funnel';
@@ -17,8 +17,6 @@ import { useFeedback } from '@/components/feedback';
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number };
 type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { title: string; kind: string }; skipped?: string; error?: string };
-type GmailStatus = { configured: boolean; connected: boolean; email?: string | null; lastSync?: string | null };
-type SyncResult = { connected: boolean; contacted: number; followUps: number; replied: number; error?: string };
 
 const PAGE_SIZE = 15;
 
@@ -52,10 +50,8 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
-  const [gmail, setGmail] = useState<GmailStatus | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
   const [sendingNow, setSendingNow] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
   const fail = useCallback((text: string) => toast(text, { tone: 'error' }), [toast]);
@@ -68,43 +64,11 @@ export default function Home() {
     setLoading(false);
   }, []);
 
-  const syncGmail = useCallback(async (quiet: boolean) => {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/gmail', { method: 'POST' });
-      const r = await res.json() as SyncResult;
-      if (r.error) { fail(`Gmail sync failed: ${r.error}`); return; }
-      const changed = r.contacted + r.followUps + r.replied;
-      if (changed) {
-        await loadData();
-        const parts = [
-          r.contacted && `${r.contacted} moved to Contacted`,
-          r.followUps && `${r.followUps} follow-up${r.followUps > 1 ? 's' : ''} logged`,
-          r.replied && `${r.replied} repl${r.replied > 1 ? 'ies' : 'y'} found`,
-        ].filter(Boolean);
-        notify(`Gmail: ${parts.join(', ')}`);
-      } else if (!quiet) {
-        notify('Gmail is up to date');
-      }
-      setGmail(g => (g ? { ...g, lastSync: new Date().toISOString() } : g));
-    } finally {
-      setSyncing(false);
-    }
-  }, [loadData, notify, fail]);
-
   useEffect(() => {
     (async () => {
       await loadData();
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('gmail') === 'connected') notify('Gmail connected. Checking your sent mail…');
-      if (params.get('gmail') === 'error') fail(`Gmail not connected: ${params.get('reason') ?? 'unknown error'}`);
-      if (params.has('gmail')) window.history.replaceState(null, '', '/');
-
-      const status = await fetch('/api/gmail').then(r => r.json() as Promise<GmailStatus>).catch(() => null);
-      setGmail(status);
-      if (status?.connected) syncGmail(params.get('gmail') !== 'connected');
     })();
-  }, [loadData, notify, fail, syncGmail]);
+  }, [loadData]);
 
   async function runNow() {
     setRunning(true);
@@ -343,15 +307,6 @@ export default function Home() {
                   : `${outbox.queued} queued · ${outbox.sentToday}/${outbox.limit} today`}
               </button>
             )}
-            {gmail?.connected ? (
-              <button className="gmail-chip" onClick={() => syncGmail(false)} disabled={syncing} title={`Connected as ${gmail.email ?? ''}`}>
-                <motion.span style={{ display: 'grid' }} animate={{ rotate: syncing ? 360 : 0 }}
-                  transition={syncing ? { repeat: Infinity, duration: 0.9, ease: 'linear' } : { duration: 0 }}>
-                  <Icon name="sync" size={13} />
-                </motion.span>
-                {syncing ? 'Syncing Gmail…' : `Gmail synced ${relativeTime(gmail.lastSync) || 'never'}`}
-              </button>
-            ) : null}
             <Btn className="btn btn-sm btn-ghost-dark" onClick={reset}>Reset</Btn>
             <Btn className="btn btn-sm btn-ghost-dark" onClick={logOut} aria-label="Log out" title="Log out"><Icon name="logout" size={14} />Log out</Btn>
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>{running ? 'Running…' : 'Run now'}</Btn>

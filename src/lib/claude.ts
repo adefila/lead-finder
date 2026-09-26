@@ -1,7 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import type { Post } from '@/types/post';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -59,8 +58,6 @@ For source "osm" (a local business from OpenStreetMap whose website is online bu
 
 For source "companies_house" (a UK company registered in the last few weeks): a brand-new customer-facing business with no website is a strong lead (70-90). Higher-ticket trades (dental, legal, estate agency, architects, clinics) score higher. hasEmail adds points; a named director is workable via LinkedIn. Deduct if the "company" looks like a holding or shell company.
 
-For source "apollo": founders/marketers at small companies; score on how likely their company needs a better site.
-
 Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
 
 Leads:
@@ -91,12 +88,11 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'apollo' | 'freelancer' | 'places' | 'newco';
+type DraftKind = 'freelancer' | 'places' | 'newco';
 
 function draftKind(l: Lead): DraftKind {
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
-  if (l.source === 'apollo') return 'apollo';
   return 'freelancer';
 }
 
@@ -117,9 +113,6 @@ function angleFor(l: Lead, slot: number): string {
 }
 
 function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
-  if (kind === 'apollo') {
-    return `CONTACT ${i + 1} (ID: ${l.id}):\nName: ${l.contactName}\nTitle: ${l.contactTitle}\nCompany: ${l.company}\nCompany description: ${l.description.slice(0, 400)}\nWebsite: ${l.url}`;
-  }
   if (kind === 'places') {
     const channel = l.contactEmail ? 'EMAIL' : 'DM';
     return [
@@ -159,20 +152,6 @@ const VOICE = `Voice (strict, applies to every message):
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
 const PROMPTS: Record<DraftKind, string> = {
-  apollo: `Draft a short personalised cold email from Samuel Adefila to each person below.
-
-Rules:
-- Line 1 is "Subject: ..." (lowercase-feeling, under 7 words, specific to them), then a blank line, then the body
-- Open with "Hi [FirstName],"
-- Under 110 words
-- Mention something specific about their company, then what Samuel would do for their site
-- End with one easy question
-- Sign off "Samuel"
-
-${VOICE}
-
-Return ONLY valid JSON: {"ID": "Subject: ...\\n\\nBody...", ...}`,
-
   freelancer: `Write a Freelancer.com bid proposal from Samuel Adefila for each project below. The client reads dozens of bids, so the first line must prove Samuel read their brief.
 
 Rules:
@@ -269,7 +248,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['freelancer', 'places', 'newco', 'apollo'] as DraftKind[]) {
+  for (const kind of ['freelancer', 'places', 'newco'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {
@@ -335,117 +314,4 @@ Return ONLY the message text.`;
   });
   const c = msg.content[0];
   return c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
-}
-
-// Keep backward compat
-export async function generateAllProposals(jobs: Lead[]): Promise<Lead[]> {
-  return generateColdEmails(jobs);
-}
-
-// ─── Post scoring + reply drafts ─────────────────────────────────────────────
-
-export async function scoreAndDraftPosts(posts: Post[]): Promise<Post[]> {
-  if (!posts.length) return [];
-  console.log(`[claude] Scoring ${posts.length} posts...`);
-
-  const client = getClient();
-  const input = posts.map(p => ({ id: p.id, title: p.title, snippet: p.snippet.slice(0, 300), platform: p.platform }));
-
-  const scoreMsg = await client.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    messages: [{
-      role: 'user',
-      content: `Score these posts 0-100 for how good a reply opportunity they are for Samuel Adefila.
-
-Samuel: ${SAMUEL}
-
-High score (70-100): person/startup ACTIVELY HIRING or requesting a web designer, landing page, Framer/Webflow site, or website redesign; a client project on Upwork/Freelancer; "I need a website built"; just launched on Product Hunt (potential client needing a better site).
-Medium score (30-69): discussions about web design tools, startup websites, design trends — could naturally prompt Samuel to reach out.
-Low score (0-29): general tech/engineering discussion with no web design angle, no hiring intent, fully off-topic — AI tools, backend APIs, mobile apps.
-
-Return ONLY JSON array: [{"id": "...", "score": 0-100}]
-
-Posts:
-${JSON.stringify(input)}`,
-    }],
-  });
-
-  let scored: { id: string; score: number }[] = [];
-  try {
-    const c = scoreMsg.content[0];
-    if (c.type === 'text') {
-      const match = c.text.match(/\[[\s\S]*\]/);
-      if (match) scored = JSON.parse(match[0]);
-    }
-  } catch {
-    console.error('[claude] Post scoring parse failed, using fallback scores');
-  }
-
-  // Fallback: if scoring failed or returned nothing, pass all posts at 50
-  const map = scored.length
-    ? new Map(scored.map(s => [s.id, s.score]))
-    : new Map(posts.map(p => [p.id, 50]));
-
-  const filtered = posts
-    .map(p => ({ ...p, score: map.get(p.id) ?? 50 }))
-    .filter(p => (p.score ?? 0) >= 20)
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .slice(0, 40);
-
-  console.log(`[claude] ${filtered.length} posts passed filter. Drafting replies...`);
-
-  const BATCH = 5;
-  const withReplies = [...filtered];
-
-  for (let i = 0; i < filtered.length; i += BATCH) {
-    const batch = filtered.slice(i, i + BATCH);
-    const block = batch
-      .map((p, n) => `POST ${n + 1} (ID: ${p.id}):\nPlatform: ${p.platform}\nTitle: ${p.title}\nContent: ${p.snippet.slice(0, 350)}`)
-      .join('\n\n---\n\n');
-
-    try {
-      const msg = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: `Write a short, helpful reply Samuel Adefila can post on ${batch[0].platform === 'reddit' ? 'Reddit' : 'Hacker News'} for each post.
-
-Samuel: ${SAMUEL}
-
-Rules:
-- 2-4 sentences max
-- Lead with genuine insight or value first
-- Naturally mention Samuel's work at the end if relevant (not forced)
-- Sound like a real person, not marketing
-- Don't start with "As a Framer developer..."
-- Match the platform's casual tone
-- No emojis
-
-Return ONLY JSON, no explanation: {"POST_ID": "reply text", ...}
-
-${block}`,
-        }],
-      });
-
-      const c = msg.content[0];
-      if (c.type === 'text') {
-        const match = c.text.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]) as Record<string, string>;
-          for (const post of batch) {
-            const idx = withReplies.findIndex(r => r.id === post.id);
-            if (idx !== -1 && parsed[post.id]) {
-              withReplies[idx] = { ...withReplies[idx], replyDraft: parsed[post.id] };
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error(`[claude] Reply batch error:`, e);
-    }
-  }
-
-  return withReplies;
 }

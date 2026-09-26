@@ -2,11 +2,6 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { followUpState, needsAttention, MAX_FOLLOW_UPS } from '@/lib/followup';
 
 export const SOURCE_LABEL: Record<Lead['source'], string> = {
-  upwork: 'Upwork',
-  remoteok: 'RemoteOK',
-  remotive: 'Remotive',
-  weworkremotely: 'We Work Remotely',
-  apollo: 'Apollo',
   freelancer: 'Freelancer',
   places: 'Local business',
   osm: 'OpenStreetMap',

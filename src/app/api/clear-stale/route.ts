@@ -19,7 +19,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const db = createClient(url, key);
 
   // Wipe the entire leads table and sent_jobs dedup table so the next
-  // cron run treats every Upwork/Freelancer/Apollo lead as fresh.
+  // cron run treats every lead as fresh.
   const { count: leadsDeleted, error: e1 } = await db
     .from('leads')
     .delete({ count: 'exact' })

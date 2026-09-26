@@ -4,11 +4,6 @@ import { splitDraft } from '@/lib/compose';
 import { APP_URL, sendLink } from '@/lib/tracking';
 
 const SOURCE_LABEL: Record<Lead['source'], string> = {
-  upwork: 'Upwork',
-  remoteok: 'RemoteOK',
-  remotive: 'Remotive',
-  weworkremotely: 'We Work Remotely',
-  apollo: 'Apollo',
   freelancer: 'Freelancer',
   places: 'Local business',
   osm: 'OpenStreetMap',

@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllJobs } from '@/lib/sources';
-import { fetchApolloLeads } from '@/lib/apollo';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
-import { syncGmail } from '@/lib/gmail';
 import { sendLeadsEmail } from '@/lib/email';
 
 export const maxDuration = 300;
@@ -27,14 +25,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boardJobs, placesLeads, osmLeads, companyLeads, apolloLeads] = await Promise.all([
+    const [boardJobs, placesLeads, osmLeads, companyLeads] = await Promise.all([
       fetchAllJobs(),
       fetchPlacesLeads(),
       fetchOsmLeads(),
       fetchCompaniesHouseLeads(),
-      fetchApolloLeads(),
     ]);
-    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...apolloLeads];
+    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -65,7 +62,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);
-    const gmail = await syncGmail();
     const followUpsDue = (await getLeads()).filter(needsAttention).length;
     if (jobsWithEmails.length > 0 || followUpsDue > 0) {
       await sendLeadsEmail(jobsWithEmails, followUpsDue);
@@ -83,11 +79,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
         withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
-        apolloContacts: apolloLeads.length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
         followUpsDue,
-        ...(gmail.connected ? { gmailContacted: gmail.contacted, gmailReplies: gmail.replied } : {}),
       },
       durationMs,
     });

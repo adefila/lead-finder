@@ -1,6 +1,5 @@
 import { createClient as sb } from '@supabase/supabase-js';
 import type { Lead, LeadStatus } from '@/types/lead';
-import type { Post } from '@/types/post';
 import { humanize } from '@/lib/compose';
 
 function db() {
@@ -137,16 +136,6 @@ export async function updateLead(id: string, patch: Record<string, unknown>): Pr
   return error ? explain(error.message) : null;
 }
 
-export async function getSetting(key: string): Promise<string | null> {
-  const { data } = await db().from('app_settings').select('value').eq('key', key).maybeSingle();
-  return (data as { value?: string } | null)?.value ?? null;
-}
-
-export async function setSetting(key: string, value: string): Promise<void> {
-  const { error } = await db().from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  if (error) throw new Error(`setSetting ${key}: ${error.message}`);
-}
-
 export async function deleteLeads(ids: string[]): Promise<string | null> {
   const { error } = await db().from('leads').delete().in('id', ids);
   if (error) return explain(error.message);
@@ -163,56 +152,4 @@ export async function markFollowedUp(id: string): Promise<string | null> {
     .update({ follow_ups: (lead.followUps ?? 0) + 1, contacted_at: new Date().toISOString() })
     .eq('id', id);
   return error ? explain(error.message) : null;
-}
-
-// ─── Posts ───────────────────────────────────────────────────────────────────
-
-export async function getExistingPostIds(): Promise<string[]> {
-  const since = new Date(Date.now() - 14 * 86400000).toISOString();
-  const { data } = await db().from('posts').select('id').gte('created_at', since);
-  return (data ?? []).map((r: { id: string }) => r.id);
-}
-
-export async function savePosts(posts: Post[]): Promise<void> {
-  if (!posts.length) return;
-  const rows = posts.map(p => ({
-    id: p.id,
-    platform: p.platform,
-    url: p.url,
-    title: p.title,
-    snippet: p.snippet.slice(0, 600),
-    author: p.author ?? '',
-    score: p.score ?? 0,
-    reply_draft: p.replyDraft ?? '',
-    status: 'new',
-  }));
-  const { error } = await db().from('posts').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-  if (error) console.error('[supabase] savePosts:', error);
-  else console.log(`[supabase] Saved ${posts.length} posts`);
-}
-
-export async function getPosts(limit = 100): Promise<Post[]> {
-  const { data, error } = await db()
-    .from('posts')
-    .select('*')
-    .not('status', 'eq', 'done')
-    .order('score', { ascending: false })
-    .limit(limit);
-  if (error) { console.error('[supabase] getPosts:', error); return []; }
-  return (data ?? []).map((r: Record<string, unknown>) => ({
-    id: String(r.id),
-    platform: r.platform as Post['platform'],
-    url: String(r.url ?? ''),
-    title: String(r.title ?? ''),
-    snippet: String(r.snippet ?? ''),
-    author: String(r.author ?? ''),
-    score: Number(r.score ?? 0),
-    replyDraft: String(r.reply_draft ?? ''),
-    status: r.status as Post['status'],
-    createdAt: String(r.created_at ?? ''),
-  }));
-}
-
-export async function updatePostStatus(id: string, status: Post['status']): Promise<void> {
-  await db().from('posts').update({ status }).eq('id', id);
 }

@@ -17,7 +17,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo' | 'freelancer' | 'places' | 'osm' | 'companies_house';
+  source: 'freelancer' | 'places' | 'osm' | 'companies_house';
   postedAt: string;
   createdAt?: string;
   score?: number;
