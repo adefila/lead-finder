@@ -34,6 +34,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
 export type View = 'all' | 'new' | 'queued' | 'approved' | 'followup' | 'replied' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string }[] = [
+  { id: 'all', label: 'All' },
   { id: 'new', label: 'To contact' },
   { id: 'queued', label: 'Queued' },
   { id: 'approved', label: 'Contacted' },
@@ -42,7 +43,6 @@ export const VIEWS: { id: View; label: string }[] = [
   { id: 'won', label: 'Won' },
   { id: 'lost', label: 'Lost' },
   { id: 'skipped', label: 'Skipped' },
-  { id: 'all', label: 'All' },
 ];
 
 export const HEADLINES = ['No website', 'Outdated website', 'Website broken'];
