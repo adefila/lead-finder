@@ -11,9 +11,11 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   apollo: 'Apollo',
   freelancer: 'Freelancer',
   places: 'Local business',
+  osm: 'OpenStreetMap',
+  companies_house: 'New UK company',
 };
 
-const HEADLINES = ['No website', 'Outdated website', 'Website broken'];
+const HEADLINES = ['No website', 'No own website', 'No website yet', 'Outdated website', 'Website broken'];
 
 // Same tokens as the dashboard (globals.css)
 const C = {
@@ -88,7 +90,7 @@ function actions(lead: Lead): string {
 function leadCard(lead: Lead): string {
   const { subject, body } = splitDraft(lead.proposal ?? '');
   const first = lead.description.split('. ')[0];
-  const headline = lead.source === 'places' && HEADLINES.includes(first) ? first : '';
+  const headline = HEADLINES.includes(first) ? first : '';
   const why = headline ? lead.description.slice(headline.length + 2) : lead.description;
   const person = lead.contactName && lead.contactName !== lead.title
     ? `${esc(lead.contactName)}${lead.contactTitle ? `, ${esc(lead.contactTitle)}` : ''}`

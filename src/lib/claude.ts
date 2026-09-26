@@ -55,6 +55,10 @@ For source "places" (a local business found on Google with no website or a weak 
 - hasEmail adds points (easy to reach). No email but a phone number is still workable.
 - Minor issues only (e.g. just an old copyright year) score lower.
 
+For source "osm" (a local business from OpenStreetMap whose website is online but weak): score like "places"; they have no review data, so judge on trade value and how clear the website problems are.
+
+For source "companies_house" (a UK company registered in the last few weeks): a brand-new customer-facing business with no website is a strong lead (70-90). Higher-ticket trades (dental, legal, estate agency, architects, clinics) score higher. hasEmail adds points; a named director is workable via LinkedIn. Deduct if the "company" looks like a holding or shell company.
+
 For source "apollo": founders/marketers at small companies; score on how likely their company needs a better site.
 
 Return ONLY a JSON array, no commentary: [{"id": "...", "score": 0-100}]
@@ -87,10 +91,11 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'apollo' | 'freelancer' | 'places';
+type DraftKind = 'apollo' | 'freelancer' | 'places' | 'newco';
 
 function draftKind(l: Lead): DraftKind {
-  if (l.source === 'places') return 'places';
+  if (l.source === 'places' || l.source === 'osm') return 'places';
+  if (l.source === 'companies_house') return 'newco';
   if (l.source === 'apollo') return 'apollo';
   return 'freelancer';
 }
@@ -126,6 +131,17 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
       `Website: ${l.contactLinks?.website ?? 'none'}`,
       `Findings: ${l.description.slice(0, 500)}`,
       `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
+    ].join('\n');
+  }
+  if (kind === 'newco') {
+    return [
+      `COMPANY ${i + 1} (ID: ${l.id}):`,
+      `Channel: ${l.contactEmail ? 'EMAIL' : 'LINKEDIN'}`,
+      `Company: ${l.title}`,
+      `Trade and town: ${l.company}`,
+      `Director: ${l.contactName ?? 'unknown'}`,
+      `Findings: ${l.description.slice(0, 400)}`,
+      `Site text: ${(l.siteText ?? 'none').slice(0, 1200)}`,
     ].join('\n');
   }
   return `PROJECT ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBudget and bids: ${l.company}\nBrief: ${l.description.slice(0, 700)}`;
@@ -195,6 +211,23 @@ Step 2, write the message.
 ${VOICE}
 
 Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Owner / Founder / Dentist etc, or empty string", "message": "..."}, ...}`,
+
+  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel builds websites.
+
+Rules:
+- Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
+- Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
+- If they have no website yet: most customers will look them up online before getting in touch, so a simple, clean site early on helps them look established from day one.
+- If they have a website with issues: mention ONE issue from the findings in plain words.
+- Offer one easy next step: a free homepage mockup, or a short call.
+- If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
+- If Channel is LINKEDIN: no subject, under 280 characters in total (LinkedIn connection note limit), sign off "Samuel".
+- Close with one short opt-out line when Channel is EMAIL.
+- Never state anything that isn't in the findings.
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`,
 };
 
 type Draft = { message: string; name?: string; role?: string };
@@ -236,7 +269,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['freelancer', 'places', 'apollo'] as DraftKind[]) {
+  for (const kind of ['freelancer', 'places', 'newco', 'apollo'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {

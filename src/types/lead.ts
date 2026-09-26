@@ -5,6 +5,7 @@ export interface ContactLinks {
   twitter?: string;
   instagram?: string;
   facebook?: string;
+  register?: string;
 }
 
 export const LEAD_STATUSES = ['new', 'queued', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
@@ -16,7 +17,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo' | 'freelancer' | 'places';
+  source: 'upwork' | 'remoteok' | 'remotive' | 'weworkremotely' | 'apollo' | 'freelancer' | 'places' | 'osm' | 'companies_house';
   postedAt: string;
   createdAt?: string;
   score?: number;

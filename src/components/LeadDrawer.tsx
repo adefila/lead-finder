@@ -18,7 +18,8 @@ const LINK_LABELS = [
   ['linkedin', 'LinkedIn'],
   ['twitter', 'X'],
   ['website', 'Website'],
-  ['maps', 'Google Maps'],
+  ['maps', 'Map'],
+  ['register', 'Companies House'],
 ] as const;
 
 interface Props {

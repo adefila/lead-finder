@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { analyzeWebsite } from '@/lib/enrich';
+import { analyzeWebsite, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
 
 const DEFAULT_CATEGORIES = [
@@ -124,9 +124,14 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
   let links: Lead['contactLinks'] = { maps: p.googleMapsUri };
   let siteText: string | undefined;
 
+  const platform = p.websiteUri ? platformOf(p.websiteUri) : null;
   if (!p.websiteUri) {
     headline = 'No website';
     issues = ['no website listed on Google'];
+  } else if (platform) {
+    headline = 'No own website';
+    issues = [`their Google listing links to a ${platform.name} page instead of their own website`];
+    links = { ...links, [platform.kind === 'social' && /instagram/i.test(platform.name) ? 'instagram' : platform.kind === 'social' && /facebook/i.test(platform.name) ? 'facebook' : 'website']: p.websiteUri };
   } else {
     const report = await analyzeWebsite(p.websiteUri);
     if (report.reachable === null || (report.reachable && report.issues.length === 0)) return null;

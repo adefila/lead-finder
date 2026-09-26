@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   // Re-read the site so the owner's name can be found again (site text isn't stored).
   const website = lead.contactLinks?.website;
-  if (lead.source === 'places' && website) {
+  if (['places', 'osm', 'companies_house'].includes(lead.source) && website) {
     const report = await analyzeWebsite(website).catch(() => null);
     if (report?.siteText) lead.siteText = report.siteText;
   }

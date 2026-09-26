@@ -148,3 +148,34 @@ export async function analyzeWebsite(url: string): Promise<SiteReport> {
 
   return { reachable: true, emails: unique.slice(0, 3), links, issues, siteText };
 }
+
+// Pages on someone else's platform are not a website of their own.
+const PLATFORMS: { re: RegExp; name: string; kind: 'booking' | 'social' }[] = [
+  { re: /(^|\.)(my)?treatwell\./, name: 'Treatwell', kind: 'booking' },
+  { re: /(^|\.)fresha\.com$/, name: 'Fresha', kind: 'booking' },
+  { re: /(^|\.)booksy\.com$/, name: 'Booksy', kind: 'booking' },
+  { re: /(^|\.)setmore\.com$/, name: 'Setmore', kind: 'booking' },
+  { re: /(^|\.)vagaro\.com$/, name: 'Vagaro', kind: 'booking' },
+  { re: /(^|\.)(square\.site|squareup\.com)$/, name: 'Square', kind: 'booking' },
+  { re: /(^|\.)acuityscheduling\.com$/, name: 'Acuity', kind: 'booking' },
+  { re: /(^|\.)calendly\.com$/, name: 'Calendly', kind: 'booking' },
+  { re: /(^|\.)(timely\.com|gettimely\.com)$/, name: 'Timely', kind: 'booking' },
+  { re: /(^|\.)phorest\.com$/, name: 'Phorest', kind: 'booking' },
+  { re: /(^|\.)opentable\./, name: 'OpenTable', kind: 'booking' },
+  { re: /(^|\.)instagram\.com$/, name: 'Instagram', kind: 'social' },
+  { re: /(^|\.)(facebook\.com|fb\.com)$/, name: 'Facebook', kind: 'social' },
+  { re: /(^|\.)(linktr\.ee|linkin\.bio)$/, name: 'Linktree', kind: 'social' },
+  { re: /(^|\.)tiktok\.com$/, name: 'TikTok', kind: 'social' },
+  { re: /(^|\.)(x\.com|twitter\.com)$/, name: 'X', kind: 'social' },
+  { re: /(^|\.)linkedin\.com$/, name: 'LinkedIn', kind: 'social' },
+  { re: /(^|\.)business\.site$/, name: 'Google business page', kind: 'social' },
+  { re: /(^|\.)yell\.com$/, name: 'Yell', kind: 'social' },
+  { re: /(^|\.)yelp\./, name: 'Yelp', kind: 'social' },
+];
+
+export function platformOf(url: string): { kind: 'booking' | 'social'; name: string } | null {
+  let host: string;
+  try { host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.toLowerCase(); } catch { return null; }
+  const hit = PLATFORMS.find(p => p.re.test(host));
+  return hit ? { kind: hit.kind, name: hit.name } : null;
+}

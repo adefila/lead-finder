@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllJobs } from '@/lib/sources';
 import { fetchApolloLeads } from '@/lib/apollo';
 import { fetchPlacesLeads } from '@/lib/places';
+import { fetchOsmLeads } from '@/lib/osm';
+import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
@@ -25,12 +27,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boardJobs, placesLeads, apolloLeads] = await Promise.all([
+    const [boardJobs, placesLeads, osmLeads, companyLeads, apolloLeads] = await Promise.all([
       fetchAllJobs(),
       fetchPlacesLeads(),
+      fetchOsmLeads(),
+      fetchCompaniesHouseLeads(),
       fetchApolloLeads(),
     ]);
-    const allJobs = [...boardJobs, ...placesLeads, ...apolloLeads];
+    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...apolloLeads];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -39,7 +43,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ]);
 
     const knownLeads = new Set([...sentIds, ...existingLeadIds]);
-    const freshJobs = allJobs.filter(j => !knownLeads.has(j.id));
+    // The same business can come from Google, OpenStreetMap and Companies House: match on website and email.
+    const existing = await getLeads();
+    const seenHosts = new Set(existing.map(l => hostOf(l.contactLinks?.website)).filter(Boolean) as string[]);
+    const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
+    const freshJobs = allJobs.filter(j => {
+      if (knownLeads.has(j.id)) return false;
+      const host = hostOf(j.contactLinks?.website);
+      const email = j.contactEmail?.toLowerCase();
+      if ((host && seenHosts.has(host)) || (email && seenEmails.has(email))) return false;
+      if (host) seenHosts.add(host);
+      if (email) seenEmails.add(email);
+      return true;
+    });
 
     console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
@@ -64,7 +80,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       stats: {
         freelancerProjects: boardJobs.length,
         localBusinesses: placesLeads.length,
-        withEmail: placesLeads.filter(l => l.contactEmail).length,
+        openStreetMap: osmLeads.length,
+        newUkCompanies: companyLeads.length,
+        withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
         apolloContacts: apolloLeads.length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
@@ -78,3 +96,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
   }
 }
+
+function hostOf(url?: string): string | null {
+  if (!url) return null;
+  try { return new URL(url).hostname.replace(/^www\./, '').toLowerCase(); } catch { return null; }
+}
+

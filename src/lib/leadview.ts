@@ -9,6 +9,8 @@ export const SOURCE_LABEL: Record<Lead['source'], string> = {
   apollo: 'Apollo',
   freelancer: 'Freelancer',
   places: 'Local business',
+  osm: 'OpenStreetMap',
+  companies_house: 'New UK company',
 };
 
 export const STATUS_LABEL: Record<LeadStatus, string> = {
@@ -45,7 +47,7 @@ export const VIEWS: { id: View; label: string }[] = [
   { id: 'skipped', label: 'Skipped' },
 ];
 
-export const HEADLINES = ['No website', 'Outdated website', 'Website broken'];
+export const HEADLINES = ['No website', 'No own website', 'No website yet', 'Outdated website', 'Website broken'];
 
 export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 
@@ -56,7 +58,7 @@ export function inView(l: Lead, view: View): boolean {
 }
 
 export function headlineOf(l: Lead): string | null {
-  if (l.source !== 'places') return null;
+  if (!['places', 'osm', 'companies_house'].includes(l.source)) return null;
   const first = l.description.split('. ')[0];
   return HEADLINES.includes(first) ? first : null;
 }
