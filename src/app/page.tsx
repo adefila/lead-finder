@@ -15,6 +15,8 @@ import { Btn, Dropdown, Icon } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
+type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number };
+type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { title: string; kind: string }; skipped?: string; error?: string };
 type GmailStatus = { configured: boolean; connected: boolean; email?: string | null; lastSync?: string | null };
 type SyncResult = { connected: boolean; contacted: number; followUps: number; replied: number; error?: string };
 
@@ -27,6 +29,7 @@ const EMPTY_TEXT: Record<View, string> = {
   lost: 'Leads you close as lost show up here.',
   skipped: 'Leads you skip show up here. You can restore them anytime.',
   all: 'No leads yet. Click Run now.',
+  queued: 'Queue leads with an email and Lead Finder sends them from your inbox, a few each weekday.',
 };
 
 const PAGE_SIZE = 15;
@@ -62,6 +65,8 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
+  const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
+  const [sendingNow, setSendingNow] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
@@ -160,17 +165,56 @@ export default function Home() {
 
   const setStatus = (id: string, status: LeadStatus, quiet = false) => {
     const previous = leads.find(l => l.id === id);
-    const announce = !quiet && status === 'approved' && previous && statusOf(previous) === 'new';
+    const wasNew = previous && statusOf(previous) === 'new';
     return patch(id, { status }, l => ({
       ...l,
       status,
       ...(status === 'approved' ? { contactedAt: new Date().toISOString(), followUps: 0 } : {}),
-      ...(status === 'new' ? { contactedAt: undefined, followUps: 0 } : {}),
+      ...(status === 'new' ? { contactedAt: undefined, followUps: 0, queuedAt: undefined, autoSequence: false, sendError: undefined } : {}),
+      ...(status === 'queued' ? { queuedAt: new Date().toISOString(), autoSequence: true, sendError: undefined } : {}),
     })).then(ok => {
-      if (ok && announce) notify(`${previous!.title} marked as contacted`, { label: 'Undo', run: () => setStatus(id, 'new') });
+      if (ok && !quiet && wasNew && status === 'approved') notify(`${previous!.title} marked as contacted`, { label: 'Undo', run: () => setStatus(id, 'new') });
+      if (ok && !quiet && wasNew && status === 'queued') notify(`${previous!.title} queued to send`, { label: 'Undo', run: () => setStatus(id, 'new') });
+      if (ok && (status === 'queued' || previous?.status === 'queued')) refreshOutbox();
       return ok;
     });
   };
+
+  const queueWithDraft = (id: string, draft: string) => {
+    const previous = leads.find(l => l.id === id);
+    const already = previous?.status === 'queued';
+    return patch(id, { status: 'queued', proposal: draft }, l => ({
+      ...l, status: 'queued', proposal: draft, queuedAt: l.queuedAt ?? new Date().toISOString(), autoSequence: true, sendError: undefined,
+    })).then(ok => {
+      if (ok) {
+        toast(already ? 'Draft saved' : `${previous?.title ?? 'Lead'} queued to send`, already ? { tone: 'success' } : { action: { label: 'Undo', run: () => setStatus(id, 'new') } });
+        refreshOutbox();
+      }
+      return ok;
+    });
+  };
+
+  const refreshOutbox = useCallback(async () => {
+    const s = await fetch('/api/outbox/status').then(r => (r.ok ? r.json() as Promise<OutboxStatus> : null)).catch(() => null);
+    if (s) setOutbox(s);
+  }, []);
+
+  useEffect(() => { refreshOutbox(); }, [refreshOutbox]);
+
+  async function sendNextNow() {
+    setSendingNow(true);
+    try {
+      const res = await fetch('/api/outbox', { headers: { 'x-manual': 'true' } });
+      const r = await res.json() as OutboxRun;
+      if (r.error) fail(`Send failed: ${r.error}`);
+      else if (r.sent) toast(`Sent ${r.sent.kind === 'follow-up' ? 'follow-up to' : 'to'} ${r.sent.title}`, { tone: 'success' });
+      else toast(r.skipped ?? 'Nothing to send right now');
+      if (r.replies) toast(`${r.replies} repl${r.replies > 1 ? 'ies' : 'y'} found in your inbox`, { tone: 'success' });
+      await Promise.all([loadData(), refreshOutbox()]);
+    } finally {
+      setSendingNow(false);
+    }
+  }
 
   const followedUp = (id: string) => patch(id, { action: 'followed_up' }, l => ({
     ...l,
@@ -211,7 +255,7 @@ export default function Home() {
     const results = await Promise.all(ids.map(id => setStatus(id, status, true)));
     const done = ids.filter((_, i) => results[i]);
     if (!done.length) return;
-    const verb = { approved: 'marked as sent', skipped: 'skipped', new: 'restored' }[status as string] ?? 'updated';
+    const verb = { approved: 'marked as sent', queued: 'queued to send', skipped: 'skipped', new: 'restored' }[status as string] ?? 'updated';
     notify(`${done.length} lead${done.length > 1 ? 's' : ''} ${verb}`, {
       label: 'Undo',
       run: () => done.forEach(id => setStatus(id, before.get(id) ?? 'new', true)),
@@ -293,6 +337,19 @@ export default function Home() {
         <div className="topbar-inner">
           <div className="brand">Lead Finder</div>
           <div className="topbar-actions">
+            {outbox && (
+              <button
+                className={`gmail-chip${outbox.configured ? '' : ' muted-chip'}`}
+                onClick={() => (outbox.configured ? sendNextNow() : toast('Add GMAIL_USER and GMAIL_APP_PASSWORD in Vercel to turn on auto-send'))}
+                disabled={sendingNow}
+                title={outbox.configured ? 'Send the next queued email now (still respects business hours and the daily limit)' : 'Auto-send is off'}
+              >
+                <Icon name="clock" size={13} />
+                {!outbox.configured ? 'Auto-send off'
+                  : sendingNow ? 'Sending…'
+                  : `${outbox.queued} queued · ${outbox.sentToday}/${outbox.limit} today`}
+              </button>
+            )}
             {gmail?.connected ? (
               <button className="gmail-chip" onClick={() => syncGmail(false)} disabled={syncing} title={`Connected as ${gmail.email ?? ''}`}>
                 <motion.span style={{ display: 'grid' }} animate={{ rotate: syncing ? 360 : 0 }}
@@ -372,6 +429,11 @@ export default function Home() {
                   <strong>{picked.length} selected</strong>
                   <button className="link-btn plain" onClick={() => setSelection(new Set())}>Clear</button>
                   <span className="spacer" />
+                  {picked.some(l => statusOf(l) === 'new' && l.contactEmail) && (
+                    <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new' && l.contactEmail).map(l => l.id), 'queued')}>
+                      <Icon name="clock" />Queue {picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length}
+                    </Btn>
+                  )}
                   {picked.some(l => statusOf(l) === 'new') && (
                     <>
                       <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
@@ -459,6 +521,7 @@ export default function Home() {
             onStatus={s => actAndAdvance(selected.id, () => setStatus(selected.id, s), !inView({ ...selected, status: s }, view))}
             onFollowedUp={() => actAndAdvance(selected.id, () => followedUp(selected.id), view === 'followup')}
             onUpdate={p => setLeads(prev => prev.map(l => (l.id === selected.id ? { ...l, ...p } : l)))}
+            onQueue={draft => queueWithDraft(selected.id, draft)}
             onDelete={() => {
               const idx = rows.findIndex(l => l.id === selected.id);
               const nextId = rows[idx + 1]?.id ?? rows[idx - 1]?.id ?? null;

@@ -91,6 +91,13 @@ function rowToLead(r: Record<string, unknown>): Lead {
     contactLinks: (r.contact_links as Lead['contactLinks']) ?? undefined,
     contactedAt: r.contacted_at ? String(r.contacted_at) : undefined,
     followUps: Number(r.follow_ups ?? 0),
+    queuedAt: r.queued_at ? String(r.queued_at) : undefined,
+    lastSentAt: r.last_sent_at ? String(r.last_sent_at) : undefined,
+    sendSubject: r.send_subject ? String(r.send_subject) : undefined,
+    lastMessageId: r.last_message_id ? String(r.last_message_id) : undefined,
+    sendError: r.send_error ? String(r.send_error) : undefined,
+    autoSequence: Boolean(r.auto_sequence),
+    optedOut: Boolean(r.opted_out),
   };
 }
 
@@ -113,9 +120,16 @@ export async function getLeadById(id: string): Promise<Lead | null> {
 export async function updateLeadStatus(id: string, status: LeadStatus): Promise<string | null> {
   const patch: Record<string, unknown> = { status };
   if (status === 'approved') Object.assign(patch, { contacted_at: new Date().toISOString(), follow_ups: 0 });
-  if (status === 'new') Object.assign(patch, { contacted_at: null, follow_ups: 0 });
+  if (status === 'new') Object.assign(patch, { contacted_at: null, follow_ups: 0, queued_at: null, auto_sequence: false, send_error: null });
+  // Queued leads are sent by the outbox, which also runs their follow-ups.
+  if (status === 'queued') Object.assign(patch, { queued_at: new Date().toISOString(), auto_sequence: true, send_error: null });
   const { error } = await db().from('leads').update(patch).eq('id', id);
   return error ? explain(error.message) : null;
+}
+
+export async function countSentSince(sinceIso: string): Promise<number> {
+  const { count } = await db().from('leads').select('id', { count: 'exact', head: true }).gte('last_sent_at', sinceIso);
+  return count ?? 0;
 }
 
 export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {

@@ -26,5 +26,6 @@ export function followUpState(lead: Lead, now = new Date()): FollowUpState {
 
 export function needsAttention(lead: Lead): boolean {
   const s = followUpState(lead);
-  return s.due || s.exhausted;
+  // Auto-sent sequences follow up on their own; they only need you once they run out.
+  return s.exhausted || (s.due && !lead.autoSequence);
 }

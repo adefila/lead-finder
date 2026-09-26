@@ -7,7 +7,7 @@ export interface ContactLinks {
   facebook?: string;
 }
 
-export const LEAD_STATUSES = ['new', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
+export const LEAD_STATUSES = ['new', 'queued', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
 export type LeadStatus = typeof LEAD_STATUSES[number];
 
 export interface Lead {
@@ -31,6 +31,14 @@ export interface Lead {
   // When the lead was last touched (first contact or latest follow-up)
   contactedAt?: string;
   followUps?: number;
+  // Auto-send (outbox)
+  queuedAt?: string;
+  lastSentAt?: string;
+  sendSubject?: string;
+  lastMessageId?: string;
+  sendError?: string;
+  autoSequence?: boolean;
+  optedOut?: boolean;
   // In-memory only during a cron run: visible text from the business's site, used to find the owner's name
   siteText?: string;
 }

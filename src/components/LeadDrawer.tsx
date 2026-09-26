@@ -31,9 +31,10 @@ interface Props {
   onFollowedUp: () => void;
   onUpdate: (patch: Partial<Lead>) => void;
   onDelete: () => void;
+  onQueue: (draft: string) => void;
 }
 
-function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFollowedUp, onUpdate, onDelete }: Props) {
+function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFollowedUp, onUpdate, onDelete, onQueue }: Props) {
   const initial = useMemo(() => splitDraft(lead.proposal ?? ''), [lead.proposal]);
   const [subject, setSubject] = useState(initial.subject);
   const [body, setBody] = useState(initial.body);
@@ -43,7 +44,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
 
   const status = statusOf(lead);
   const fu = followUpState(lead);
-  const isFollowUp = fu.due;
+  const isFollowUp = fu.due && !lead.autoSequence;
   const headline = headlineOf(lead);
   const links = lead.contactLinks ?? {};
   const email = lead.contactEmail;
@@ -98,6 +99,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   }
 
   const markContacted = () => { if (status === 'new') onStatus('approved'); };
+  const composed = () => (subject.trim() ? `Subject: ${subject.trim()}\n\n${body.trim()}` : body.trim());
   const sent = () => (isFollowUp ? onFollowedUp() : markContacted());
 
   return (
@@ -184,6 +186,12 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               {isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}` : lead.source === 'freelancer' ? 'Bid proposal' : email ? 'Email' : 'Message (DM, call notes or contact form)'}
             </span>
             {fu.exhausted && <div className="note">No reply after {fu.sent} follow-ups. Close it out, or mark it if they got back to you.</div>}
+            {status === 'queued' && (lead.sendError
+              ? <div className="note error-note">Last send attempt failed: {lead.sendError}. It will try again on the next run.</div>
+              : <div className="note info-note">Queued. It sends automatically on the next weekday between 9am and 4pm their time, then follows up on day 3 and day 7 unless they reply.</div>)}
+            {status === 'approved' && lead.autoSequence && !fu.exhausted && (
+              <div className="note info-note">Follow-ups send automatically from your inbox. They stop as soon as {person || 'they'} reply.</div>
+            )}
             {(email || subject) && (
               <label>
                 <span className="field-label">Subject</span>
@@ -199,10 +207,23 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             </label>
 
             <div className="actions">
+              {status === 'new' && email && (
+                <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}>
+                  <Icon name="clock" />Queue to send
+                </Btn>
+              )}
+              {status === 'queued' && (
+                <>
+                  <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}>
+                    <Icon name="check" />Save changes
+                  </Btn>
+                  <Btn className="btn" onClick={() => onStatus('new')}><Icon name="undo" />Remove from queue</Btn>
+                </>
+              )}
               {(status === 'new' || isFollowUp) && email && (
                 <>
-                  <LinkBtn className="btn btn-primary" href={gmail} target="_blank" rel="noreferrer" onClick={sent}>
-                    <Icon name="send" />{isFollowUp ? 'Send follow-up in Gmail' : 'Send in Gmail'}
+                  <LinkBtn className={`btn${isFollowUp ? ' btn-primary' : ''}`} href={gmail} target="_blank" rel="noreferrer" onClick={sent}>
+                    <Icon name="send" />{isFollowUp ? 'Send follow-up in Gmail' : 'Send now in Gmail'}
                   </LinkBtn>
                   <LinkBtn className="btn" href={mailtoUrl(email, subject, body)} onClick={sent}>Mail app</LinkBtn>
                 </>

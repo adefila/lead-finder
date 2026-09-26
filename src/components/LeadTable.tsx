@@ -6,7 +6,6 @@ import {
   SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, headlineOf, nextStep, personOf,
   scoreClass, shortDate, statusOf, type SortKey,
 } from '@/lib/leadview';
-import { gmailComposeUrl, splitDraft } from '@/lib/compose';
 import { Checkbox, Icon } from '@/components/ui';
 
 interface Props {
@@ -67,7 +66,6 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
               const person = personOf(l);
               const headline = headlineOf(l);
               const step = nextStep(l);
-              const { subject, body } = splitDraft(l.proposal ?? '');
               return (
                 <motion.tr
                   key={l.id}
@@ -104,10 +102,10 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <td className="col-actions" onClick={e => e.stopPropagation()}>
                     <div className="row-actions">
                       {status === 'new' && l.contactEmail && (
-                        <a className="icon-btn" title="Send in Gmail" aria-label="Send in Gmail" target="_blank" rel="noreferrer"
-                          href={gmailComposeUrl(l.contactEmail, subject, body)} onClick={() => onStatus(l.id, 'approved')}>
-                          <Icon name="send" />
-                        </a>
+                        <button className="icon-btn" title="Queue to send automatically" aria-label="Queue to send"
+                          onClick={() => onStatus(l.id, 'queued')}>
+                          <Icon name="clock" />
+                        </button>
                       )}
                       {status === 'new' && (
                         <button className="icon-btn" title="Mark as sent" aria-label="Mark as sent" onClick={() => onStatus(l.id, 'approved')}>

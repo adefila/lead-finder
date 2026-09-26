@@ -13,6 +13,7 @@ export const SOURCE_LABEL: Record<Lead['source'], string> = {
 
 export const STATUS_LABEL: Record<LeadStatus, string> = {
   new: 'To contact',
+  queued: 'Queued',
   approved: 'Contacted',
   replied: 'Replied',
   won: 'Won',
@@ -22,6 +23,7 @@ export const STATUS_LABEL: Record<LeadStatus, string> = {
 
 export const STATUS_TONE: Record<LeadStatus, string> = {
   new: 'blue',
+  queued: 'amber',
   approved: '',
   replied: 'purple',
   won: 'green',
@@ -29,10 +31,11 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   skipped: 'muted',
 };
 
-export type View = 'all' | 'new' | 'approved' | 'followup' | 'replied' | 'won' | 'lost' | 'skipped';
+export type View = 'all' | 'new' | 'queued' | 'approved' | 'followup' | 'replied' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string }[] = [
   { id: 'new', label: 'To contact' },
+  { id: 'queued', label: 'Queued' },
   { id: 'approved', label: 'Contacted' },
   { id: 'followup', label: 'Follow up' },
   { id: 'replied', label: 'Replied' },
@@ -104,10 +107,13 @@ export function nextStep(l: Lead): { text: string; urgent: boolean } {
   if (s === 'approved') {
     const fu = followUpState(l);
     if (fu.exhausted) return { text: 'Close or mark reply', urgent: true };
-    if (fu.due) return { text: `Follow-up ${fu.sent + 1} due`, urgent: true };
+    if (fu.due) return l.autoSequence
+      ? { text: `Follow-up ${fu.sent + 1} sending`, urgent: false }
+      : { text: `Follow-up ${fu.sent + 1} due`, urgent: true };
     if (fu.sent >= MAX_FOLLOW_UPS) return { text: 'Waiting for reply', urgent: false };
     return { text: `Follow up ${shortDate(fu.dueAt)}`, urgent: false };
   }
+  if (s === 'queued') return { text: l.sendError ? 'Send failed' : 'Sends automatically', urgent: !!l.sendError };
   if (s === 'replied') return { text: 'Close the deal', urgent: false };
   return { text: '', urgent: false };
 }

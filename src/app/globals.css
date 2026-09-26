@@ -198,6 +198,7 @@ a { color: inherit; }
 }
 .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.8; }
 .status.blue { background: #eaf2ff; color: #1d5fd1; }
+.status.amber { background: var(--warn-tint); color: var(--warn-ink); }
 .status.purple { background: #f2f0ff; color: #5b3fd6; }
 .status.green { background: var(--green-tint); color: var(--green-ink); }
 .status.red { background: #fdecec; color: #b42318; }
@@ -368,3 +369,8 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .pager-num:hover { background: #f2f2f2; }
 .pager-num.active { background: var(--dark); color: #fff; }
 .pager-gap { padding: 0 4px; color: var(--fg-3); }
+
+/* ── Outbox ─────────────────────────────── */
+.gmail-chip.muted-chip { color: #8d8d8d; }
+.note.info-note { background: #eef4ff; color: #1d4ed8; }
+.note.error-note { background: #fdecec; color: #b42318; }
