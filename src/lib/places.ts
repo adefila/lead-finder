@@ -1,5 +1,6 @@
 import type { Lead } from '@/types/lead';
 import { analyzeWebsite } from '@/lib/enrich';
+import { emailDomainAccepts } from '@/lib/verify';
 
 const DEFAULT_CATEGORIES = [
   'dentist', 'law firm', 'real estate agency', 'med spa', 'roofing contractor', 'interior designer',
@@ -16,11 +17,15 @@ const DEFAULT_CITIES = [
 // Google's free monthly allowance for that SKU.
 const SEARCHES_PER_RUN = 4;
 const MIN_REVIEWS = 10;
+// A business is only a lead if customers are still reviewing it.
+const MAX_REVIEW_AGE_DAYS = 365;
+const MAX_REVIEW_AGE_DAYS_BROKEN_SITE = 180;
 
 const FIELD_MASK = [
   'places.id', 'places.displayName', 'places.formattedAddress', 'places.internationalPhoneNumber',
   'places.websiteUri', 'places.googleMapsUri', 'places.rating', 'places.userRatingCount',
   'places.businessStatus', 'places.primaryTypeDisplayName',
+  'places.reviews', 'places.regularOpeningHours',
 ].join(',');
 
 interface Place {
@@ -34,6 +39,33 @@ interface Place {
   userRatingCount?: number;
   businessStatus?: string;
   primaryTypeDisplayName?: { text?: string };
+  reviews?: { publishTime?: string }[];
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+}
+
+interface Activity { lastReviewDays: number | null; hasHours: boolean; hasPhone: boolean }
+
+function activityOf(p: Place): Activity {
+  const times = (p.reviews ?? []).map(r => Date.parse(r.publishTime ?? '')).filter(t => !isNaN(t));
+  return {
+    lastReviewDays: times.length ? Math.floor((Date.now() - Math.max(...times)) / 86400000) : null,
+    hasHours: !!p.regularOpeningHours?.weekdayDescriptions?.length,
+    hasPhone: !!p.internationalPhoneNumber,
+  };
+}
+
+function ago(days: number): string {
+  if (days < 14) return days <= 1 ? 'in the last day' : `${days} days ago`;
+  if (days < 60) return `${Math.round(days / 7)} weeks ago`;
+  return `${Math.round(days / 30)} months ago`;
+}
+
+function activitySentence(a: Activity): string {
+  const parts = ['open on Google'];
+  if (a.lastReviewDays !== null) parts.push(`last review ${ago(a.lastReviewDays)}`);
+  if (a.hasHours) parts.push('opening hours listed');
+  if (a.hasPhone) parts.push('phone listed');
+  return `Verified active: ${parts.join(', ')}`;
 }
 
 function listFromEnv(name: string, fallback: string[]): string[] {
@@ -77,6 +109,7 @@ async function textSearch(query: string, apiKey: string): Promise<Place[]> {
 }
 
 async function toLead(p: Place, category: string, city: string): Promise<Lead | null> {
+  const activity = activityOf(p);
   const name = p.displayName?.text ?? 'Unknown business';
   const reviews = p.userRatingCount ?? 0;
   const type = p.primaryTypeDisplayName?.text ?? category;
@@ -98,8 +131,11 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     const report = await analyzeWebsite(p.websiteUri);
     if (report.reachable === null || (report.reachable && report.issues.length === 0)) return null;
     headline = report.reachable ? 'Outdated website' : 'Website broken';
+    if (!report.reachable && (activity.lastReviewDays === null || activity.lastReviewDays > MAX_REVIEW_AGE_DAYS_BROKEN_SITE)) return null;
     issues = report.issues;
-    emails = report.emails;
+    for (const e of report.emails) {
+      if (await emailDomainAccepts(e)) { emails = [e]; break; }
+    }
     links = { ...links, website: p.websiteUri, ...report.links };
     siteText = report.siteText;
   }
@@ -108,7 +144,7 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     id: `places-${p.id}`,
     title: name,
     company: `${type} · ${city}`,
-    description: [headline, ...facts, `Issues found: ${issues.join('; ')}`].filter(Boolean).join('. ') + '.',
+    description: [headline, activitySentence(activity), ...facts, `Issues found: ${issues.join('; ')}`].filter(Boolean).join('. ') + '.',
     url: p.websiteUri ?? p.googleMapsUri ?? '',
     source: 'places',
     postedAt: new Date().toISOString(),
@@ -133,12 +169,17 @@ export async function fetchPlacesLeads(): Promise<Lead[]> {
 
   const candidates: { place: Place; category: string; city: string }[] = [];
   const seen = new Set<string>();
+  const dropped = { closed: 0, fewReviews: 0, inactive: 0 };
   for (const r of results) {
     for (const place of r.places) {
       if (seen.has(place.id)) continue;
       seen.add(place.id);
-      if (place.businessStatus && place.businessStatus !== 'OPERATIONAL') continue;
-      if ((place.userRatingCount ?? 0) < MIN_REVIEWS) continue;
+      if (place.businessStatus !== 'OPERATIONAL') { dropped.closed++; continue; }
+      if ((place.userRatingCount ?? 0) < MIN_REVIEWS) { dropped.fewReviews++; continue; }
+      const a = activityOf(place);
+      const recentlyReviewed = a.lastReviewDays !== null && a.lastReviewDays <= MAX_REVIEW_AGE_DAYS;
+      const noReviewData = a.lastReviewDays === null && a.hasHours && a.hasPhone;
+      if (!recentlyReviewed && !noReviewData) { dropped.inactive++; continue; }
       candidates.push({ place, category: r.category, city: r.city });
     }
   }
@@ -151,6 +192,6 @@ export async function fetchPlacesLeads(): Promise<Lead[]> {
   }
 
   const withEmail = leads.filter(l => l.contactEmail).length;
-  console.log(`[places] ${searches.map(s => `${s.category} in ${s.city}`).join('; ')} -> ${candidates.length} businesses, ${leads.length} prospects (${withEmail} with email)`);
+  console.log(`[places] ${searches.map(s => `${s.category} in ${s.city}`).join('; ')} -> ${candidates.length} active businesses (dropped ${dropped.closed} not open, ${dropped.fewReviews} too few reviews, ${dropped.inactive} no recent reviews), ${leads.length} prospects (${withEmail} with a working email)`);
   return leads;
 }

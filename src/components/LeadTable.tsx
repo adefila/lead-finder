@@ -82,6 +82,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <td className="col-lead">
                     <div className="cell-title">{l.title}</div>
                     <div className="cell-sub">
+                      {l.description.includes('Verified active') && <span className="tag good" title="Open on Google and recently reviewed">Active</span>}
                       {headline && <span className="tag warn">{headline}</span>}
                       <span>{l.company}</span>
                     </div>

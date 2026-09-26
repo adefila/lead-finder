@@ -126,6 +126,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             </div>
             <div className="drawer-tags">
               <span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span>
+              {lead.description.includes('Verified active') && <span className="tag good" title="Open on Google and recently reviewed">Active</span>}
               {headline && <span className="tag warn">{headline}</span>}
               {isFollowUp && <span className="tag warn">Follow-up {fu.sent + 1} due</span>}
               {fu.exhausted && <span className="tag warn">No reply after {fu.sent} follow-ups</span>}
@@ -186,6 +187,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               {isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}` : lead.source === 'freelancer' ? 'Bid proposal' : email ? 'Email' : 'Message (DM, call notes or contact form)'}
             </span>
             {fu.exhausted && <div className="note">No reply after {fu.sent} follow-ups. Close it out, or mark it if they got back to you.</div>}
+            {status === 'new' && lead.sendError && <div className="note error-note">{lead.sendError}</div>}
             {status === 'queued' && (lead.sendError
               ? <div className="note error-note">Last send attempt failed: {lead.sendError}. It will try again on the next run.</div>
               : <div className="note info-note">Queued. It sends automatically on the next weekday between 9am and 4pm their time, then follows up on day 3 and day 7 unless they reply.</div>)}

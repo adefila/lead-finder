@@ -53,11 +53,13 @@ const OPT_OUT = /\b(unsubscribe|not interested|no thanks|no thank you|stop email
 
 export interface ReplyCheck { email: string; since: Date }
 export interface ReplyFound { replied: boolean; optedOut: boolean }
+export interface InboxCheck { replies: Map<string, ReplyFound>; bounced: Set<string> }
 
 // One IMAP session for all leads: look for any message from each address since we first wrote.
-export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promise<Map<string, ReplyFound>> {
+export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promise<InboxCheck> {
   const found = new Map<string, ReplyFound>();
-  if (!checks.length) return found;
+  const bounced = new Set<string>();
+  if (!checks.length) return { replies: found, bounced };
 
   const client = new ImapFlow({
     host: cfg.imapHost,
@@ -86,11 +88,22 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
       }
       found.set(email.toLowerCase(), { replied: true, optedOut });
     }
+
+    // Delivery failures ("Mail Delivery Subsystem") name the address that bounced.
+    const since = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
+    const failures = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
+    const watched = checks.map(ch => ch.email.toLowerCase());
+    for (const uid of (failures || []).slice(-30)) {
+      const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
+      if (!msg || !msg.source) continue;
+      const text = msg.source.toString('utf8').toLowerCase();
+      for (const email of watched) if (text.includes(email)) bounced.add(email);
+    }
   } finally {
     lock.release();
     await client.logout().catch(() => undefined);
   }
-  return found;
+  return { replies: found, bounced };
 }
 
 // Proves both halves work: sends a note to yourself over SMTP, then opens the inbox over IMAP.

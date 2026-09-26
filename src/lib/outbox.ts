@@ -4,6 +4,7 @@ import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft } from '@/lib/compose';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
+import { emailDomainAccepts } from '@/lib/verify';
 
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 15);
 const WINDOW_START = 9;
@@ -47,6 +48,7 @@ export interface OutboxResult {
   queued: number;
   replies: number;
   optOuts: number;
+  bounced: number;
   sent?: { id: string; title: string; kind: 'first' | 'follow-up' };
   skipped?: string;
   error?: string;
@@ -74,17 +76,25 @@ export async function runOutbox(): Promise<OutboxResult> {
     queued: queued.length,
     replies: 0,
     optOuts: 0,
+    bounced: 0,
   };
   if (!cfg) return { ...result, skipped: 'Mail is not configured' };
 
   // 1. Replies stop everything for that lead.
   const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut);
-  const replies = await checkReplies(cfg, watching.map(l => ({
+  const { replies, bounced } = await checkReplies(cfg, watching.map(l => ({
     email: l.contactEmail!,
     since: new Date(l.queuedAt ?? l.contactedAt ?? l.createdAt ?? Date.now()),
   })));
   for (const lead of watching) {
-    const hit = replies.get(lead.contactEmail!.toLowerCase());
+    const address = lead.contactEmail!.toLowerCase();
+    if (bounced.has(address) && !replies.has(address)) {
+      await updateLead(lead.id, { status: 'lost', opted_out: true, send_error: 'Email bounced: this address does not exist' });
+      lead.status = 'lost';
+      result.bounced++;
+      continue;
+    }
+    const hit = replies.get(address);
     if (!hit) continue;
     await updateLead(lead.id, { status: hit.optedOut ? 'lost' : 'replied', opted_out: hit.optedOut });
     lead.status = hit.optedOut ? 'lost' : 'replied';
@@ -122,6 +132,11 @@ export async function runOutbox(): Promise<OutboxResult> {
     } else {
       const { subject, body } = splitDraft(lead.proposal ?? '');
       if (!body) throw new Error('This lead has no draft to send');
+      if (!(await emailDomainAccepts(lead.contactEmail!))) {
+        // Dead domain: take it out of the queue instead of retrying forever.
+        await updateLead(lead.id, { status: 'new', auto_sequence: false, queued_at: null, send_error: "This email address can't receive mail. Try phone or a DM instead." });
+        return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
+      }
       const finalSubject = subject || `${lead.title} website`;
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text: body });
       const now = new Date().toISOString();

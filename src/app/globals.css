@@ -204,6 +204,7 @@ a { color: inherit; }
 .status.red { background: #fdecec; color: #b42318; }
 .status.muted { background: #f3f3f3; color: #8a8f98; }
 .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f0f0f0; color: var(--fg-2); white-space: nowrap; }
+.tag.good { background: var(--green-tint); color: var(--green-ink); }
 .tag.warn { background: var(--warn-tint); color: var(--warn-ink); }
 .pill { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f0f0f0; color: var(--fg-2); white-space: nowrap; }
 .pill.green { background: var(--green-tint); color: var(--green-ink); }
