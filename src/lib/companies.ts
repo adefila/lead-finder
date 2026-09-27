@@ -1,4 +1,5 @@
 import type { Lead } from '@/types/lead';
+import { linkedInSearchUrl } from '@/lib/leadview';
 import { analyzeWebsite } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
 import { UK_CITIES } from '@/lib/cities';
@@ -115,7 +116,7 @@ async function toLead(c: Company, key: string): Promise<Lead | null> {
     for (const e of report.emails) if (await emailDomainAccepts(e)) { email = e; break; }
   }
   if (person && !links.linkedin) {
-    links.linkedin = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${person} ${baseName(name)}`)}`;
+    links.linkedin = linkedInSearchUrl(person, baseName(name));
   }
 
   return {

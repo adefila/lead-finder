@@ -293,6 +293,27 @@ export function displayName(l: Lead): string {
   return name;
 }
 
+// LinkedIn's own people search needs you logged in and often shows "page not found",
+// so we search Google for their LinkedIn profile instead. This always opens.
+export function linkedInSearchUrl(person: string, company: string): string {
+  const q = `"${person}" "${company.replace(/\s+(ltd|limited|llp|plc)\.?$/i, '')}" site:linkedin.com/in`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
+
+// A ready-made Google search for a business's email address.
+export function findEmailUrl(l: Lead): string {
+  const city = l.company.split(' · ')[1]?.split(',')[0] ?? '';
+  return `https://www.google.com/search?q=${encodeURIComponent(`"${displayName(l)}" ${city} email`.trim())}`;
+}
+
+// Older leads saved a LinkedIn people-search link; swap it for the Google search.
+export function withWorkingLinks(l: Lead): Lead {
+  const li = l.contactLinks?.linkedin;
+  if (!li || !li.includes('linkedin.com/search/results')) return l;
+  const person = l.contactName || new URL(li).searchParams.get('keywords') || '';
+  return { ...l, contactLinks: { ...l.contactLinks, linkedin: linkedInSearchUrl(person, displayName(l)) } };
+}
+
 export function personOf(l: Lead): string {
   return l.contactName && l.contactName !== l.title ? l.contactName : '';
 }

@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, fitOf, leadStory, personOf, shortDate, statusOf, systemsFor,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -15,7 +15,7 @@ const LINK_LABELS = [
   ['website', 'Website'],
   ['instagram', 'Instagram'],
   ['facebook', 'Facebook'],
-  ['linkedin', 'LinkedIn'],
+  ['linkedin', 'Find on LinkedIn'],
   ['twitter', 'X'],
   ['maps', 'Map'],
   ['register', 'Company record'],
@@ -184,6 +184,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               ) : (
                 <span className="kv-value">
                   <span className="muted">We could not find one</span>
+                  <a className="text-link" href={findEmailUrl(lead)} target="_blank" rel="noreferrer">Search for it</a>
                   <button className="link-btn plain" type="button" onClick={() => setAddingEmail(true)}>Add email</button>
                 </span>
               )
@@ -300,8 +301,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             )}
             {status === 'new' && !email && !isJob && links.linkedin && lead.source === 'companies_house' && (
               <LinkBtn className="btn btn-primary" href={links.linkedin} target="_blank" rel="noreferrer"
-                onClick={() => { copyBody(); toast('Message copied. Paste it into LinkedIn, then come back and click "I have sent it".'); }}>
-                <Icon name="external" />Copy and open LinkedIn
+                onClick={() => { copyBody(); toast('Message copied. Open their LinkedIn profile from the results, click Connect, add a note and paste. Then come back and click "I have sent it".'); }}>
+                <Icon name="external" />Copy message, find them on LinkedIn
               </LinkBtn>
             )}
             {status === 'new' && !email && !isJob && !(links.linkedin && lead.source === 'companies_house') && (
