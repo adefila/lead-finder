@@ -1,7 +1,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/types/lead';
-import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, statusOf, type SortKey } from '@/lib/leadview';
+import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, shortDate, statusOf, type SortKey } from '@/lib/leadview';
 import { Checkbox, Icon } from '@/components/ui';
 import { EmptyState, type EmptyKind } from '@/components/EmptyState';
 
@@ -34,6 +34,14 @@ function SortHeader({ label, k, sort, onSort, className }: {
 
 const isActive = (l: Lead) => l.description.includes('Verified active');
 
+// Hover text for the Added column, e.g. "Sunday 27 September 2026, 09:14".
+function fullDate(iso?: string): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d.getTime())
+    ? `Found ${d.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+    : '';
+}
+
 // Deliberately minimal: who, how to reach them, what to do next. Everything else lives in the lead page.
 export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, selection, onToggle, onToggleAll }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
@@ -52,6 +60,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
             <th className="col-contact">Contact</th>
             <th className="col-status">Status</th>
             <SortHeader label="Next step" k="next" sort={sort} onSort={onSort} className="col-next" />
+            <SortHeader label="Added" k="added" sort={sort} onSort={onSort} className="col-date" />
             <th className="col-actions"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -89,6 +98,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                 <td className={step.urgent ? 'col-next next urgent' : 'col-next next'}>
                   {step.text || <span className="muted">-</span>}
                 </td>
+                <td className="col-date" title={fullDate(l.createdAt)}>{shortDate(l.createdAt) || <span className="muted">-</span>}</td>
                 <td className="col-actions" onClick={e => e.stopPropagation()}>
                   <div className="row-actions">
                     {status === 'new' && l.contactEmail && (
