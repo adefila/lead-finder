@@ -48,6 +48,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
+  const cardRef = useRef<HTMLElement>(null);
   const [running, setRunning] = useState(false);
   const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
@@ -252,17 +253,24 @@ export default function Home() {
     if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / PAGE_SIZE));
   }, [selectedIndex]);
 
-  // Back to page 1 whenever the list itself changes.
-  useEffect(() => { setPage(0); }, [view, sub, source, search, sortOverride]);
   const selected = leads.find(l => l.id === selectedId) ?? null;
 
   function onSort(key: SortKey) {
+    setPage(0);
     setSortOverride(s => (s?.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' || key === 'next' ? 1 : -1 }));
   }
 
+  // If you have scrolled past the tabs, bring them back into view so a shorter list does not yank the page.
+  function keepTabsInView() {
+    const top = cardRef.current?.getBoundingClientRect().top ?? 0;
+    if (top < 72) window.scrollTo({ top: window.scrollY + top - 72 });
+  }
+
   function changeView(v: View, s: Sub = 'all') {
+    keepTabsInView();
     setView(v);
     setSub(s);
+    setPage(0);
     setSortOverride(null);
     setMode('table');
     setSelection(new Set());
@@ -362,7 +370,7 @@ export default function Home() {
 
         <Funnel leads={scoped} />
 
-        <section className="crm-card">
+        <section className="crm-card" ref={cardRef}>
           <div className="crm-toolbar">
             <div className="tabs" role="tablist">
               {VIEWS.map(v => (
@@ -376,7 +384,7 @@ export default function Home() {
             {mode === 'table' && SUBS[view] && (
               <div className="subtabs" role="group" aria-label="Filter">
                 {SUBS[view]!.map(s => (
-                  <button key={s.id} aria-pressed={sub === s.id} onClick={() => { setSub(s.id); setSelection(new Set()); }}>
+                  <button key={s.id} aria-pressed={sub === s.id} onClick={() => { keepTabsInView(); setSub(s.id); setPage(0); setSelection(new Set()); }}>
                     {s.label}
                     {s.id === 'followup' && followUpsDue > 0 && <span className="tab-alert">{followUpsDue}</span>}
                   </button>
@@ -386,13 +394,13 @@ export default function Home() {
             <div className="crm-filters">
               <label className="search">
                 <Icon name="search" />
-                <input placeholder="Search by business, person or email" value={search} onChange={e => setSearch(e.target.value)} />
+                <input placeholder="Search by business, person or email" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
               </label>
               {sources.length > 1 && (
                 <Dropdown<Lead['source'] | 'all'>
                   label="Found on"
                   value={source}
-                  onChange={v => { setSource(v); setSelection(new Set()); }}
+                  onChange={v => { setSource(v); setPage(0); setSelection(new Set()); }}
                   options={[
                     { value: 'all', label: 'Found anywhere', count: leads.length },
                     ...sources.map(s => ({ value: s, label: SOURCE_LABEL[s], count: leads.filter(l => l.source === s).length })),
@@ -447,7 +455,7 @@ export default function Home() {
           ) : (
             <LeadTable
               leads={pageRows}
-              pageKey={currentPage}
+              showStatus={view === 'all'}
               sort={sort}
               onSort={onSort}
               selectedId={selectedId}

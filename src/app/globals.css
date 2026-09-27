@@ -208,15 +208,17 @@ a { color: inherit; }
 .crm tbody tr.picked { background: #f6faf8; }
 .crm tbody tr.selected { background: #f1f8f4; box-shadow: inset 3px 0 0 var(--green); }
 .crm tbody tr:last-child td { border-bottom: 0; }
-.col-score { width: 68px; }
 .col-check { width: 44px; padding-left: 20px !important; padding-right: 4px !important; }
-.col-date { width: 84px; white-space: nowrap; }
-.col-actions { width: 132px; padding-right: 20px !important; }
 .col-lead { width: auto; }
-.col-contact { width: 24%; }
-.col-source { width: 120px; }
-.col-status { width: 124px; }
-.col-next { width: 160px; }
+.col-contact { width: 30%; }
+.col-status { width: 170px; }
+.col-next { width: 180px; }
+.col-actions { width: 132px; padding-right: 20px !important; }
+.active-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--green-ink); font-weight: 500; }
+.active-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.active-tag + .cell-flag::before, .active-tag + .ellipsis::before { content: '·'; color: #c9c9c9; margin-right: 6px; }
+/* Keep the card a steady height while switching tabs, so the page does not jump */
+.crm-card > .table-wrap, .crm-card > .empty-state, .crm-card > .panel { min-height: max(380px, 55vh); }
 .crm td { overflow: hidden; }
 .next { overflow: hidden; text-overflow: ellipsis; }
 .cell-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -385,19 +387,8 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .dropdown-check { display: grid; place-items: center; width: 14px; color: var(--green-ink); }
 
 /* Columns step away instead of scrolling sideways */
-@media (max-width: 1280px) { .col-source { display: none; } }
-@media (max-width: 1100px) { .col-date { display: none; } .col-contact { width: 28%; } }
-@media (max-width: 900px) { .col-next { display: none; } }
-@media (max-width: 720px) {
-  .col-contact, .col-score { display: none; }
-  .col-status { width: 112px; }
-  .col-actions { width: 104px; }
-}
-@media (max-width: 480px) {
-  .col-status { display: none; }
-  .col-check { padding-left: 12px !important; }
-  .col-actions { padding-right: 12px !important; }
-}
+@media (max-width: 1100px) { .col-status { width: 150px; } .col-next { width: 150px; } .col-contact { width: 28%; } }
+@media (max-width: 900px) { .col-status { display: none; } }
 
 /* ── Toasts ─────────────────────────────── */
 .toast-stack {
@@ -493,9 +484,35 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .ill-spark { stroke: #c9ccd1; stroke-width: 2; }
 .ill-ghost { fill: none; stroke: #d6d8dc; stroke-width: 2; stroke-dasharray: 4 5; }
 
-/* Phones: keep rows readable; scheduling lives inside the lead */
-@media (max-width: 560px) {
+/* Phones: each lead becomes a small stacked card */
+@media (max-width: 640px) {
+  .crm, .crm tbody { display: block; }
+  .crm thead { display: none; }
+  .crm tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .crm tbody tr:last-child { border-bottom: 0; }
+  .crm td { display: block; padding: 0 !important; border: 0; overflow: hidden; }
+  .crm .col-check { display: none; }
+  .crm .col-lead { grid-column: 1; grid-row: 1; }
+  .crm .col-actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; width: auto; }
+  .crm .col-contact { grid-column: 1; grid-row: 2; width: auto; margin-top: 8px; }
+  .crm .col-contact .cell-title { display: none; }
+  .crm .col-contact .cell-sub { margin-top: 0; }
+  .crm .col-status { display: none; }
+  .crm .col-next { grid-column: 1; grid-row: 3; width: auto; margin-top: 4px; font-size: 12px; }
   .crm .row-btn { display: none; }
-  .crm .col-actions { width: 44px; padding-right: 8px !important; }
-  .crm td { padding: 12px 10px; }
+  .crm tbody tr.selected { box-shadow: inset 3px 0 0 var(--green); }
+  .crm-card > .table-wrap, .crm-card > .empty-state, .crm-card > .panel { min-height: 0; }
+  .crm-toolbar { padding: 14px 12px; }
+  .tabs { margin: -14px -12px 0; padding: 0 12px; gap: 18px; }
+  .crm-filters .search { min-width: 0; flex-basis: 100%; }
+  .crm-filters .dropdown { flex: 1; }
+  .crm-filters .dropdown-btn { width: 100%; min-width: 0; }
+  .crm-foot { flex-wrap: wrap; padding: 10px 12px; }
+  .pager { margin-left: 0; }
+  .topbar-inner { gap: 10px; }
+  .brand { font-size: 22px; }
+  .bulk-inner { padding: 10px 12px; }
 }
