@@ -2,13 +2,7 @@ import { Resend } from 'resend';
 import type { Lead } from '@/types/lead';
 import { splitDraft } from '@/lib/compose';
 import { APP_URL, sendLink } from '@/lib/tracking';
-
-const SOURCE_LABEL: Record<Lead['source'], string> = {
-  freelancer: 'Freelancer',
-  places: 'Local business',
-  osm: 'OpenStreetMap',
-  companies_house: 'New UK company',
-};
+import { SOURCE_LABEL, fitOf } from '@/lib/leadview';
 
 const HEADLINES = ['No website', 'No own website', 'No website yet', 'Outdated website', 'Website broken'];
 
@@ -53,9 +47,11 @@ function pill(text: string, fg: string, bg: string): string {
   return `<span style="display:inline-block;font-size:11px;font-weight:600;line-height:1;padding:5px 8px;border-radius:4px;color:${fg};background:${bg};white-space:nowrap">${text}</span>`;
 }
 
-function scoreBadge(score: number): string {
-  const [fg, bg] = score >= 75 ? [C.greenInk, C.greenTint] : score >= 55 ? [C.purple, C.purpleTint] : [C.fg2, '#f0f0f0'];
-  return `<span style="display:inline-block;min-width:26px;text-align:center;font-size:12px;font-weight:700;line-height:1;padding:7px 6px;border-radius:6px;color:${fg};background:${bg}">${score}</span>`;
+// Same words as the dashboard: Strong, Good or Weak fit.
+function fitBadge(score: number): string {
+  const fit = fitOf(score);
+  const [fg, weight] = fit.tone === 'strong' ? [C.fg, 700] : fit.tone === 'good' ? [C.fg2, 600] : [C.fg3, 500];
+  return `<span style="display:inline-block;font-size:12px;font-weight:${weight};line-height:1.4;color:${fg}">${fit.label}</span>`;
 }
 
 function actions(lead: Lead): string {
@@ -95,10 +91,10 @@ function leadCard(lead: Lead): string {
   <div style="background:${C.surface};border:1px solid ${C.border};border-radius:8px;margin-bottom:14px;overflow:hidden">
     <div style="padding:18px 20px 16px">
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse"><tr>
-        <td style="width:46px;vertical-align:top;padding-top:2px">${scoreBadge(lead.score ?? 0)}</td>
+        <td style="width:56px;vertical-align:top;padding-top:2px">${fitBadge(lead.score ?? 0)}</td>
         <td style="vertical-align:top">
           <div style="font-size:16px;font-weight:700;color:${C.fg};line-height:1.35">${esc(lead.title)}</div>
-          <div style="font-size:12px;color:${C.fg3};margin-top:4px">${SOURCE_LABEL[lead.source]} &middot; ${esc(lead.company)}</div>
+          <div style="font-size:12px;color:${C.fg3};margin-top:4px">Found on ${SOURCE_LABEL[lead.source]} &middot; ${esc(lead.company)}</div>
           ${headline ? `<div style="margin-top:8px">${pill(headline, C.warnInk, C.warnTint)}</div>` : ''}
         </td>
       </tr></table>

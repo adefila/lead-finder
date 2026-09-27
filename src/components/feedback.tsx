@@ -9,7 +9,7 @@ type Tone = 'default' | 'success' | 'error';
 interface ToastAction { label: string; run: () => void }
 interface ToastItem { id: number; text: string; tone: Tone; action?: ToastAction }
 interface ToastOptions { tone?: Tone; action?: ToastAction }
-interface ConfirmOptions { title: string; body?: string; confirmLabel?: string; danger?: boolean }
+interface ConfirmOptions { title: string; body?: string; confirmLabel?: string; danger?: boolean; typeToConfirm?: string }
 
 interface Feedback {
   toast: (text: string, options?: ToastOptions) => void;
@@ -86,15 +86,18 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function ConfirmDialog({ title, body, confirmLabel = 'Confirm', danger, onClose }: ConfirmOptions & { onClose: (ok: boolean) => void }) {
+function ConfirmDialog({ title, body, confirmLabel = 'Confirm', danger, typeToConfirm, onClose }: ConfirmOptions & { onClose: (ok: boolean) => void }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [typed, setTyped] = useState('');
+  const ready = !typeToConfirm || typed.trim().toLowerCase() === typeToConfirm.toLowerCase();
 
   useEffect(() => {
-    confirmRef.current?.focus();
+    (typeToConfirm ? inputRef.current : confirmRef.current)?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, typeToConfirm]);
 
   return (
     <>
@@ -113,9 +116,16 @@ function ConfirmDialog({ title, body, confirmLabel = 'Confirm', danger, onClose 
         >
           <h2 id="dialog-title" className="dialog-title">{title}</h2>
           {body && <p className="dialog-body">{body}</p>}
+          {typeToConfirm && (
+            <label className="dialog-type">
+              <span className="field-label">Type <strong>{typeToConfirm}</strong> to confirm</span>
+              <input ref={inputRef} className="field" value={typed} onChange={e => setTyped(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && ready) onClose(true); }} />
+            </label>
+          )}
           <div className="dialog-actions">
             <button className="btn" onClick={() => onClose(false)}>Cancel</button>
-            <button ref={confirmRef} className={`btn ${danger ? 'btn-danger-solid' : 'btn-primary'}`} onClick={() => onClose(true)}>
+            <button ref={confirmRef} className={`btn ${danger ? 'btn-danger-solid' : 'btn-primary'}`} disabled={!ready} onClick={() => onClose(true)}>
               {confirmLabel}
             </button>
           </div>

@@ -1,24 +1,22 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
-import { EASE } from '@/components/ui';
-
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'replied' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history';
+  | 'new' | 'queued' | 'approved' | 'followup' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
-  new: { title: 'No leads waiting', body: 'Click Run now to find businesses that need a better website.' },
-  queued: { title: 'Nothing queued', body: 'Queue leads with an email and Lead Finder sends them from your inbox, a few each weekday.' },
-  approved: { title: 'No one contacted yet', body: 'Leads you email, bid on or message show up here.' },
-  followup: { title: 'No follow-ups due', body: 'Follow-ups appear 3 days after you contact someone.' },
-  replied: { title: 'No replies yet', body: 'When a lead writes back, they move here.' },
+  new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
+  queued: { title: 'Nothing scheduled', body: 'Open a lead with an email and click Schedule email. It goes out from your inbox on a weekday morning.' },
+  approved: { title: 'No one to hear back from yet', body: 'People you email or message show up here while you wait for a reply.' },
+  followup: { title: 'No follow-ups needed', body: 'If someone does not reply within 3 days, they show up here.' },
+  replied: { title: 'No replies yet', body: 'When someone writes back, they move here on their own.' },
+  done: { title: 'Nothing finished yet', body: 'Leads you win, lose or skip end up here.' },
   won: { title: 'No wins yet', body: 'Projects you close show up here.' },
   lost: { title: 'Nothing lost', body: 'Leads that say no, or never reply, end up here.' },
-  skipped: { title: 'Nothing skipped', body: 'Leads you skip show up here. You can restore them anytime.' },
-  all: { title: 'No leads yet', body: 'Click Run now to find your first leads.' },
-  search: { title: 'No matches', body: 'Try a different name, company or email.' },
-  history: { title: 'No history yet', body: 'Each run shows up here by day.' },
+  skipped: { title: 'Nothing skipped', body: 'Leads you skip show up here. You can bring them back anytime.' },
+  all: { title: 'No leads yet', body: 'Click Find new leads to get started.' },
+  search: { title: 'No matches', body: 'Try a different business name, person or email.' },
+  history: { title: 'Nothing here yet', body: 'Each search for new leads shows up here, grouped by day.' },
 };
 
 // Shared stroke styles live in globals.css (.ill-*), so every drawing matches the dashboard.
@@ -75,6 +73,14 @@ const ART: Record<EmptyKind, ReactNode> = {
       <path className="ill-on-accent" d="M114 84h30M114 94h18" />
     </>
   ),
+  done: (
+    <>
+      <rect className="ill-card" x="58" y="40" width="84" height="66" rx="8" />
+      <path className="ill-soft" d="M90 58h36M90 74h36M90 90h24" />
+      <path className="ill-accent" d="M70 58l4 4 7-8M70 74l4 4 7-8" />
+      <circle className="ill-ghost" cx="75" cy="90" r="5" />
+    </>
+  ),
   won: (
     <>
       <path className="ill-line ill-fill" d="M72 42h56v18a28 28 0 0 1-56 0z" />
@@ -119,16 +125,14 @@ const ART: Record<EmptyKind, ReactNode> = {
 export function EmptyState({ kind }: { kind: EmptyKind }) {
   const { title, body } = COPY[kind];
   return (
-    <motion.div className="empty-state" role="status"
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}>
-      <motion.svg className="empty-art" viewBox="0 0 200 140" aria-hidden
-        animate={{ y: [0, -5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
+    <div className="empty-state" role="status">
+      <svg className="empty-art" viewBox="0 0 200 140" aria-hidden>
         <ellipse className="ill-shadow" cx="100" cy="126" rx="56" ry="6" />
         <circle className="ill-halo" cx="100" cy="72" r="58" />
         {ART[kind]}
-      </motion.svg>
+      </svg>
       <strong className="empty-title">{title}</strong>
       <p className="empty-body">{body}</p>
-    </motion.div>
+    </div>
   );
 }

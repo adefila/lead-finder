@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent as
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, ArrowRight, Check, Clock, Eye, EyeOff, LogOut, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, Minus, Phone,
-  RefreshCw, Search, Send, Sparkles, Trash2, Undo2, X, type LucideIcon,
+  RefreshCw, Search, Send, Sparkles, Trash2, Undo2, X, MoreHorizontal, HelpCircle, type LucideIcon,
 } from 'lucide-react';
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
@@ -31,6 +31,8 @@ const ICONS = {
   eye: Eye,
   eyeOff: EyeOff,
   logout: LogOut,
+  more: MoreHorizontal,
+  help: HelpCircle,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
@@ -174,6 +176,51 @@ export function Dropdown<T extends string>({ value, options, onChange, label }: 
           </motion.ul>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+export interface MenuItem { label: string; icon?: IconName; onSelect: () => void; danger?: boolean; hint?: string }
+
+// A small "more" menu for actions that should not sit in the main bar.
+export function Menu({ items, label, dark }: { items: (MenuItem | 'divider')[]; label: string; dark?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  return (
+    <div className="dropdown" ref={root}>
+      <button type="button" className={`icon-btn${dark ? ' on-dark' : ''}`} aria-haspopup="menu" aria-expanded={open}
+        aria-label={label} title={label} onClick={() => setOpen(o => !o)}>
+        <Icon name="more" />
+      </button>
+      {open && (
+        <ul className="dropdown-menu menu-right" role="menu" aria-label={label}>
+          {items.map((it, i) => it === 'divider'
+            ? <li key={`d${i}`} className="menu-divider" role="separator" />
+            : (
+              <li key={it.label} role="menuitem" tabIndex={0} className={`dropdown-item menu-item${it.danger ? ' danger' : ''}`}
+                onClick={() => { setOpen(false); it.onSelect(); }}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(false); it.onSelect(); } }}>
+                <span className="menu-label">
+                  {it.icon && <Icon name={it.icon} size={14} />}
+                  <span>
+                    {it.label}
+                    {it.hint && <span className="menu-hint">{it.hint}</span>}
+                  </span>
+                </span>
+              </li>
+            ))}
+        </ul>
+      )}
     </div>
   );
 }

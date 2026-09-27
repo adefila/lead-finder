@@ -3,23 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
-import { gmailComposeUrl, mailtoUrl, splitDraft } from '@/lib/compose';
+import { gmailComposeUrl, splitDraft } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, headlineOf, personOf, scoreClass,
-  shortDate, statusOf, whyText,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, fitOf, leadStory, personOf, shortDate, statusOf,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
 
 const LINK_LABELS = [
+  ['website', 'Website'],
   ['instagram', 'Instagram'],
   ['facebook', 'Facebook'],
   ['linkedin', 'LinkedIn'],
   ['twitter', 'X'],
-  ['website', 'Website'],
   ['maps', 'Map'],
-  ['register', 'Companies House'],
+  ['register', 'Company record'],
 ] as const;
 
 interface Props {
@@ -41,17 +40,19 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const [body, setBody] = useState(initial.body);
   const [drafting, setDrafting] = useState(false);
   const [followUpLoaded, setFollowUpLoaded] = useState(false);
+  const [redrafting, setRedrafting] = useState(false);
   const { toast } = useFeedback();
 
   const status = statusOf(lead);
   const fu = followUpState(lead);
   const isFollowUp = fu.due && !lead.autoSequence;
-  const headline = headlineOf(lead);
+  const story = useMemo(() => leadStory(lead), [lead]);
+  const fit = fitOf(lead.score);
   const links = lead.contactLinks ?? {};
   const email = lead.contactEmail;
   const person = personOf(lead);
   const gmail = email ? gmailComposeUrl(email, subject, body) : '';
-
+  const isJob = lead.source === 'freelancer';
 
   const writeFollowUp = useCallback(async () => {
     setDrafting(true);
@@ -67,7 +68,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         if (initial.subject) setSubject(initial.subject.startsWith('Re:') ? initial.subject : `Re: ${initial.subject}`);
         setFollowUpLoaded(true);
       } else {
-        toast(data.error ?? 'Could not draft the follow-up', { tone: 'error' });
+        toast(data.error ?? 'Could not write the follow-up', { tone: 'error' });
       }
     } finally {
       setDrafting(false);
@@ -78,7 +79,6 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
     if (isFollowUp && !followUpLoaded && !drafting) writeFollowUp();
   }, [isFollowUp, followUpLoaded, drafting, writeFollowUp]);
 
-  const [redrafting, setRedrafting] = useState(false);
   async function redraft() {
     setRedrafting(true);
     try {
@@ -88,8 +88,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         body: JSON.stringify({ id: lead.id }),
       });
       const data = await res.json() as { proposal?: string; contactName?: string; contactTitle?: string; error?: string };
-      if (!data.proposal) { toast(data.error ?? 'Could not rewrite the draft', { tone: 'error' }); return; }
-      toast('Draft rewritten', { tone: 'success' });
+      if (!data.proposal) { toast(data.error ?? 'Could not rewrite the message', { tone: 'error' }); return; }
+      toast('Message rewritten', { tone: 'success' });
       const next = splitDraft(data.proposal);
       setSubject(next.subject);
       setBody(next.body);
@@ -102,176 +102,188 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const markContacted = () => { if (status === 'new') onStatus('approved'); };
   const composed = () => (subject.trim() ? `Subject: ${subject.trim()}\n\n${body.trim()}` : body.trim());
   const sent = () => (isFollowUp ? onFollowedUp() : markContacted());
+  const copyBody = () => navigator.clipboard.writeText(body);
+
+  const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
+    : isJob ? 'Your proposal'
+    : email ? 'Your email'
+    : links.linkedin && lead.source === 'companies_house' ? 'Your LinkedIn message'
+    : 'Your message';
+
+  const timeline = [
+    `Found ${shortDate(lead.createdAt)}`,
+    lead.contactedAt && `last contacted ${shortDate(lead.contactedAt)}`,
+    fu.sent > 0 && `${fu.sent} follow-up${fu.sent > 1 ? 's' : ''} sent`,
+    status === 'approved' && !fu.exhausted && fu.dueAt && !fu.due && fu.sent < MAX_FOLLOW_UPS && `next follow-up ${shortDate(fu.dueAt)}`,
+  ].filter(Boolean).join(', ');
 
   return (
     <>
-        <header className="drawer-head">
-          <div className="drawer-nav">
-            <span className="muted">{position}</span>
-            <button className="icon-btn" onClick={onPrev} disabled={!onPrev} aria-label="Previous lead" title="Previous (↑)"><Icon name="up" /></button>
-            <button className="icon-btn" onClick={onNext} disabled={!onNext} aria-label="Next lead" title="Next (↓)"><Icon name="down" /></button>
-            <span className="spacer" />
-            <button className="icon-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><Icon name="x" /></button>
-          </div>
-          <motion.div key={lead.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }}>
-            <div className="drawer-title-row">
-              <span className={scoreClass(lead.score ?? 0)}>{lead.score ?? '-'}</span>
-              <div style={{ minWidth: 0 }}>
-                <h2 className="drawer-title">{lead.title}</h2>
-                <div className="cell-sub">
-                  <span>{SOURCE_LABEL[lead.source]}</span>
-                  <span className="sep">/</span>
-                  <span>{lead.company}</span>
-                </div>
-              </div>
-            </div>
-            <div className="drawer-tags">
-              <span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span>
-              {lead.description.includes('Verified active') && <span className="tag good" title="Open on Google and recently reviewed">Active</span>}
-              {headline && <span className="tag warn">{headline}</span>}
-              {isFollowUp && <span className="tag warn">Follow-up {fu.sent + 1} due</span>}
-              {fu.exhausted && <span className="tag warn">No reply after {fu.sent} follow-ups</span>}
-            </div>
-          </motion.div>
-        </header>
-
-        <div className="drawer-body">
-          <section className="card">
-            <span className="card-title">Contact</span>
-            {person && <div className="kv"><span>Person</span><span>{person}{lead.contactTitle ? `, ${lead.contactTitle}` : ''}</span></div>}
-            <div className="kv">
-              <span>Email</span>
-              {email ? (
-                <span className="kv-value">
-                  <a className="mono" href={gmail} target="_blank" rel="noreferrer">{email}</a>
-                  <CopyButton text={email} label="Copy email" />
-                </span>
-              ) : (
-                <span className="muted">{lead.source === 'freelancer' ? 'Hidden by Freelancer, reply through a bid' : 'None found on their site'}</span>
-              )}
-            </div>
-            {lead.contactPhone && (
-              <div className="kv">
-                <span>Phone</span>
-                <span className="kv-value">
-                  <a className="mono" href={`tel:${lead.contactPhone.replace(/\s/g, '')}`}>{lead.contactPhone}</a>
-                  <CopyButton text={lead.contactPhone} label="Copy phone number" />
-                </span>
-              </div>
-            )}
-            {LINK_LABELS.some(([k]) => links[k]) && (
-              <div className="kv">
-                <span>Links</span>
-                <div className="link-row">
-                  {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
-                    <a key={k} className="btn btn-sm" href={links[k]} target="_blank" rel="noreferrer">{label}</a>
-                  ))}
-                </div>
-              </div>
-            )}
-            {lead.source === 'freelancer' && (
-              <div className="kv"><span>Project</span><a href={lead.url} target="_blank" rel="noreferrer">Open on Freelancer</a></div>
-            )}
-            <div className="kv">
-              <span>Timeline</span>
-              <span>
-                Added {shortDate(lead.createdAt)}
-                {lead.contactedAt && `. Last contacted ${shortDate(lead.contactedAt)}`}
-                {fu.sent > 0 && `, ${fu.sent} follow-up${fu.sent > 1 ? 's' : ''} sent`}
-                {status === 'approved' && !fu.exhausted && fu.dueAt && !fu.due && fu.sent < MAX_FOLLOW_UPS && `. Next follow-up ${shortDate(fu.dueAt)}`}
-              </span>
-            </div>
-          </section>
-
-          <section className="card">
-            <span className="card-title">
-              {isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}` : lead.source === 'freelancer' ? 'Bid proposal' : email ? 'Email' : 'Message (DM, call notes or contact form)'}
-            </span>
-            {fu.exhausted && <div className="note">No reply after {fu.sent} follow-ups. Close it out, or mark it if they got back to you.</div>}
-            {status === 'new' && lead.sendError && <div className="note error-note">{lead.sendError}</div>}
-            {status === 'queued' && (lead.sendError
-              ? <div className="note error-note">Last send attempt failed: {lead.sendError}. It will try again on the next run.</div>
-              : <div className="note info-note">Queued. It sends automatically on the next weekday between 9am and 4pm their time, then follows up on day 3 and day 7 unless they reply.</div>)}
-            {status === 'approved' && lead.autoSequence && !fu.exhausted && (
-              <div className="note info-note">Follow-ups send automatically from your inbox. They stop as soon as {person || 'they'} reply.</div>
-            )}
-            {(email || subject) && (
-              <label>
-                <span className="field-label">Subject</span>
-                <input className="field" value={subject} onChange={e => setSubject(e.target.value)} />
-              </label>
-            )}
-            <label>
-              <span className="field-label field-label-row">
-                {drafting ? 'Writing follow-up…' : 'Message'}
-                <CopyButton text={body} label="Copy message" />
-              </span>
-              <textarea className="field" rows={11} value={body} disabled={drafting} onChange={e => setBody(e.target.value)} />
-            </label>
-
-            <div className="actions">
-              {status === 'new' && email && (
-                <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}>
-                  <Icon name="clock" />Queue to send
-                </Btn>
-              )}
-              {status === 'queued' && (
-                <>
-                  <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}>
-                    <Icon name="check" />Save changes
-                  </Btn>
-                  <Btn className="btn" onClick={() => onStatus('new')}><Icon name="undo" />Remove from queue</Btn>
-                </>
-              )}
-              {(status === 'new' || isFollowUp) && email && (
-                <>
-                  <LinkBtn className={`btn${isFollowUp ? ' btn-primary' : ''}`} href={gmail} target="_blank" rel="noreferrer" onClick={sent}>
-                    <Icon name="send" />{isFollowUp ? 'Send follow-up in Gmail' : 'Send now in Gmail'}
-                  </LinkBtn>
-                  <LinkBtn className="btn" href={mailtoUrl(email, subject, body)} onClick={sent}>Mail app</LinkBtn>
-                </>
-              )}
-              {status === 'new' && !email && lead.source === 'freelancer' && (
-                <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"
-                  onClick={() => { navigator.clipboard.writeText(body); markContacted(); }}>
-                  <Icon name="external" />Copy and open bid
-                </LinkBtn>
-              )}
-              {status === 'new' && !email && lead.source !== 'freelancer' && (
-                <Btn className="btn btn-dark" onClick={markContacted}>Mark contacted</Btn>
-              )}
-              {status === 'new' && (email || lead.source === 'freelancer') && (
-                <Btn className="btn" onClick={markContacted}><Icon name="check" />Mark as sent</Btn>
-              )}
-              {isFollowUp && !email && <Btn className="btn btn-dark" onClick={onFollowedUp}>Mark followed up</Btn>}
-              {isFollowUp && <Btn className="btn" onClick={writeFollowUp} disabled={drafting}>Rewrite</Btn>}
-              {status === 'new' && (
-                <Btn className="btn" onClick={redraft} disabled={redrafting}>
-                  <Icon name="sparkle" />{redrafting ? 'Rewriting…' : 'Rewrite draft'}
-                </Btn>
-              )}
-              {status === 'approved' && !isFollowUp && email && (
-                <a className="btn" href={gmail} target="_blank" rel="noreferrer">Open in Gmail</a>
-              )}
-            </div>
-
-            <div className="actions status-actions">
-              <span className="field-label" style={{ margin: 0 }}>Move to</span>
-              {status === 'approved' && <Btn className="btn btn-sm" onClick={() => onStatus('replied')}>Replied</Btn>}
-              {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>Won</Btn>}
-              {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('lost')}>Lost</Btn>}
-              {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skipped</Btn>}
-              {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />To contact</Btn>}
-              <span className="spacer" />
-              <Btn className="btn btn-sm btn-danger" onClick={onDelete}><Icon name="trash" />Delete</Btn>
-            </div>
-          </section>
-
-          <section className="card">
-            <span className="card-title">Why this lead</span>
-            <p className="why">{whyText(lead).slice(0, 900)}</p>
-          </section>
+      <header className="drawer-head">
+        <div className="drawer-nav">
+          <span className="muted">{position}</span>
+          <button className="icon-btn" onClick={onPrev} disabled={!onPrev} aria-label="Previous lead" title="Previous (↑)"><Icon name="up" /></button>
+          <button className="icon-btn" onClick={onNext} disabled={!onNext} aria-label="Next lead" title="Next (↓)"><Icon name="down" /></button>
+          <span className="spacer" />
+          <button className="icon-btn" onClick={onClose} aria-label="Close" title="Close (Esc)"><Icon name="x" /></button>
         </div>
+        <div>
+          <h2 className="drawer-title">{lead.title}</h2>
+          <div className="drawer-sub">{lead.company} · Found on {SOURCE_LABEL[lead.source]}</div>
+          <div className="drawer-meta">
+            <span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span>
+            <span className={`fit ${fit.tone}`} title={FIT_HINT}>{fit.label} fit</span>
+            {isFollowUp && <span className="flag">Follow-up due</span>}
+            {fu.exhausted && <span className="flag">No reply after {fu.sent} follow-ups</span>}
+          </div>
+        </div>
+      </header>
+
+      <div className="drawer-body">
+        <section className="dsec">
+          <h3 className="dsec-title">Who to contact</h3>
+          {person && <div className="kv"><span>Person</span><span>{person}{lead.contactTitle ? `, ${lead.contactTitle}` : ''}</span></div>}
+          <div className="kv">
+            <span>Email</span>
+            {email ? (
+              <span className="kv-value">
+                <a className="mono" href={gmail} target="_blank" rel="noreferrer">{email}</a>
+                <CopyButton text={email} label="Copy email" />
+              </span>
+            ) : (
+              <span className="muted">{isJob ? 'Hidden by Freelancer. You reply through the job post.' : 'We could not find one'}</span>
+            )}
+          </div>
+          {lead.contactPhone && (
+            <div className="kv">
+              <span>Phone</span>
+              <span className="kv-value">
+                <a className="mono" href={`tel:${lead.contactPhone.replace(/\s/g, '')}`}>{lead.contactPhone}</a>
+                <CopyButton text={lead.contactPhone} label="Copy phone number" />
+              </span>
+            </div>
+          )}
+          {(LINK_LABELS.some(([k]) => links[k]) || isJob) && (
+            <div className="kv">
+              <span>Links</span>
+              <div className="link-row">
+                {isJob && <a className="text-link" href={lead.url} target="_blank" rel="noreferrer">Job post</a>}
+                {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
+                  <a key={k} className="text-link" href={links[k]} target="_blank" rel="noreferrer">{label}</a>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="dsec">
+          <h3 className="dsec-title">{isJob ? 'What they asked for' : 'Why they need a website'}</h3>
+          {story.problems.length > 0 && (
+            <ul className="why-list">
+              {story.problems.map(p => <li key={p}>{p}</li>)}
+            </ul>
+          )}
+          {story.stillOpen && <p className="why-ok"><Icon name="check" size={14} /><span><strong>{lead.source === 'companies_house' ? 'Active.' : 'Still open.'}</strong> {story.stillOpen}</span></p>}
+          {story.other.length > 0 && <p className="why">{story.other.join(' ').slice(0, 900)}</p>}
+        </section>
+
+        <section className="dsec">
+          <h3 className="dsec-title">{messageTitle}</h3>
+          {fu.exhausted && <div className="note">They have not replied after {fu.sent} follow-ups. You can close this one, or mark it as replied if they got back to you.</div>}
+          {status === 'new' && lead.sendError && <div className="note error-note">{lead.sendError}</div>}
+          {status === 'queued' && (lead.sendError
+            ? <div className="note error-note">The last try did not send: {lead.sendError}. It will try again shortly.</div>
+            : <div className="note info-note">This email goes out on its own on the next weekday between 9am and 4pm their time. If they do not reply, a short follow-up goes out 3 days later, and one more 4 days after that.</div>)}
+          {status === 'approved' && lead.autoSequence && !fu.exhausted && (
+            <div className="note info-note">Follow-ups go out on their own from your inbox, and stop as soon as {person || 'they'} reply.</div>
+          )}
+          {(email || subject) && (
+            <label>
+              <span className="field-label">Subject</span>
+              <input className="field" value={subject} onChange={e => setSubject(e.target.value)} />
+            </label>
+          )}
+          <label>
+            <span className="field-label field-label-row">
+              {drafting ? 'Writing your follow-up…' : 'Message'}
+              <CopyButton text={body} label="Copy message" />
+            </span>
+            <textarea className="field" rows={11} value={body} disabled={drafting} onChange={e => setBody(e.target.value)} />
+          </label>
+
+          <div className="actions">
+            {/* One main action, chosen for this lead */}
+            {status === 'new' && email && (
+              <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}
+                title="Sends from your inbox on the next weekday morning">
+                <Icon name="clock" />Schedule email
+              </Btn>
+            )}
+            {status === 'queued' && (
+              <Btn className="btn btn-primary" onClick={() => onQueue(composed())} disabled={!body.trim()}>
+                <Icon name="check" />Save changes
+              </Btn>
+            )}
+            {isFollowUp && email && (
+              <LinkBtn className="btn btn-primary" href={gmail} target="_blank" rel="noreferrer" onClick={sent}>
+                <Icon name="send" />Send follow-up in Gmail
+              </LinkBtn>
+            )}
+            {isFollowUp && !email && (
+              <Btn className="btn btn-primary" onClick={() => { copyBody(); toast('Message copied'); }}><Icon name="copy" />Copy message</Btn>
+            )}
+            {status === 'new' && !email && isJob && (
+              <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"
+                onClick={() => { copyBody(); markContacted(); }}>
+                <Icon name="external" />Copy and open job post
+              </LinkBtn>
+            )}
+            {status === 'new' && !email && !isJob && links.linkedin && lead.source === 'companies_house' && (
+              <LinkBtn className="btn btn-primary" href={links.linkedin} target="_blank" rel="noreferrer"
+                onClick={() => { copyBody(); toast('Message copied. Paste it into LinkedIn, then come back and click "I have sent it".'); }}>
+                <Icon name="external" />Copy and open LinkedIn
+              </LinkBtn>
+            )}
+            {status === 'new' && !email && !isJob && !(links.linkedin && lead.source === 'companies_house') && (
+              <Btn className="btn btn-primary" onClick={() => { copyBody(); toast('Message copied'); }}><Icon name="copy" />Copy message</Btn>
+            )}
+
+            {/* Everything else is secondary */}
+            {status === 'new' && email && (
+              <LinkBtn className="btn" href={gmail} target="_blank" rel="noreferrer" onClick={sent}
+                title="Opens Gmail with this message filled in, and moves the lead to Waiting for reply">
+                Send it myself in Gmail
+              </LinkBtn>
+            )}
+            {status === 'new' && !email && !isJob && <Btn className="btn" onClick={markContacted}>I have sent it</Btn>}
+            {isFollowUp && !email && <Btn className="btn" onClick={onFollowedUp}>I have followed up</Btn>}
+            {status === 'queued' && <Btn className="btn" onClick={() => onStatus('new')}>Do not send</Btn>}
+            {status === 'approved' && !isFollowUp && email && (
+              <a className="btn" href={gmail} target="_blank" rel="noreferrer">Open in Gmail</a>
+            )}
+            {status === 'new' && (
+              <Btn className="btn btn-quiet" onClick={redraft} disabled={redrafting}>
+                <Icon name="sync" />{redrafting ? 'Rewriting…' : 'Write a new version'}
+              </Btn>
+            )}
+            {isFollowUp && <Btn className="btn btn-quiet" onClick={writeFollowUp} disabled={drafting}><Icon name="sync" />Write a new version</Btn>}
+          </div>
+        </section>
+
+        <section className="dsec dsec-foot">
+          <div className="actions status-actions">
+            <span className="field-label" style={{ margin: 0 }}>Move to</span>
+            {status === 'approved' && <Btn className="btn btn-sm" onClick={() => onStatus('replied')}>They replied</Btn>}
+            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>Won</Btn>}
+            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('lost')}>Lost</Btn>}
+            {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skip</Btn>}
+            {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />Back to To contact</Btn>}
+            <span className="spacer" />
+            <Btn className="btn btn-sm btn-danger" onClick={onDelete}><Icon name="trash" />Delete</Btn>
+          </div>
+          <p className="timeline">{timeline}.</p>
+        </section>
+      </div>
     </>
   );
 }
@@ -302,7 +314,7 @@ export function LeadDrawer(props: Props) {
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
-        transition={{ duration: 0.32, ease: EASE }}
+        transition={{ duration: 0.28, ease: EASE }}
       >
         <DrawerContent key={lead.id} {...props} />
       </motion.aside>

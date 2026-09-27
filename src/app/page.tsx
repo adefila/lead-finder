@@ -1,20 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, MotionConfig } from 'motion/react';
+import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, VIEWS, defaultSort, inView, matchesSearch, sortLeads, statusOf,
-  type SortKey, type View,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, inView, matchesSearch, sortLeads, statusOf,
+  type SortKey, type Sub, type View,
 } from '@/lib/leadview';
+import { needsAttention } from '@/lib/followup';
 import { Funnel } from '@/components/Funnel';
 import { History } from '@/components/History';
+import { HowItWorks, useHowItWorks } from '@/components/HowItWorks';
 import { LeadTable } from '@/components/LeadTable';
 import { LeadDrawer } from '@/components/LeadDrawer';
-import { Btn, Dropdown, Icon } from '@/components/ui';
+import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
+type RunSummary = { found: number; withEmail: number; error?: string };
 type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number };
 type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { title: string; kind: string }; skipped?: string; error?: string };
 
@@ -33,14 +36,11 @@ function pageNumbers(current: number, count: number): (number | null)[] {
   return out;
 }
 
-function humanKey(k: string): string {
-  return k.replace(/([A-Z])/g, ' $1').toLowerCase();
-}
-
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('new');
+  const [sub, setSub] = useState<Sub>('all');
   const [mode, setMode] = useState<'table' | 'history'>('table');
   const [source, setSource] = useState<Lead['source'] | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -49,52 +49,59 @@ export default function Home() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
   const [sendingNow, setSendingNow] = useState(false);
+  const how = useHowItWorks();
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
   const fail = useCallback((text: string) => toast(text, { tone: 'error' }), [toast]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (): Promise<Lead[]> => {
+    let list: Lead[] = [];
     try {
       const res = await fetch('/api/leads');
-      setLeads(await res.json() as Lead[]);
-    } catch { setLeads([]); }
+      list = await res.json() as Lead[];
+    } catch { /* keep empty */ }
+    setLeads(list);
     setLoading(false);
+    return list;
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      await loadData();
-    })();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
+  // Finding leads takes a couple of minutes; afterwards, say in one sentence what changed.
   async function runNow() {
     setRunning(true);
-    setRunResult(null);
+    setRunSummary(null);
+    const before = new Set(leads.map(l => l.id));
     try {
       const res = await fetch('/api/cron', { headers: { 'x-manual': 'true' } });
       const data = await res.json() as RunResult;
-      setRunResult(data);
-      if (data.success) await loadData();
-    } catch (e) {
-      setRunResult({ error: String(e) });
+      if (!data.success) {
+        setRunSummary({ found: 0, withEmail: 0, error: data.error ?? 'Something went wrong while looking for leads.' });
+      } else {
+        const fresh = (await loadData()).filter(l => !before.has(l.id));
+        setRunSummary({ found: fresh.length, withEmail: fresh.filter(l => l.contactEmail).length });
+      }
+    } catch {
+      setRunSummary({ found: 0, withEmail: 0, error: 'Could not reach the server. Check your connection and try again.' });
     }
     setRunning(false);
   }
 
   async function reset() {
     const ok = await confirm({
-      title: 'Reset all leads?',
-      body: 'This deletes every lead, including contacted and won ones, and clears the history of leads already seen.',
-      confirmLabel: 'Reset everything',
+      title: 'Start over?',
+      body: 'This permanently deletes every lead, including people you have contacted and projects you have won. It cannot be undone.',
+      confirmLabel: 'Delete everything',
       danger: true,
+      typeToConfirm: 'delete',
     });
     if (!ok) return;
     const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
     const data = await res.json() as { leadsDeleted?: number; error?: string };
-    if (data.error) fail(`Reset failed: ${data.error}`); else toast(`Deleted ${data.leadsDeleted ?? 0} leads`, { tone: 'success' });
+    if (data.error) fail(`Could not delete: ${data.error}`); else toast(`Deleted ${data.leadsDeleted ?? 0} leads`, { tone: 'success' });
     await loadData();
   }
 
@@ -125,8 +132,8 @@ export default function Home() {
       ...(status === 'new' ? { contactedAt: undefined, followUps: 0, queuedAt: undefined, autoSequence: false, sendError: undefined } : {}),
       ...(status === 'queued' ? { queuedAt: new Date().toISOString(), autoSequence: true, sendError: undefined } : {}),
     })).then(ok => {
-      if (ok && !quiet && wasNew && status === 'approved') notify(`${previous!.title} marked as contacted`, { label: 'Undo', run: () => setStatus(id, 'new') });
-      if (ok && !quiet && wasNew && status === 'queued') notify(`${previous!.title} queued to send`, { label: 'Undo', run: () => setStatus(id, 'new') });
+      if (ok && !quiet && wasNew && status === 'approved') notify(`${previous!.title} moved to Waiting for reply`, { label: 'Undo', run: () => setStatus(id, 'new') });
+      if (ok && !quiet && wasNew && status === 'queued') notify(`${previous!.title} scheduled. It goes out on the next weekday morning.`, { label: 'Undo', run: () => setStatus(id, 'new') });
       if (ok && (status === 'queued' || previous?.status === 'queued')) refreshOutbox();
       return ok;
     });
@@ -139,7 +146,7 @@ export default function Home() {
       ...l, status: 'queued', proposal: draft, queuedAt: l.queuedAt ?? new Date().toISOString(), autoSequence: true, sendError: undefined,
     })).then(ok => {
       if (ok) {
-        toast(already ? 'Draft saved' : `${previous?.title ?? 'Lead'} queued to send`, already ? { tone: 'success' } : { action: { label: 'Undo', run: () => setStatus(id, 'new') } });
+        toast(already ? 'Changes saved' : `${previous?.title ?? 'Lead'} scheduled. It goes out on the next weekday morning.`, already ? { tone: 'success' } : { action: { label: 'Undo', run: () => setStatus(id, 'new') } });
         refreshOutbox();
       }
       return ok;
@@ -163,9 +170,9 @@ export default function Home() {
     try {
       const res = await fetch('/api/outbox', { headers: { 'x-manual': 'true' } });
       const r = await res.json() as OutboxRun;
-      if (r.error) fail(`Send failed: ${r.error}`);
-      else if (r.sent) toast(r.sent.kind === 'test' ? `Test email for ${r.sent.title} sent to your inbox` : `Sent ${r.sent.kind === 'follow-up' ? 'follow-up to' : 'to'} ${r.sent.title}`, { tone: 'success' });
-      else toast(r.skipped ?? 'Nothing to send right now');
+      if (r.error) fail(`Could not send: ${r.error}`);
+      else if (r.sent) toast(r.sent.kind === 'test' ? `Test email for ${r.sent.title} sent to your inbox` : `Sent ${r.sent.kind === 'follow-up' ? 'a follow-up to' : 'your email to'} ${r.sent.title}`, { tone: 'success' });
+      else toast(r.skipped === 'Nothing due inside business hours right now' ? 'Nothing to send right now. Emails only go out on weekdays between 9am and 4pm their time.' : r.skipped ?? 'Nothing to send right now');
       if (r.replies) toast(`${r.replies} repl${r.replies > 1 ? 'ies' : 'y'} found in your inbox`, { tone: 'success' });
       await Promise.all([loadData(), refreshOutbox()]);
     } finally {
@@ -212,7 +219,7 @@ export default function Home() {
     const results = await Promise.all(ids.map(id => setStatus(id, status, true)));
     const done = ids.filter((_, i) => results[i]);
     if (!done.length) return;
-    const verb = { approved: 'marked as sent', queued: 'queued to send', skipped: 'skipped', new: 'restored' }[status as string] ?? 'updated';
+    const verb = { approved: 'moved to Waiting for reply', queued: 'scheduled', skipped: 'skipped', new: 'moved back to To contact' }[status as string] ?? 'updated';
     notify(`${done.length} lead${done.length > 1 ? 's' : ''} ${verb}`, {
       label: 'Undo',
       run: () => done.forEach(id => setStatus(id, before.get(id) ?? 'new', true)),
@@ -230,8 +237,9 @@ export default function Home() {
     for (const v of VIEWS) c[v.id] = scoped.filter(l => inView(l, v.id)).length;
     return c;
   }, [scoped]);
+  const followUpsDue = useMemo(() => scoped.filter(needsAttention).length, [scoped]);
   const sort = sortOverride ?? defaultSort(view);
-  const rows = useMemo(() => sortLeads(scoped.filter(l => inView(l, view)), sort.key, sort.dir), [scoped, view, sort.key, sort.dir]);
+  const rows = useMemo(() => sortLeads(scoped.filter(l => inView(l, view, sub)), sort.key, sort.dir), [scoped, view, sub, sort.key, sort.dir]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -245,15 +253,16 @@ export default function Home() {
   }, [selectedIndex]);
 
   // Back to page 1 whenever the list itself changes.
-  useEffect(() => { setPage(0); }, [view, source, search, sortOverride]);
+  useEffect(() => { setPage(0); }, [view, sub, source, search, sortOverride]);
   const selected = leads.find(l => l.id === selectedId) ?? null;
 
   function onSort(key: SortKey) {
     setSortOverride(s => (s?.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' || key === 'next' ? 1 : -1 }));
   }
 
-  function changeView(v: View) {
+  function changeView(v: View, s: Sub = 'all') {
     setView(v);
+    setSub(s);
     setSortOverride(null);
     setMode('table');
     setSelection(new Set());
@@ -295,40 +304,61 @@ export default function Home() {
           <div className="brand">Lead Finder</div>
           <div className="topbar-actions">
             {outbox && (
-              <button
-                className={`gmail-chip${outbox.configured ? '' : ' muted-chip'}`}
-                onClick={() => (outbox.configured ? sendNextNow() : toast('Add GMAIL_USER and GMAIL_APP_PASSWORD in Vercel to turn on auto-send'))}
-                disabled={sendingNow}
-                title={outbox.configured ? 'Send the next queued email now (still respects business hours and the daily limit)' : 'Auto-send is off'}
-              >
+              <span className={`send-status${outbox.configured ? '' : ' off'}`}
+                title={outbox.configured
+                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time, up to your daily limit.'
+                  : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
-                {!outbox.configured ? 'Auto-send off'
-                  : sendingNow ? 'Sending…'
-                  : `${outbox.queued} queued · ${outbox.sentToday}/${outbox.limit} today`}
-              </button>
+                {!outbox.configured ? 'Automatic sending is off'
+                  : outbox.queued === 0 ? `Nothing scheduled · ${outbox.sentToday} of ${outbox.limit} sent today`
+                  : `${outbox.queued} scheduled · ${outbox.sentToday} of ${outbox.limit} sent today`}
+              </span>
             )}
-            <Btn className="btn btn-sm btn-ghost-dark" onClick={reset}>Reset</Btn>
-            <Btn className="btn btn-sm btn-ghost-dark" onClick={logOut} aria-label="Log out" title="Log out"><Icon name="logout" size={14} />Log out</Btn>
-            <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>{running ? 'Running…' : 'Run now'}</Btn>
+            <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>
+              {running ? 'Looking for leads…' : 'Find new leads'}
+            </Btn>
+            <Menu
+              label="More options"
+              dark
+              items={[
+                ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
+                { label: 'How it works', icon: 'help', onSelect: how.show },
+                'divider',
+                { label: 'Log out', icon: 'logout', onSelect: logOut },
+                { label: 'Start over', icon: 'trash', hint: 'Deletes every lead', danger: true, onSelect: reset },
+              ]}
+            />
           </div>
         </div>
       </header>
 
       <main className="page">
-        <AnimatePresence>
-          {runResult && (
-            <motion.div className={`banner${runResult.success ? '' : ' error'}`}
-              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <strong>{runResult.success ? 'Run complete' : 'Run failed'}</strong>
-              {runResult.stats && Object.entries(runResult.stats).map(([k, v]) => (
-                <span key={k}><strong>{v}</strong> {humanKey(k)}</span>
-              ))}
-              {runResult.durationMs && <span>{(runResult.durationMs / 1000).toFixed(0)}s</span>}
-              {runResult.error && <span>{runResult.error}</span>}
-              <button className="banner-close" onClick={() => setRunResult(null)} aria-label="Dismiss"><Icon name="x" size={12} /></button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {how.open && <HowItWorks onClose={how.hide} />}
+
+        {running && (
+          <div className="banner info" role="status">
+            <span className="spinner" aria-hidden />
+            Looking for businesses that need a website. This usually takes 2 to 3 minutes, so you can keep working.
+          </div>
+        )}
+        {runSummary && !running && (
+          <div className={`banner${runSummary.error ? ' error' : ''}`} role="status">
+            <span>
+              {runSummary.error
+                ? runSummary.error
+                : runSummary.found === 0
+                  ? 'No new businesses this time. We will look again tomorrow.'
+                  : <>Found <strong>{runSummary.found} new lead{runSummary.found === 1 ? '' : 's'}</strong>.
+                    {' '}{runSummary.withEmail
+                      ? `${runSummary.withEmail} ${runSummary.withEmail === 1 ? 'has an email and is' : 'have an email and are'} ready to schedule.`
+                      : 'None have an email, so you would call or message them.'}</>}
+            </span>
+            {runSummary.found > 0 && !runSummary.error && (
+              <button className="link-btn plain" onClick={() => { changeView('new'); setRunSummary(null); }}>Show them</button>
+            )}
+            <button className="banner-close" onClick={() => setRunSummary(null)} aria-label="Dismiss"><Icon name="x" size={12} /></button>
+          </div>
+        )}
 
         <Funnel leads={scoped} />
 
@@ -336,75 +366,79 @@ export default function Home() {
           <div className="crm-toolbar">
             <div className="tabs" role="tablist">
               {VIEWS.map(v => (
-                <button key={v.id} className="tab" role="tab" aria-selected={mode === 'table' && view === v.id} onClick={() => changeView(v.id)}>
-                  {mode === 'table' && view === v.id && (
-                    <motion.span layoutId="tab-bg" className="tab-bg" transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }} />
-                  )}
-                  <span className="tab-label">
-                    {v.label}
-                    <span className={`tab-count${v.id === 'followup' && counts.followup ? ' alert' : ''}`}>{counts[v.id]}</span>
-                  </span>
+                <button key={v.id} className="tab" role="tab" aria-selected={mode === 'table' && view === v.id} title={v.hint} onClick={() => changeView(v.id)}>
+                  {v.label}
+                  <span className="tab-count">{counts[v.id]}</span>
+                  {v.id === 'approved' && followUpsDue > 0 && <span className="tab-alert" title={`${followUpsDue} need a follow-up`}>{followUpsDue}</span>}
                 </button>
               ))}
             </div>
+            {mode === 'table' && SUBS[view] && (
+              <div className="subtabs" role="group" aria-label="Filter">
+                {SUBS[view]!.map(s => (
+                  <button key={s.id} aria-pressed={sub === s.id} onClick={() => { setSub(s.id); setSelection(new Set()); }}>
+                    {s.label}
+                    {s.id === 'followup' && followUpsDue > 0 && <span className="tab-alert">{followUpsDue}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="crm-filters">
               <label className="search">
                 <Icon name="search" />
-                <input placeholder="Search name, company, email" value={search} onChange={e => setSearch(e.target.value)} />
+                <input placeholder="Search by business, person or email" value={search} onChange={e => setSearch(e.target.value)} />
               </label>
               {sources.length > 1 && (
                 <Dropdown<Lead['source'] | 'all'>
-                  label="Source"
+                  label="Found on"
                   value={source}
                   onChange={v => { setSource(v); setSelection(new Set()); }}
                   options={[
-                    { value: 'all', label: 'All sources', count: leads.length },
+                    { value: 'all', label: 'Found anywhere', count: leads.length },
                     ...sources.map(s => ({ value: s, label: SOURCE_LABEL[s], count: leads.filter(l => l.source === s).length })),
                   ]}
                 />
               )}
               <div className="seg" role="group" aria-label="Layout">
-                <button aria-pressed={mode === 'table'} onClick={() => setMode('table')}>Table</button>
-                <button aria-pressed={mode === 'history'} onClick={() => setMode('history')}>By day</button>
+                <button aria-pressed={mode === 'table'} onClick={() => setMode('table')}>List</button>
+                <button aria-pressed={mode === 'history'} onClick={() => setMode('history')} title="Leads grouped by the day they were found">By day</button>
               </div>
             </div>
           </div>
 
-          <AnimatePresence>
-            {mode === 'table' && picked.length > 0 && (
-              <motion.div className="bulk-bar" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+          {mode === 'table' && picked.length > 0 && (
+              <div className="bulk-bar">
                 <div className="bulk-inner">
                   <strong>{picked.length} selected</strong>
                   <button className="link-btn plain" onClick={() => setSelection(new Set())}>Clear</button>
                   <span className="spacer" />
                   {picked.some(l => statusOf(l) === 'new' && l.contactEmail) && (
-                    <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new' && l.contactEmail).map(l => l.id), 'queued')}>
-                      <Icon name="clock" />Queue {picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length}
+                    <Btn className="btn btn-sm btn-primary" title="Send these automatically, a few each weekday morning"
+                      onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new' && l.contactEmail).map(l => l.id), 'queued')}>
+                      <Icon name="clock" />Schedule {picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length} email{picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length === 1 ? '' : 's'}
                     </Btn>
                   )}
                   {picked.some(l => statusOf(l) === 'new') && (
                     <>
-                      <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
-                        <Icon name="check" />Mark as sent
+                      <Btn className="btn btn-sm" title="You contacted them yourself" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
+                        I contacted these
                       </Btn>
                       <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'skipped')}>
-                        <Icon name="x" />Skip
+                        Skip
                       </Btn>
                     </>
                   )}
                   {picked.some(l => ['skipped', 'lost'].includes(statusOf(l))) && (
                     <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => ['skipped', 'lost'].includes(statusOf(l))).map(l => l.id), 'new')}>
-                      <Icon name="undo" />Restore
+                      <Icon name="undo" />Bring back
                     </Btn>
                   )}
                   <Btn className="btn btn-sm btn-danger" onClick={() => removeLeads(pickedIds)}>
                     <Icon name="trash" />Delete {picked.length}
                   </Btn>
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
 
           {loading ? (
             <div className="empty">Loading leads…</div>
@@ -419,7 +453,7 @@ export default function Home() {
               selectedId={selectedId}
               onOpen={setSelectedId}
               onStatus={setStatus}
-              emptyKind={search.trim() ? 'search' : view}
+              emptyKind={search.trim() ? 'search' : sub !== 'all' ? sub : view}
               selection={selection}
               onToggle={toggle}
               onToggleAll={toggleAll}
@@ -432,8 +466,8 @@ export default function Home() {
                   ? `${currentPage * PAGE_SIZE + 1}–${Math.min((currentPage + 1) * PAGE_SIZE, rows.length)} of ${rows.length} leads`
                   : `${rows.length} lead${rows.length === 1 ? '' : 's'}`}
               </span>
-              {counts.followup > 0 && view !== 'followup' && (
-                <button className="link-btn" onClick={() => changeView('followup')}>{counts.followup} follow-up{counts.followup > 1 ? 's' : ''} due</button>
+              {followUpsDue > 0 && sub !== 'followup' && (
+                <button className="link-btn" onClick={() => changeView('approved', 'followup')}>{followUpsDue} {followUpsDue > 1 ? 'people need' : 'person needs'} a follow-up</button>
               )}
               {pageCount > 1 && (
                 <nav className="pager" aria-label="Pagination">
@@ -467,8 +501,8 @@ export default function Home() {
             onClose={() => setSelectedId(null)}
             onPrev={selectedIndex > 0 ? () => setSelectedId(rows[selectedIndex - 1].id) : undefined}
             onNext={selectedIndex >= 0 && selectedIndex < rows.length - 1 ? () => setSelectedId(rows[selectedIndex + 1].id) : undefined}
-            onStatus={s => actAndAdvance(selected.id, () => setStatus(selected.id, s), !inView({ ...selected, status: s }, view))}
-            onFollowedUp={() => actAndAdvance(selected.id, () => followedUp(selected.id), view === 'followup')}
+            onStatus={s => actAndAdvance(selected.id, () => setStatus(selected.id, s), !inView({ ...selected, status: s }, view, sub))}
+            onFollowedUp={() => actAndAdvance(selected.id, () => followedUp(selected.id), sub === 'followup')}
             onUpdate={p => setLeads(prev => prev.map(l => (l.id === selected.id ? { ...l, ...p } : l)))}
             onQueue={draft => queueWithDraft(selected.id, draft)}
             onDelete={() => {
