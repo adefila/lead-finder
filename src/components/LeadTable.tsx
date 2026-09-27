@@ -95,7 +95,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <div className="cell-sub"><span className="ellipsis">{reach}</span></div>
                 </td>
                 <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
-                <td className={step.urgent ? 'col-next next urgent' : 'col-next next'}>
+                <td className={['col-next next', step.urgent && 'urgent', !step.text && 'empty'].filter(Boolean).join(' ')}>
                   {step.text || <span className="muted">-</span>}
                 </td>
                 <td className="col-date" title={fullDate(l.createdAt)}>{shortDate(l.createdAt) || <span className="muted">-</span>}</td>

@@ -260,6 +260,18 @@ export default function Home() {
     setSortOverride(s => (s?.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' || key === 'next' ? 1 : -1 }));
   }
 
+  // On a narrow screen the tab strip scrolls sideways: keep the selected tab fully visible.
+  useEffect(() => {
+    const strip = cardRef.current?.querySelector<HTMLElement>('.tabs');
+    const active = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!strip || !active) return;
+    const pad = 16;
+    const left = active.offsetLeft - strip.offsetLeft;
+    const right = left + active.offsetWidth;
+    if (left - pad < strip.scrollLeft) strip.scrollTo({ left: Math.max(0, left - pad), behavior: 'smooth' });
+    else if (right + pad * 2 > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: right + pad * 2 - strip.clientWidth, behavior: 'smooth' });
+  }, [view, mode]);
+
   // If you have scrolled past the tabs, bring them back into view so a shorter list does not yank the page.
   function keepTabsInView() {
     const top = cardRef.current?.getBoundingClientRect().top ?? 0;
@@ -374,12 +386,27 @@ export default function Home() {
           <div className="crm-toolbar">
             <div className="tabs" role="tablist">
               {VIEWS.map(v => (
-                <button key={v.id} className="tab" role="tab" aria-selected={mode === 'table' && view === v.id} title={v.hint} onClick={() => changeView(v.id)}>
+                <button key={v.id} className="tab" role="tab" aria-selected={mode === 'table' && view === v.id} title={v.hint}
+                  onClick={() => changeView(v.id)}>
                   {v.label}
                   <span className="tab-count">{counts[v.id]}</span>
                   {v.id === 'approved' && followUpsDue > 0 && <span className="tab-alert" title={`${followUpsDue} need a follow-up`}>{followUpsDue}</span>}
                 </button>
               ))}
+            </div>
+            <div className="view-head">
+              <h2 className="view-title">
+                {mode === 'history' ? 'By day' : VIEWS.find(v => v.id === view)?.label}
+                {mode === 'table' && sub !== 'all' && <span className="muted"> · {SUBS[view]?.find(s => s.id === sub)?.label}</span>}
+              </h2>
+              <p className="view-hint">
+                {mode === 'history' ? 'Leads grouped by the day they were found.'
+                  : sub === 'followup' ? 'No reply yet and a follow-up is due. Send it, or close the lead.'
+                  : sub === 'won' ? 'Projects you closed.'
+                  : sub === 'lost' ? 'Leads that said no, or never replied.'
+                  : sub === 'skipped' ? 'Leads you passed on. Bring any back with one click.'
+                  : VIEWS.find(v => v.id === view)?.hint}
+              </p>
             </div>
             {mode === 'table' && SUBS[view] && (
               <div className="subtabs" role="group" aria-label="Filter">

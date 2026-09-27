@@ -34,12 +34,13 @@ export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done';
 export type Sub = 'all' | 'followup' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
-  { id: 'all', label: 'All', hint: 'Every lead' },
-  { id: 'new', label: 'To contact', hint: 'New leads you have not reached out to yet' },
-  { id: 'queued', label: 'Scheduled', hint: 'Emails that will go out on their own, a few each weekday' },
-  { id: 'approved', label: 'Waiting for reply', hint: 'You have contacted them and are waiting to hear back' },
-  { id: 'replied', label: 'Replied', hint: 'They wrote back' },
-  { id: 'done', label: 'Done', hint: 'Won, lost or skipped' },
+  // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
+  { id: 'all', label: 'All', hint: 'Every lead, whatever stage it is at.' },
+  { id: 'new', label: 'To contact', hint: 'New leads you have not reached out to yet. Best fit first.' },
+  { id: 'queued', label: 'Scheduled', hint: 'Emails that go out on their own, a few each weekday morning.' },
+  { id: 'approved', label: 'Waiting for reply', hint: 'You have been in touch. Follow-ups go out on their own until they reply.' },
+  { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply quickly, this is where deals are won.' },
+  { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
