@@ -19,7 +19,9 @@ const TRADES: { label: string; tag: string }[] = [
   { label: 'Roofer', tag: '"craft"="roofer"' },
 ];
 
-const SEARCHES_PER_RUN = 2;
+const SEARCHES_PER_RUN = 6;
+// The whole daily run must finish within Vercel's 5 minutes; stop starting new searches after this.
+const TIME_BUDGET_MS = 110_000;
 const RADIUS_M = 8000;
 const MAX_PER_SEARCH = 25;
 
@@ -31,7 +33,7 @@ function pick<T>(list: T[]): T {
 
 async function overpass(tag: string, lat: number, lon: number): Promise<OsmElement[]> {
   const around = `(around:${RADIUS_M},${lat},${lon})`;
-  const query = `[out:json][timeout:25];(nwr[${tag}]["website"]${around};nwr[${tag}]["contact:website"]${around};);out tags ${MAX_PER_SEARCH};`;
+  const query = `[out:json][timeout:18];(nwr[${tag}]["website"]${around};nwr[${tag}]["contact:website"]${around};);out tags ${MAX_PER_SEARCH};`;
   // The public Overpass servers are often busy; try the next one before giving up.
   for (const endpoint of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']) {
     try {
@@ -39,7 +41,7 @@ async function overpass(tag: string, lat: number, lon: number): Promise<OsmEleme
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'LeadFinder/1.0 (+https://adefilasamuel.com)' },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(20000), // busy servers: move on quickly
       });
       if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) {
         console.error(`[osm] ${new URL(endpoint).host}: HTTP ${res.status}`);
@@ -134,8 +136,12 @@ export async function fetchOsmLeads(): Promise<Lead[]> {
 
   const leads: Lead[] = [];
   let found = 0;
+  let done = 0;
+  const started = Date.now();
   // Overpass is a shared free service: run searches one after another, not in parallel.
   for (const { trade, city } of searches) {
+    if (Date.now() - started > TIME_BUDGET_MS) break;
+    done++;
     const { lat, lon } = CITY_COORDS[city];
     const elements = await overpass(trade.tag, lat, lon);
     found += elements.length;
@@ -145,6 +151,6 @@ export async function fetchOsmLeads(): Promise<Lead[]> {
     }
   }
 
-  console.log(`[osm] ${searches.map(s => `${s.trade.label} in ${s.city}`).join('; ')} -> ${found} with websites, ${leads.length} prospects (${leads.filter(l => l.contactEmail).length} with a working email)`);
+  console.log(`[osm] ${searches.slice(0, done).map(s => `${s.trade.label} in ${s.city}`).join('; ')} (${done}/${searches.length} searches) -> ${found} with websites, ${leads.length} prospects (${leads.filter(l => l.contactEmail).length} with a working email)`);
   return leads;
 }

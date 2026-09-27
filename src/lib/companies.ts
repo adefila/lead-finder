@@ -26,7 +26,9 @@ const SIC: Record<string, string> = {
 };
 
 const NEW_WITHIN_DAYS = 45;
-const MAX_PER_RUN = 20;
+const MAX_PER_RUN = 50;
+// Stop checking more companies after this, so the daily run stays inside Vercel's 5 minutes.
+const TIME_BUDGET_MS = 110_000;
 
 interface Company {
   company_name: string;
@@ -155,17 +157,21 @@ export async function fetchCompaniesHouseLeads(): Promise<Lead[]> {
     company_status: 'active',
     sic_codes: codes.join(','),
     location: city,
-    size: '60',
+    size: '100',
   });
   const found = await chGet<{ items?: Company[] }>(`/advanced-search/companies?${q}`, key);
   const companies = (found?.items ?? []).sort(() => Math.random() - 0.5).slice(0, MAX_PER_RUN);
 
   const leads: Lead[] = [];
-  for (let i = 0; i < companies.length; i += 5) {
-    const batch = await Promise.all(companies.slice(i, i + 5).map(c => toLead(c, key)));
+  const started = Date.now();
+  let checked = 0;
+  for (let i = 0; i < companies.length && Date.now() - started < TIME_BUDGET_MS; i += 8) {
+    const slice = companies.slice(i, i + 8);
+    checked += slice.length;
+    const batch = await Promise.all(slice.map(c => toLead(c, key)));
     for (const l of batch) if (l) leads.push(l);
   }
 
-  console.log(`[companies] ${codes.map(c => SIC[c]).join(', ')} in ${city} since ${from} -> ${found?.items?.length ?? 0} new companies, ${leads.length} prospects (${leads.filter(l => l.contactEmail).length} with email, ${leads.filter(l => l.contactName).length} with director name)`);
+  console.log(`[companies] ${codes.map(c => SIC[c]).join(', ')} in ${city} since ${from} -> ${found?.items?.length ?? 0} new companies, ${checked} checked, ${leads.length} prospects (${leads.filter(l => l.contactEmail).length} with email, ${leads.filter(l => l.contactName).length} with director name)`);
   return leads;
 }
