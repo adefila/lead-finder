@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLeadById, updateLeadStatus } from '@/lib/supabase';
-import { gmailComposeUrl, mailtoUrl, splitDraft, withCheckLink } from '@/lib/compose';
+import { gmailComposeUrl, mailtoUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck } from '@/lib/leadview';
 import { checkLink, verifySig, type SendVia } from '@/lib/tracking';
 
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { subject, body: draft } = splitDraft(lead.proposal ?? '');
-  const body = hasCheck(lead) ? withCheckLink(draft, checkLink(lead.id)) : draft;
+  const body = withSignature(hasCheck(lead) ? withCheckLink(draft, checkLink(lead.id)) : draft);
   if (via === 'bid') return NextResponse.redirect(lead.url || home);
   if (!lead.contactEmail) return NextResponse.redirect(home);
   const target = via === 'gmail'

@@ -2,7 +2,7 @@ import type { Lead } from '@/types/lead';
 import { getLeads, countSentSince, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
-import { splitDraft, withCheckLink } from '@/lib/compose';
+import { splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck } from '@/lib/leadview';
 import { checkLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
@@ -122,15 +122,14 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
+    // Exactly the email the business would get (link and signature included), so you can see
+    // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
-      to: cfg.user,
-      subject: `[Test, would go to ${next.contactEmail}] ${subject || `${next.title} website`}`,
-      text: `Lead Finder test mode. In normal mode this email goes to ${next.contactEmail} (${next.title}). Nothing was sent to them and the lead is unchanged.
-
-----------
-
-${body}`,
+      to: process.env.MAIL_TEST_TO?.trim() || cfg.user,
+      subject: `[Test] ${subject || `${next.title} website`}`,
+      text: withSignature(hasCheck(next) ? withCheckLink(body, checkLink(next.id)) : body),
     });
+    console.log(`[outbox] test email for ${next.title} (would go to ${next.contactEmail})`);
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
   }
 
@@ -148,7 +147,7 @@ ${body}`,
       const text = await draftFollowUp(lead);
       if (!text) throw new Error('Could not draft the follow-up');
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text, inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -167,7 +166,7 @@ ${body}`,
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const text = hasCheck(lead) ? withCheckLink(body, checkLink(lead.id)) : body;
+      const text = withSignature(hasCheck(lead) ? withCheckLink(body, checkLink(lead.id)) : body);
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text });
       const now = new Date().toISOString();
       await updateLead(lead.id, {

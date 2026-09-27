@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
-import { gmailComposeUrl, splitDraft, withCheckLink } from '@/lib/compose';
+import { gmailComposeUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
   FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, leadStory, personOf, shortDate, statusOf, systemsFor,
@@ -68,7 +68,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const email = lead.contactEmail;
   const person = personOf(lead);
   // First emails carry the link to their website check; follow-ups do not repeat it.
-  const outgoing = isFollowUp ? body : withCheckLink(body, lead.checkUrl);
+  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
   const isJob = lead.source === 'freelancer';
 
