@@ -9,6 +9,12 @@ const TIMER_ROUTES = ['/api/cron', '/api/outbox'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // The notes address is for prospects: it only serves their one-page notes. Anything
+  // else there (including the dashboard login) goes to the portfolio instead.
+  if (req.headers.get('host')?.startsWith('notes.') && !/^\/(n|check)\//.test(pathname) && !pathname.startsWith('/_next/')) {
+    return NextResponse.redirect('https://adefilasamuel.com');
+  }
   const password = process.env.DASHBOARD_PASSWORD?.trim();
   if (!password) return NextResponse.next();
 
