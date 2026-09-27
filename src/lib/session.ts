@@ -13,3 +13,18 @@ export function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+
+// Timer routes accept either the exact timer secret or a logged-in session. Nothing else.
+export function hasTimerSecret(authorization: string | null): boolean {
+  const secret = process.env.CRON_SECRET;
+  return !!secret && !!authorization && safeEqual(authorization, `Bearer ${secret}`);
+}
+
+export async function hasSession(cookie: string | undefined): Promise<boolean> {
+  const password = process.env.DASHBOARD_PASSWORD?.trim();
+  return !!password && !!cookie && safeEqual(cookie, await sessionToken(password));
+}
+
+export async function isAllowed(req: { headers: Headers; cookies: { get(name: string): { value: string } | undefined } }): Promise<boolean> {
+  return hasTimerSecret(req.headers.get('authorization')) || hasSession(req.cookies.get(SESSION_COOKIE)?.value);
+}

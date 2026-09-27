@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAllowed } from '@/lib/session';
 import { fetchAllJobs } from '@/lib/sources';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
@@ -12,13 +13,7 @@ export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const isManual = req.headers.get('x-manual') === 'true';
-  if (!isManual) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  if (!(await isAllowed(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const start = Date.now();
   console.log('[cron] Run started');

@@ -76,7 +76,7 @@ export default function Home() {
     setRunSummary(null);
     const before = new Set(leads.map(l => l.id));
     try {
-      const res = await fetch('/api/cron', { headers: { 'x-manual': 'true' } });
+      const res = await fetch('/api/cron');
       const data = await res.json() as RunResult;
       if (!data.success) {
         setRunSummary({ found: 0, withEmail: 0, error: data.error ?? 'Something went wrong while looking for leads.' });
@@ -99,7 +99,7 @@ export default function Home() {
       typeToConfirm: 'delete',
     });
     if (!ok) return;
-    const res = await fetch('/api/clear-stale', { headers: { 'x-manual': 'true' } });
+    const res = await fetch('/api/clear-stale');
     const data = await res.json() as { leadsDeleted?: number; error?: string };
     if (data.error) fail(`Could not delete: ${data.error}`); else toast(`Deleted ${data.leadsDeleted ?? 0} leads`, { tone: 'success' });
     await loadData();
@@ -168,7 +168,7 @@ export default function Home() {
   async function sendNextNow() {
     setSendingNow(true);
     try {
-      const res = await fetch('/api/outbox', { headers: { 'x-manual': 'true' } });
+      const res = await fetch('/api/outbox');
       const r = await res.json() as OutboxRun;
       if (r.error) fail(`Could not send: ${r.error}`);
       else if (r.sent) toast(r.sent.kind === 'test' ? `Test email for ${r.sent.title} sent to your inbox` : `Sent ${r.sent.kind === 'follow-up' ? 'a follow-up to' : 'your email to'} ${r.sent.title}`, { tone: 'success' });

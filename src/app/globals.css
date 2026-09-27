@@ -124,7 +124,9 @@ a { color: inherit; }
 .send-status.off { color: #8d8d8d; }
 .icon-btn.on-dark { background: transparent; border-color: #3a3a3a; color: #cfcfcf; width: 30px; height: 30px; }
 .icon-btn.on-dark:hover:not(:disabled) { background: #1c1c1c; border-color: #555; color: #fff; }
-.menu-right { left: auto; right: 0; color: var(--fg); min-width: 240px; }
+/* Opens leftwards from the ⋯ button so it never runs off the right edge */
+.dropdown-menu.menu-right { left: auto; right: 0; color: var(--fg); min-width: 0; width: min(280px, calc(100vw - 32px)); transform-origin: top right; }
+.menu-right .dropdown-item { white-space: normal; }
 .menu-item { justify-content: flex-start; }
 .menu-item:hover, .menu-item:focus-visible { background: #f4f4f4; outline: none; }
 .menu-item.danger { color: #b42318; }
