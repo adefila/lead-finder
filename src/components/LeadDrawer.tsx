@@ -56,25 +56,6 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
     setAddingEmail(false);
     toast('Email saved. Click "Write a new version" to turn the message into an email.', { tone: 'success' });
   }
-
-  // One Hunter.io search for this lead's email (needs their own website).
-  const [finding, setFinding] = useState(false);
-  async function findEmail() {
-    setFinding(true);
-    try {
-      const res = await fetch('/api/find-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: lead.id }),
-      }).catch(() => null);
-      const data = res ? await res.json().catch(() => ({})) as { email?: string; contactName?: string; contactTitle?: string; error?: string } : { error: 'Network error, check your connection' };
-      if (!data.email) { toast(data.error ?? 'Could not find an email', { tone: 'error' }); return; }
-      onUpdate({ contactEmail: data.email, sendError: undefined, ...(data.contactName ? { contactName: data.contactName, contactTitle: data.contactTitle } : {}) });
-      toast(`Found ${data.email}. Click "Write a new version" to turn the message into an email.`, { tone: 'success' });
-    } finally {
-      setFinding(false);
-    }
-  }
   const { toast } = useFeedback();
 
   const status = statusOf(lead);
@@ -203,12 +184,6 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               ) : (
                 <span className="kv-value">
                   <span className="muted">We could not find one</span>
-                  {links.website && (
-                    <button className="link-btn plain" type="button" onClick={findEmail} disabled={finding}
-                      title="Uses one Hunter.io search to look up their email from their website">
-                      {finding ? 'Finding…' : 'Find their email'}
-                    </button>
-                  )}
                   <a className="text-link" href={findEmailUrl(lead)} target="_blank" rel="noreferrer">Search for it</a>
                   <button className="link-btn plain" type="button" onClick={() => setAddingEmail(true)}>Add email</button>
                 </span>

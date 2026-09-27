@@ -7,7 +7,6 @@ import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
-import { addEmails } from '@/lib/hunter';
 import { sendLeadsEmail } from '@/lib/email';
 
 export const maxDuration = 300;
@@ -52,12 +51,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
-    // 3. Rank (no filtering), find emails for the best ones that lack one, then draft for the top 40.
-    // Emails are found before drafting so those leads get an email draft rather than a DM.
+    // 3. Rank (no filtering), then draft for the top 40
     const ranked = await scoreJobs(freshJobs);
-    const top = ranked.slice(0, 40);
-    const emailsFound = await addEmails(top);
-    const jobsWithEmails = await generateColdEmails(top);
+    const jobsWithEmails = await generateColdEmails(ranked.slice(0, 40));
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);
@@ -78,7 +74,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
         withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
-        emailsFoundByHunter: emailsFound,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
         followUpsDue,
