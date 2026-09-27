@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, hasSession, hasTimerSecret } from '@/lib/session';
 
-// Reachable without logging in: the login itself, the digest's email logo, and the
-// signed links inside digest emails (they carry their own signature).
-const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go'];
+// Reachable without logging in: the login itself, the digest's email logo, the signed
+// links inside digest emails, and the signed website-check pages sent to leads.
+const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go', '/check'];
 // Called by timers with "Authorization: Bearer CRON_SECRET". Only the exact secret gets through.
 const TIMER_ROUTES = ['/api/cron', '/api/outbox'];
 

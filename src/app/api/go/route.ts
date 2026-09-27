@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLeadById, updateLeadStatus } from '@/lib/supabase';
-import { gmailComposeUrl, mailtoUrl, splitDraft } from '@/lib/compose';
-import { verifySig, type SendVia } from '@/lib/tracking';
+import { gmailComposeUrl, mailtoUrl, splitDraft, withCheckLink } from '@/lib/compose';
+import { hasCheck } from '@/lib/leadview';
+import { checkLink, verifySig, type SendVia } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
     if (error) console.error('[go] could not mark contacted:', error);
   }
 
-  const { subject, body } = splitDraft(lead.proposal ?? '');
+  const { subject, body: draft } = splitDraft(lead.proposal ?? '');
+  const body = hasCheck(lead) ? withCheckLink(draft, checkLink(lead.id)) : draft;
   if (via === 'bid') return NextResponse.redirect(lead.url || home);
   if (!lead.contactEmail) return NextResponse.redirect(home);
   const target = via === 'gmail'

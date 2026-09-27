@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
-import { gmailComposeUrl, splitDraft } from '@/lib/compose';
+import { gmailComposeUrl, splitDraft, withCheckLink } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, fitOf, leadStory, personOf, shortDate, statusOf,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, fitOf, leadStory, personOf, shortDate, statusOf,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -41,6 +41,21 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const [drafting, setDrafting] = useState(false);
   const [followUpLoaded, setFollowUpLoaded] = useState(false);
   const [redrafting, setRedrafting] = useState(false);
+  const [addingEmail, setAddingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+
+  async function saveEmail() {
+    const res = await fetch('/api/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: lead.id, contactEmail: newEmail }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) as { error?: string } : { error: 'Network error, check your connection' };
+    if (!res?.ok) { toast(data.error ?? 'Could not save the email', { tone: 'error' }); return; }
+    onUpdate({ contactEmail: newEmail.trim().toLowerCase(), sendError: undefined });
+    setAddingEmail(false);
+    toast('Email saved. Click "Write a new version" to turn the message into an email.', { tone: 'success' });
+  }
   const { toast } = useFeedback();
 
   const status = statusOf(lead);
@@ -51,7 +66,9 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const links = lead.contactLinks ?? {};
   const email = lead.contactEmail;
   const person = personOf(lead);
-  const gmail = email ? gmailComposeUrl(email, subject, body) : '';
+  // First emails carry the link to their website check; follow-ups do not repeat it.
+  const outgoing = isFollowUp ? body : withCheckLink(body, lead.checkUrl);
+  const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
   const isJob = lead.source === 'freelancer';
 
   const writeFollowUp = useCallback(async () => {
@@ -102,7 +119,10 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const markContacted = () => { if (status === 'new') onStatus('approved'); };
   const composed = () => (subject.trim() ? `Subject: ${subject.trim()}\n\n${body.trim()}` : body.trim());
   const sent = () => (isFollowUp ? onFollowedUp() : markContacted());
-  const copyBody = () => navigator.clipboard.writeText(body);
+  const isLinkedIn = !email && !!links.linkedin && lead.source === 'companies_house';
+  // LinkedIn notes are capped at about 300 characters, so they go without the link.
+  const copyBody = () => navigator.clipboard.writeText(isLinkedIn || isFollowUp ? body : withCheckLink(body, lead.checkUrl));
+  const showScript = !!lead.contactPhone && !email && (status === 'new' || status === 'approved');
 
   const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
     : isJob ? 'Your proposal'
@@ -151,7 +171,21 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
                 <CopyButton text={email} label="Copy email" />
               </span>
             ) : (
-              <span className="muted">{isJob ? 'Hidden by Freelancer. You reply through the job post.' : 'We could not find one'}</span>
+              isJob ? (
+                <span className="muted">Hidden by Freelancer. You reply through the job post.</span>
+              ) : addingEmail ? (
+                <form className="kv-value" onSubmit={e => { e.preventDefault(); saveEmail(); }}>
+                  <input className="field field-sm" type="email" autoFocus placeholder="name@business.com"
+                    value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+                  <button className="btn btn-sm btn-primary" type="submit" disabled={!newEmail.trim()}>Save</button>
+                  <button className="btn btn-sm btn-quiet" type="button" onClick={() => setAddingEmail(false)}>Cancel</button>
+                </form>
+              ) : (
+                <span className="kv-value">
+                  <span className="muted">We could not find one</span>
+                  <button className="link-btn plain" type="button" onClick={() => setAddingEmail(true)}>Add email</button>
+                </span>
+              )
             )}
           </div>
           {lead.contactPhone && (
@@ -187,6 +221,17 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           {story.other.length > 0 && <p className="why">{story.other.join(' ').slice(0, 900)}</p>}
         </section>
 
+        {showScript && (
+          <section className="dsec">
+            <h3 className="dsec-title field-label-row">
+              What to say on the call
+              <CopyButton text={callScript(lead)} label="Copy call script" />
+            </h3>
+            <p className="script">{callScript(lead)}</p>
+            <p className="timeline">The goal is their email address. Use "Add email" above, then schedule the email with their website check.</p>
+          </section>
+        )}
+
         <section className="dsec">
           <h3 className="dsec-title">{messageTitle}</h3>
           {fu.exhausted && <div className="note">They have not replied after {fu.sent} follow-ups. You can close this one, or mark it as replied if they got back to you.</div>}
@@ -210,6 +255,12 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             </span>
             <textarea className="field" rows={11} value={body} disabled={drafting} onChange={e => setBody(e.target.value)} />
           </label>
+          {lead.checkUrl && !isFollowUp && !isLinkedIn && (status === 'new' || status === 'queued') && (
+            <p className="check-hint">
+              <Icon name="check" size={13} />
+              <span>A link to their one-page website check is added above your name when this goes out. <a href={lead.checkUrl} target="_blank" rel="noreferrer">See what they will see</a></span>
+            </p>
+          )}
 
           <div className="actions">
             {/* One main action, chosen for this lead */}

@@ -67,28 +67,67 @@ export function headlineOf(l: Lead): string | null {
 
 // ─── Plain-English story behind a lead ───────────────────────────────────────
 
-const PROBLEMS: [RegExp, (m: RegExpMatchArray) => string][] = [
-  [/no website listed on Google/i, () => 'They have no website. People who find them on Google have nowhere to click through to.'],
-  [/no website found for this new company/i, () => 'They are a brand-new company with no website yet.'],
-  [/links to an? (.+?) page instead of their own website/i, m => `Their Google listing sends people to a ${m[1]} page, not a website they own.`],
-  [/uses an? (.+?) booking page instead of their own website/i, m => `They take bookings through ${m[1]} instead of a website of their own.`],
-  [/no HTTPS/i, () => 'Browsers warn visitors that the site is "Not secure".'],
-  [/not mobile-friendly/i, () => 'The site is hard to use on a phone.'],
-  [/footer copyright says (\d{4})/i, m => `The site looks like it has not been updated since ${m[1]}.`],
-  [/very old HTML/i, () => 'The site is built with very old technology.'],
-  [/free builder subdomain/i, () => 'The site sits on a free builder address instead of its own domain name.'],
-  [/under construction|coming soon/i, () => 'The site still says "coming soon".'],
-  [/almost no content/i, () => 'The homepage has almost nothing on it.'],
-  [/down or broken/i, () => 'Their website does not load.'],
+// Each finding in three voices: for you (about), for the owner (you/your), and the fix you would offer.
+interface Finding { about: string; owner: string; fix: string }
+const PROBLEMS: [RegExp, (m: RegExpMatchArray) => Finding][] = [
+  [/no website listed on Google/i, () => ({
+    about: 'They have no website. People who find them on Google have nowhere to click through to.',
+    owner: 'Your Google listing has no website, so people who find you there have nowhere to click through to.',
+    fix: 'A simple, fast website with your services, opening hours, reviews and an easy way to call or book.' })],
+  [/no website found for this new company/i, () => ({
+    about: 'They are a brand-new company with no website yet.',
+    owner: 'Your company is new and does not have a website yet, so people searching your name will not find you.',
+    fix: 'A launch website that tells people what you do and how to reach you, ready in about a week.' })],
+  [/links to an? (.+?) page instead of their own website/i, m => ({
+    about: `Their Google listing sends people to a ${m[1]} page, not a website they own.`,
+    owner: `Your Google listing sends people to a ${m[1]} page rather than a website you own.`,
+    fix: `Your own website that still links to ${m[1]}, so your listing points to something you control.` })],
+  [/uses an? (.+?) booking page instead of their own website/i, m => ({
+    about: `They take bookings through ${m[1]} instead of a website of their own.`,
+    owner: `You take bookings through ${m[1]}, but there is no website of your own to show who you are.`,
+    fix: `Your own website with your story, prices and photos, with a button through to your ${m[1]} bookings.` })],
+  [/no HTTPS/i, () => ({
+    about: 'Browsers warn visitors that the site is "Not secure".',
+    owner: 'Browsers show a "Not secure" warning when people open your site.',
+    fix: 'A secure address (the padlock) so visitors are not warned away.' })],
+  [/not mobile-friendly/i, () => ({
+    about: 'The site is hard to use on a phone.',
+    owner: 'Your site is hard to read on a phone, which is where most people look you up.',
+    fix: 'A layout built for phones first, with your phone number and directions one tap away.' })],
+  [/footer copyright says (\d{4})/i, m => ({
+    about: `The site looks like it has not been updated since ${m[1]}.`,
+    owner: `Your site says ${m[1]} at the bottom, which makes it look like it has not been looked after since then.`,
+    fix: 'A refreshed design with up-to-date information that you can edit yourself.' })],
+  [/very old HTML/i, () => ({
+    about: 'The site is built with very old technology.',
+    owner: 'Your site is built with very old technology, so it looks dated and loads slowly.',
+    fix: 'A modern, fast site that looks right on every screen.' })],
+  [/free builder subdomain/i, () => ({
+    about: 'The site sits on a free builder address instead of its own domain name.',
+    owner: 'Your site is on a free builder address rather than your own domain name.',
+    fix: 'Your own domain name, such as yourbusiness.co.uk, with a matching email address.' })],
+  [/under construction|coming soon/i, () => ({
+    about: 'The site still says "coming soon".',
+    owner: 'Your site still says "coming soon", so visitors leave without getting in touch.',
+    fix: 'A real homepage that explains what you offer and brings in enquiries.' })],
+  [/almost no content/i, () => ({
+    about: 'The homepage has almost nothing on it.',
+    owner: 'Your homepage has very little on it, so visitors cannot tell what you offer.',
+    fix: 'Clear pages for your services, prices and contact details.' })],
+  [/down or broken/i, () => ({
+    about: 'Their website does not load.',
+    owner: 'Your website did not load when I tried it, so anyone clicking through from Google hits a dead end.',
+    fix: 'Get a working site back online quickly, on reliable hosting.' })],
 ];
 
-function plainProblem(raw: string): string {
+function finding(raw: string): Finding {
   for (const [re, say] of PROBLEMS) {
     const m = raw.match(re);
     if (m) return say(m);
   }
   const t = raw.trim();
-  return t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? '' : '.');
+  const sentence = t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? '' : '.');
+  return { about: sentence, owner: sentence, fix: '' };
 }
 
 function plainActivity(raw: string): string | null {
@@ -113,29 +152,58 @@ export interface LeadStory {
   headline: string | null;
   stillOpen: string | null;
   problems: string[];
+  // The same problems addressed to the owner, and what you would change. Used on the check page.
+  ownerProblems: string[];
+  fixes: string[];
   other: string[];
 }
 
 export function leadStory(l: Lead): LeadStory {
-  if (l.source === 'freelancer') return { headline: null, stillOpen: null, problems: [], other: [l.description] };
+  if (l.source === 'freelancer') return { headline: null, stillOpen: null, problems: [], ownerProblems: [], fixes: [], other: [l.description] };
   const headline = headlineOf(l);
   // Sentences end with ". " then a capital or digit, so "4.8 stars" stays whole.
   const sentences = l.description.replace(/\.$/, '').split(/\.\s+(?=[A-Z0-9])/).map(s => s.trim()).filter(Boolean);
   let stillOpen: string | null = null;
-  let problems: string[] = [];
+  let found: Finding[] = [];
   const other: string[] = [];
   for (const s of sentences) {
     if (s === headline) continue;
     if (/^Verified active:/i.test(s)) stillOpen = plainActivity(s.replace(/^Verified active:\s*/i, ''));
-    else if (/^Issues found:/i.test(s)) problems = s.replace(/^Issues found:\s*/i, '').split(/;\s*/).filter(Boolean).map(plainProblem);
+    else if (/^Issues found:/i.test(s)) found = s.replace(/^Issues found:\s*/i, '').split(/;\s*/).filter(Boolean).map(finding);
     else if (!/^Director:/i.test(s)) other.push(s.endsWith('.') ? s : `${s}.`);
   }
-  return { headline, stillOpen, problems, other };
+  return {
+    headline,
+    stillOpen,
+    problems: found.map(f => f.about),
+    ownerProblems: found.map(f => f.owner),
+    fixes: [...new Set(found.map(f => f.fix).filter(Boolean))],
+    other,
+  };
 }
 
 export function whyText(l: Lead): string {
   const s = leadStory(l);
   return [...s.problems, s.stillOpen ?? '', ...s.other].filter(Boolean).join(' ');
+}
+
+// Local businesses and new companies get a one-page website check; job posts do not.
+export function hasCheck(l: Lead): boolean {
+  return l.source !== 'freelancer' && leadStory(l).fixes.length > 0;
+}
+
+// A short script for leads you can only phone. The aim of the call is permission to send the check.
+export function callScript(l: Lead): string {
+  const s = leadStory(l);
+  const name = displayName(l);
+  const problem = (s.ownerProblems[0] ?? 'your website could be bringing you more customers.')
+    .replace(/^Your /, 'your ').replace(/^You /, 'you ');
+  return [
+    `Hi, could I speak to the owner or manager? ... Thanks. My name is Samuel, I build websites for small businesses.`,
+    `I was looking at ${name} online and noticed ${problem.replace(/\.$/, '')}.`,
+    `I have written up a short one-page note on what I would change. It is free, no strings. What is the best email to send it to?`,
+    `(If they are busy: "No problem, when is a better time to call back?")`,
+  ].join('\n\n');
 }
 
 // ─── Fit ─────────────────────────────────────────────────────────────────────

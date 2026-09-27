@@ -1,17 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteLeads, getLeads, markFollowedUp, updateLead, updateLeadStatus } from '@/lib/supabase';
 import { LEAD_STATUSES, type LeadStatus } from '@/types/lead';
+import { hasCheck } from '@/lib/leadview';
+import { checkLink } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const leads = await getLeads();
-  return NextResponse.json(leads);
+  return NextResponse.json(leads.map(l => (hasCheck(l) ? { ...l, checkUrl: checkLink(l.id) } : l)));
 }
 
 export async function PATCH(req: NextRequest) {
-  const { id, status, action, proposal } = await req.json() as { id?: string; status?: string; action?: string; proposal?: unknown };
+  const { id, status, action, proposal, contactEmail } = await req.json() as { id?: string; status?: string; action?: string; proposal?: unknown; contactEmail?: unknown };
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  // An email address you got on a call or by DM.
+  if (contactEmail !== undefined) {
+    const email = typeof contactEmail === 'string' ? contactEmail.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) {
+      return NextResponse.json({ error: 'That does not look like an email address' }, { status: 400 });
+    }
+    const emailError = await updateLead(id, { contact_email: email, send_error: null });
+    if (emailError) return NextResponse.json({ error: emailError }, { status: 500 });
+    if (status === undefined && action === undefined) return NextResponse.json({ ok: true });
+  }
 
   // Save an edited draft first, so a queued email goes out exactly as it was last edited.
   if (proposal !== undefined) {

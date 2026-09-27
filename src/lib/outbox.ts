@@ -2,7 +2,9 @@ import type { Lead } from '@/types/lead';
 import { getLeads, countSentSince, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
-import { splitDraft } from '@/lib/compose';
+import { splitDraft, withCheckLink } from '@/lib/compose';
+import { hasCheck } from '@/lib/leadview';
+import { checkLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
@@ -165,7 +167,8 @@ ${body}`,
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text: body });
+      const text = hasCheck(lead) ? withCheckLink(body, checkLink(lead.id)) : body;
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         status: 'approved',

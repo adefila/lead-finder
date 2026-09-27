@@ -518,3 +518,31 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
   .brand { font-size: 22px; }
   .bulk-inner { padding: 10px 12px; }
 }
+
+/* ── Website check page (seen by business owners) ── */
+.check { min-height: 100vh; padding: 48px 16px 72px; display: grid; justify-items: center; }
+.check-card { width: min(640px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 36px 36px 32px; }
+.check-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green-ink); }
+.check-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; margin-top: 8px; }
+.check-sub { font-size: 14px; color: var(--fg-3); margin-top: 6px; }
+.check-sec { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+.check-sec h2 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.check-sec p { font-size: 15px; line-height: 1.65; color: var(--fg-2); }
+.check-list { list-style: none; display: grid; gap: 10px; }
+.check-list li { position: relative; padding-left: 26px; font-size: 15px; line-height: 1.6; color: var(--fg); }
+.check-list li::before { position: absolute; left: 0; top: 1px; font-weight: 700; }
+.check-list.notice li::before { content: '!'; color: var(--warn-ink); left: 6px; }
+.check-list.fix li::before { content: '✓'; color: var(--green-ink); }
+.check-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.check-note { font-size: 13px !important; color: var(--fg-3) !important; margin-top: 12px; }
+@media (max-width: 560px) {
+  .check { padding: 20px 12px 48px; }
+  .check-card { padding: 24px 20px; }
+  .check-title { font-size: 24px; }
+}
+
+.check-hint { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.check-hint svg { color: var(--green-ink); margin-top: 2px; flex-shrink: 0; }
+.check-hint a { color: var(--fg); font-weight: 600; }
+.script { white-space: pre-line; font-size: 13px; line-height: 1.65; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.field.field-sm { height: 32px; padding: 0 10px; flex: 1; min-width: 160px; }
