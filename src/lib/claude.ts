@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
+import { systemsFor } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -9,6 +10,7 @@ Samuel Adefila is a Top-Rated Framer developer (Upwork, 100% Job Success Score, 
 He specialises in: Figma-to-Framer conversions, landing pages, marketing sites, SaaS websites, portfolio sites, startup homepages, template customisation, Webflow migrations to Framer.
 Typical turnaround: 14 days. Portfolio: adefilasamuel.com.
 He works with startups, SaaS companies, agencies, solo founders, and anyone who needs a polished web presence fast.
+For local businesses he also sets up simple systems that save time: online booking with reminders, quote and enquiry forms that go straight to the owner's phone, automatic review requests, and follow-up on quiet quotes. Many local businesses need one of these more than a new website.
 Good lead signals: needs a website, landing page, or redesign; mentions Framer/Figma/Webflow/no-code; is a founder or early-stage startup; launching a product; needs a designer or front-end developer for web.
 `.trim();
 
@@ -122,6 +124,7 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
       `Business name: ${l.title}`,
       `Type and city: ${l.company}`,
       `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Idea to offer: ${systemsFor(l)[0] ?? 'none'}`,
       `Findings: ${l.description.slice(0, 500)}`,
       `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
     ].join('\n');
@@ -133,6 +136,7 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
       `Company: ${l.title}`,
       `Trade and town: ${l.company}`,
       `Director: ${l.contactName ?? 'unknown'}`,
+      `Idea to offer: ${systemsFor(l)[0] ?? 'none'}`,
       `Findings: ${l.description.slice(0, 400)}`,
       `Site text: ${(l.siteText ?? 'none').slice(0, 1200)}`,
     ].join('\n');
@@ -179,9 +183,10 @@ Step 2, write the message.
 - If Channel is DM: no subject line, under 65 words. It goes out as an Instagram, Facebook or LinkedIn message.
 - Open the way the "Angle" line says. Every business gets a different angle on purpose, so the batch never reads like one template.
 - Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
-- Mention ONE issue from the findings in plain, non-technical words and what it costs them in customers (e.g. "on a phone the text is tiny, and that's where most people look up a vet"). Never use words like HTTPS, SEO, viewport, load time or optimisation.
-- No website: say people who find them on Google Maps have nowhere to see their work or get in touch.
-- Offer ONE easy next step and vary it between messages: a free homepage mockup, a short list of three fixes, a quick look at how their site shows on a phone, or a ten-minute call. Don't reuse "no strings attached" in every message.
+- Lead with the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
+- Then, only if it fits naturally, mention ONE website issue from the findings in plain words (e.g. "on a phone the text is tiny"). Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
+- No website: you may add that people who find them on Google have nowhere to click through to, but keep the idea as the main point.
+- Offer ONE easy next step and vary it between messages: a short one-page note of ideas for their business, a quick demo of how it would work for them, or a ten-minute call. Don't reuse "no strings attached" in every message.
 - Vary length (some messages 60 words, some closer to 100) and sentence rhythm. Write it the way Samuel would type it himself, not as a sales script.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 - Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
@@ -191,14 +196,14 @@ ${VOICE}
 
 Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Owner / Founder / Dentist etc, or empty string", "message": "..."}, ...}`,
 
-  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel builds websites.
+  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel builds websites and simple systems that save small businesses time.
 
 Rules:
 - Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
 - Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
-- If they have no website yet: most customers will look them up online before getting in touch, so a simple, clean site early on helps them look established from day one.
+- Lead with the "Idea to offer": setting it up from day one saves them time as they grow. Mention that a simple site helps them look established only as a second point, if at all.
 - If they have a website with issues: mention ONE issue from the findings in plain words.
-- Offer one easy next step: a free homepage mockup, or a short call.
+- Offer one easy next step: a short note of ideas for their business, or a short call.
 - If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
 - If Channel is LINKEDIN: no subject, under 280 characters in total (LinkedIn connection note limit), sign off "Samuel".
 - Close with one short opt-out line when Channel is EMAIL.

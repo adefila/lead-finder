@@ -27,7 +27,7 @@ export function humanize(text: string): string {
 // Adds one line linking to the lead's website check, just above the sign-off. Safe to call twice.
 export function withCheckLink(body: string, link?: string): string {
   if (!link || body.includes('/check/')) return body;
-  const line = `I wrote up a short one-page note on what I noticed and what I would change:\n${link}`;
+  const line = `I put together a short one-page note with a few ideas for you:\n${link}`;
   const lines = body.trimEnd().split('\n');
   const signOff = lines.map(l => l.trim()).lastIndexOf('Samuel');
   if (signOff < 0) return `${body.trimEnd()}\n\n${line}`;

@@ -187,10 +187,68 @@ export function whyText(l: Lead): string {
   return [...s.problems, s.stillOpen ?? '', ...s.other].filter(Boolean).join(' ');
 }
 
-// Local businesses and new companies get a one-page website check; job posts do not.
-export function hasCheck(l: Lead): boolean {
-  return l.source !== 'freelancer' && leadStory(l).fixes.length > 0;
+// ─── Systems to offer, by trade ──────────────────────────────────────────────
+// Not every business needs a new website. Most need something that saves time or wins
+// customers. These are offered first; website fixes come second.
+
+const REVIEW_ASK = 'An automatic thank-you message after each visit that asks happy customers for a Google review.';
+
+const SYSTEMS: [RegExp, string[]][] = [
+  [/law|solicit|legal|litigat|barrister|notary|immigration/i, [
+    'An enquiry form that asks the right questions up front, so you only spend time on cases you can take.',
+    'Online booking for a first consultation, linked to your calendar.',
+    'Secure document upload, so clients stop emailing files back and forth.',
+  ]],
+  [/account|tax|bookkeep|consult|advis|financ|insurance|mortgage|architect|survey|engineer/i, [
+    'An enquiry form that asks the right questions up front, so every call is with a good-fit client.',
+    'Online booking for a first meeting, linked to your calendar.',
+    'Secure document upload and automatic reminders for clients who owe you paperwork.',
+  ]],
+  [/estate|letting|property|real estate|realt/i, [
+    'Instant alerts to buyers and renters when a new property matches what they want.',
+    'Online viewing booking that fills your diary without phone tag.',
+    'Automatic follow-up after each viewing, so interested people hear from you first.',
+  ]],
+  [/\bdent|orthodont|clinic|medical|doctor|physio|chiro|osteo|skin|spa|salon|hair|beauty|barber|nail|massage|therap|veterin|\bvet\b|animal|optic|gym|fitness|yoga|pilates/i, [
+    'Online booking with automatic text and email reminders, so fewer people forget their appointment.',
+    REVIEW_ASK,
+    'A short form new clients fill in before they arrive, so the first visit starts on time.',
+  ]],
+  [/restaurant|cafe|café|coffee|bakery|food|bar\b|pub|takeaway|catering|pizza|grill|kitchen/i, [
+    'Table bookings or pre-orders online, without paying commission to a big platform.',
+    'A simple list of regulars you can message with an offer on quiet days.',
+    REVIEW_ASK,
+  ]],
+  [/shop|store|retail|boutique|florist|jewel|gift/i, [
+    'Click-and-collect ordering, so people can buy before they visit.',
+    'A customer list you can message about new stock and offers.',
+    REVIEW_ASK,
+  ]],
+  [/roof|plumb|electric|build|contract|construct|landscap|garden|clean|removal|hvac|heating|handyman|joiner|carpent|paint|decorat|glaz|fenc|\bpav(ing|ers)?\b|\btree/i, [
+    'A quote request form that sends each job straight to your phone, with photos from the customer.',
+    'Automatic follow-up on quotes that have gone quiet, so fewer jobs slip away.',
+    'Review requests sent automatically when a job is finished.',
+  ]],
+];
+
+const DEFAULT_SYSTEMS = [
+  'A simple way for customers to enquire or book online, sent straight to your phone.',
+  'Automatic review requests after each job or visit.',
+  'One place that collects enquiries from your website, email and social media, so nothing gets missed.',
+];
+
+export function systemsFor(l: Lead): string[] {
+  if (l.source === 'freelancer') return [];
+  const trade = `${l.company} ${l.title}`;
+  return SYSTEMS.find(([re]) => re.test(trade))?.[1] ?? DEFAULT_SYSTEMS;
 }
+
+// Local businesses and new companies get a one-page note with ideas; job posts do not.
+export function hasCheck(l: Lead): boolean {
+  return systemsFor(l).length > 0;
+}
+
+const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 // A short script for leads you can only phone. The aim of the call is permission to send the check.
 export function callScript(l: Lead): string {
@@ -199,9 +257,9 @@ export function callScript(l: Lead): string {
   const problem = (s.ownerProblems[0] ?? 'your website could be bringing you more customers.')
     .replace(/^Your /, 'your ').replace(/^You /, 'you ');
   return [
-    `Hi, could I speak to the owner or manager? ... Thanks. My name is Samuel, I build websites for small businesses.`,
+    `Hi, could I speak to the owner or manager? ... Thanks. My name is Samuel, I help small businesses save time and win more customers online.`,
     `I was looking at ${name} online and noticed ${problem.replace(/\.$/, '')}.`,
-    `I have written up a short one-page note on what I would change. It is free, no strings. What is the best email to send it to?`,
+    `I have written up a short one-page note with a few ideas, like ${lcFirst(systemsFor(l)[0] ?? 'getting more enquiries online.').replace(/\.$/, '')}. It is free, no strings. What is the best email to send it to?`,
     `(If they are busy: "No problem, when is a better time to call back?")`,
   ].join('\n\n');
 }

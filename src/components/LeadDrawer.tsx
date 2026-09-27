@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, fitOf, leadStory, personOf, shortDate, statusOf,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, fitOf, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -62,6 +62,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const fu = followUpState(lead);
   const isFollowUp = fu.due && !lead.autoSequence;
   const story = useMemo(() => leadStory(lead), [lead]);
+  const offers = useMemo(() => systemsFor(lead), [lead]);
   const fit = fitOf(lead.score);
   const links = lead.contactLinks ?? {};
   const email = lead.contactEmail;
@@ -211,11 +212,19 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         </section>
 
         <section className="dsec">
-          <h3 className="dsec-title">{isJob ? 'What they asked for' : 'Why they need a website'}</h3>
-          {story.problems.length > 0 && (
-            <ul className="why-list">
-              {story.problems.map(p => <li key={p}>{p}</li>)}
+          <h3 className="dsec-title">{isJob ? 'What they asked for' : 'What you can offer'}</h3>
+          {offers.length > 0 && (
+            <ul className="offer-list">
+              {offers.map(o => <li key={o}>{o}</li>)}
             </ul>
+          )}
+          {story.problems.length > 0 && (
+            <>
+              <p className="dsec-sub">Website problems</p>
+              <ul className="why-list">
+                {story.problems.map(p => <li key={p}>{p}</li>)}
+              </ul>
+            </>
           )}
           {story.stillOpen && <p className="why-ok"><Icon name="check" size={14} /><span><strong>{lead.source === 'companies_house' ? 'Active.' : 'Still open.'}</strong> {story.stillOpen}</span></p>}
           {story.other.length > 0 && <p className="why">{story.other.join(' ').slice(0, 900)}</p>}
@@ -228,7 +237,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               <CopyButton text={callScript(lead)} label="Copy call script" />
             </h3>
             <p className="script">{callScript(lead)}</p>
-            <p className="timeline">The goal is their email address. Use "Add email" above, then schedule the email with their website check.</p>
+            <p className="timeline">The goal is their email address. Use "Add email" above, then schedule the email with their one-page note of ideas.</p>
           </section>
         )}
 
@@ -258,7 +267,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           {lead.checkUrl && !isFollowUp && !isLinkedIn && (status === 'new' || status === 'queued') && (
             <p className="check-hint">
               <Icon name="check" size={13} />
-              <span>A link to their one-page website check is added above your name when this goes out. <a href={lead.checkUrl} target="_blank" rel="noreferrer">See what they will see</a></span>
+              <span>A link to their one-page note of ideas is added above your name when this goes out. <a href={lead.checkUrl} target="_blank" rel="noreferrer">See what they will see</a></span>
             </p>
           )}
 

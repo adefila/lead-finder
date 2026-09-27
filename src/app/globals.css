@@ -546,3 +546,9 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .check-hint a { color: var(--fg); font-weight: 600; }
 .script { white-space: pre-line; font-size: 13px; line-height: 1.65; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .field.field-sm { height: 32px; padding: 0 10px; flex: 1; min-width: 160px; }
+.check-lead { margin-bottom: 12px; }
+.check-fixes { margin-top: 14px; }
+.offer-list { list-style: none; display: grid; gap: 6px; }
+.offer-list li { position: relative; padding-left: 20px; font-size: 13px; line-height: 1.55; color: var(--fg); }
+.offer-list li::before { content: '✓'; position: absolute; left: 2px; color: var(--green-ink); font-weight: 700; }
+.dsec-sub { font-size: 12px; font-weight: 600; color: var(--fg-3); margin-top: 4px; }

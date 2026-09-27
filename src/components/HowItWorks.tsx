@@ -26,7 +26,7 @@ export function useHowItWorks() {
 const STEPS = [
   {
     title: 'We find businesses',
-    body: 'Every day we look for businesses with no website or a weak one, and check they are still open.',
+    body: 'Every day we look for businesses that could use a better website or a simple system to save time, and check they are still open.',
   },
   {
     title: 'We write the message',
