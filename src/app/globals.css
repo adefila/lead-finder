@@ -388,7 +388,7 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 
 /* Columns step away instead of scrolling sideways */
 @media (max-width: 1100px) { .col-status { width: 150px; } .col-next { width: 150px; } .col-contact { width: 28%; } }
-@media (max-width: 900px) { .col-status { display: none; } }
+@media (max-width: 900px) { .col-next { display: none; } }
 
 /* ── Toasts ─────────────────────────────── */
 .toast-stack {
@@ -489,19 +489,21 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
   .crm, .crm tbody { display: block; }
   .crm thead { display: none; }
   .crm tbody tr {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px;
     padding: 14px 16px; border-bottom: 1px solid var(--border);
   }
   .crm tbody tr:last-child { border-bottom: 0; }
   .crm td { display: block; padding: 0 !important; border: 0; overflow: hidden; }
   .crm .col-check { display: none; }
-  .crm .col-lead { grid-column: 1; grid-row: 1; }
-  .crm .col-actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; width: auto; }
-  .crm .col-contact { grid-column: 1; grid-row: 2; width: auto; margin-top: 8px; }
+  .crm .col-lead { grid-column: 1 / 3; grid-row: 1; }
+  .crm .col-actions { grid-column: 3; grid-row: 1 / span 3; align-self: center; width: auto; }
+  .crm .col-contact { grid-column: 1 / 3; grid-row: 2; width: auto; margin-top: 8px; }
   .crm .col-contact .cell-title { display: none; }
   .crm .col-contact .cell-sub { margin-top: 0; }
-  .crm .col-status { display: none; }
-  .crm .col-next { grid-column: 1; grid-row: 3; width: auto; margin-top: 4px; font-size: 12px; }
+  .crm .col-status { display: block; grid-column: 1; grid-row: 3; width: auto; margin-top: 6px; }
+  .crm .col-status .status { font-size: 12px; }
+  .crm .col-next { display: block; grid-column: 2; grid-row: 3; width: auto; margin-top: 6px; font-size: 12px; }
+  .crm .col-next::before { content: '·'; color: #c9c9c9; margin-right: 8px; }
   .crm .row-btn { display: none; }
   .crm tbody tr.selected { box-shadow: inset 3px 0 0 var(--green); }
   .crm-card > .table-wrap, .crm-card > .empty-state, .crm-card > .panel { min-height: 0; }

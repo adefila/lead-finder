@@ -151,6 +151,22 @@ export function fitOf(score?: number): { label: string; tone: string } {
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
 
+// Google names often carry extra words ("Vanguard Studio | Austin Architect"), and the
+// company register is ALL CAPS. Show the short, clean name; the full one is on hover.
+export function displayName(l: Lead): string {
+  let name = l.title.trim();
+  if (l.source !== 'freelancer') {
+    const short = name.split(/\s+[|–—-]\s+|\s*[|•]\s*/)[0].trim();
+    if (short.length >= 3) name = short;
+  }
+  if (name.length > 6 && name === name.toUpperCase() && /[A-Z]/.test(name)) {
+    name = name.toLowerCase()
+      .replace(/(^|[\s&(/-])([a-z])/g, (_, p: string, c: string) => p + c.toUpperCase())
+      .replace(/\b(Ltd|Llp|Plc|Uk|Nz|Llc|Cic)\b/g, w => (w === 'Ltd' ? 'Ltd' : w.toUpperCase()));
+  }
+  return name;
+}
+
 export function personOf(l: Lead): string {
   return l.contactName && l.contactName !== l.title ? l.contactName : '';
 }

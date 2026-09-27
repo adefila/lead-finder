@@ -455,7 +455,6 @@ export default function Home() {
           ) : (
             <LeadTable
               leads={pageRows}
-              showStatus={view === 'all'}
               sort={sort}
               onSort={onSort}
               selectedId={selectedId}

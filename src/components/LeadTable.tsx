@@ -1,7 +1,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/types/lead';
-import { STATUS_LABEL, STATUS_TONE, headlineOf, nextStep, personOf, statusOf, type SortKey } from '@/lib/leadview';
+import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, statusOf, type SortKey } from '@/lib/leadview';
 import { Checkbox, Icon } from '@/components/ui';
 import { EmptyState, type EmptyKind } from '@/components/EmptyState';
 
@@ -13,8 +13,6 @@ interface Props {
   onOpen: (id: string) => void;
   onStatus: (id: string, status: LeadStatus) => void;
   emptyKind: EmptyKind;
-  // Inside a single tab every row has the same status, so the column only shows on "All".
-  showStatus: boolean;
   selection: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
@@ -37,7 +35,7 @@ function SortHeader({ label, k, sort, onSort, className }: {
 const isActive = (l: Lead) => l.description.includes('Verified active');
 
 // Deliberately minimal: who, how to reach them, what to do next. Everything else lives in the lead page.
-export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, showStatus, selection, onToggle, onToggleAll }: Props) {
+export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, selection, onToggle, onToggleAll }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
   const all = leads.length > 0 && picked === leads.length;
 
@@ -52,7 +50,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
             </th>
             <SortHeader label="Business" k="name" sort={sort} onSort={onSort} className="col-lead" />
             <th className="col-contact">Contact</th>
-            {showStatus && <th className="col-status">Status</th>}
+            <th className="col-status">Status</th>
             <SortHeader label="Next step" k="next" sort={sort} onSort={onSort} className="col-next" />
             <th className="col-actions"><span className="sr-only">Actions</span></th>
           </tr>
@@ -75,7 +73,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <Checkbox label={`Select ${l.title}`} checked={selection.has(l.id)} onChange={() => onToggle(l.id)} />
                 </td>
                 <td className="col-lead">
-                  <div className="cell-title">{l.title}</div>
+                  <div className="cell-title" title={l.title}>{displayName(l)}</div>
                   <div className="cell-sub">
                     {isActive(l) && <span className="active-tag" title="Still open: checked when we found them">Active</span>}
                     {headline && <span className="cell-flag">{headline}</span>}
@@ -87,9 +85,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <div className="cell-title small">{person || <span className="muted">{l.source === 'freelancer' ? 'Client' : 'Name not found'}</span>}</div>
                   <div className="cell-sub"><span className="ellipsis">{reach}</span></div>
                 </td>
-                {showStatus && (
-                  <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
-                )}
+                <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
                 <td className={step.urgent ? 'col-next next urgent' : 'col-next next'}>
                   {step.text || <span className="muted">-</span>}
                 </td>
