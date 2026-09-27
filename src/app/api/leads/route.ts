@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { deleteLeads, getLeads, markFollowedUp, updateLead, updateLeadStatus } from '@/lib/supabase';
 import { LEAD_STATUSES, type LeadStatus } from '@/types/lead';
 import { hasCheck, withWorkingLinks } from '@/lib/leadview';
-import { checkLink } from '@/lib/tracking';
+import { noteLink } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const leads = await getLeads();
-  return NextResponse.json(leads.map(withWorkingLinks).map(l => (hasCheck(l) ? { ...l, checkUrl: checkLink(l.id) } : l)));
+  return NextResponse.json(leads.map(withWorkingLinks).map(l => (hasCheck(l) ? { ...l, checkUrl: noteLink(l) } : l)));
 }
 
 export async function PATCH(req: NextRequest) {

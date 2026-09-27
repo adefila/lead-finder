@@ -2,9 +2,9 @@ import type { Lead } from '@/types/lead';
 import { getLeads, countSentSince, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
-import { splitDraft, withCheckLink, withSignature } from '@/lib/compose';
+import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck } from '@/lib/leadview';
-import { checkLink } from '@/lib/tracking';
+import { noteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
@@ -122,12 +122,14 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
+    const testText = withSignature(hasCheck(next) ? withCheckLink(body, noteLink(next)) : body);
     // Exactly the email the business would get (link and signature included), so you can see
     // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
       to: process.env.MAIL_TEST_TO?.trim() || cfg.user,
       subject: `[Test] ${subject || `${next.title} website`}`,
-      text: withSignature(hasCheck(next) ? withCheckLink(body, checkLink(next.id)) : body),
+      text: testText,
+      html: toHtml(testText),
     });
     console.log(`[outbox] test email for ${next.title} (would go to ${next.contactEmail})`);
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
@@ -147,7 +149,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       const text = await draftFollowUp(lead);
       if (!text) throw new Error('Could not draft the follow-up');
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text), inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text), html: toHtml(withSignature(text)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -166,8 +168,8 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const text = withSignature(hasCheck(lead) ? withCheckLink(body, checkLink(lead.id)) : body);
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text });
+      const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead)) : body);
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text) });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         status: 'approved',

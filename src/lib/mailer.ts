@@ -30,6 +30,7 @@ export interface OutgoingMail {
   subject: string;
   text: string;
   inReplyTo?: string;
+  html?: string;
 }
 
 export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<string> {
@@ -44,6 +45,7 @@ export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<str
     to: mail.to,
     subject: mail.subject,
     text: mail.text,
+    ...(mail.html ? { html: mail.html } : {}),
     ...(mail.inReplyTo ? { inReplyTo: mail.inReplyTo, references: [mail.inReplyTo] } : {}),
   });
   return info.messageId;

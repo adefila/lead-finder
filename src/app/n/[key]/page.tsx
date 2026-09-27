@@ -1,20 +1,21 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getLeadById } from '@/lib/supabase';
+import { getLeads } from '@/lib/supabase';
 import { displayName, hasCheck } from '@/lib/leadview';
-import { verifySig } from '@/lib/tracking';
+import { noteKeyMatches } from '@/lib/tracking';
 import { NotePage } from '@/components/NotePage';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ s?: string }> };
+type Props = { params: Promise<{ key: string }> };
 
-// Older, long-form links. New emails use the short /n/ links; these keep working.
-async function load({ params, searchParams }: Props) {
-  const [{ id: raw }, { s }] = await Promise.all([params, searchParams]);
-  const id = decodeURIComponent(raw);
-  if (!s || !verifySig(id, 'check', s)) return null;
-  const lead = await getLeadById(id);
+// Short, readable link: /n/green-dental-4f9a2c1b07aa. The last part is a signature, so
+// links cannot be guessed or edited to reach another business's note.
+async function load({ params }: Props) {
+  const { key } = await params;
+  const code = key.split('-').pop() ?? '';
+  if (!/^[0-9a-f]{12}$/.test(code)) return null;
+  const lead = (await getLeads()).find(l => noteKeyMatches(l.id, code));
   return lead && hasCheck(lead) ? lead : null;
 }
 
@@ -23,7 +24,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return { title: lead ? `A few ideas for ${displayName(lead)}` : 'A few ideas', robots: { index: false, follow: false } };
 }
 
-export default async function CheckPage(props: Props) {
+export default async function ShortNotePage(props: Props) {
   const lead = await load(props);
   if (!lead) notFound();
   console.log(`[check] viewed ${lead.id} (${lead.title})`);
