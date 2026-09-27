@@ -67,6 +67,10 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
     secure: true,
     auth: { user: cfg.user, pass: cfg.pass },
     logger: false,
+    // A slow mail server must never hold up the whole run.
+    connectionTimeout: 10_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 15_000,
   });
   await client.connect();
   const lock = await client.getMailboxLock('INBOX');

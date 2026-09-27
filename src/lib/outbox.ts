@@ -84,11 +84,19 @@ export async function runOutbox(): Promise<OutboxResult> {
   if (!cfg) return { ...result, skipped: 'Mail is not configured' };
 
   // 1. Replies stop everything for that lead.
+  // The timer gives up after 30s, so the inbox check gets 12s at most. If Gmail is slow we skip
+  // it this time (the next run, 15 minutes later, checks again) and hold back follow-ups,
+  // so nobody who already replied gets chased.
   const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut);
-  const { replies, bounced } = await checkReplies(cfg, watching.map(l => ({
+  const noInbox = { replies: new Map<string, { replied: boolean; optedOut: boolean }>(), bounced: new Set<string>(), checked: false };
+  const inboxCheck = checkReplies(cfg, watching.map(l => ({
     email: l.contactEmail!,
     since: new Date(l.queuedAt ?? l.contactedAt ?? l.createdAt ?? Date.now()),
-  })));
+  }))).then(r => ({ ...r, checked: true })).catch(e => { console.error('[outbox] inbox check failed:', (e as Error).message); return noInbox; });
+  const { replies, bounced, checked: inboxChecked } = await Promise.race([
+    inboxCheck,
+    new Promise<typeof noInbox>(resolve => setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 12_000)),
+  ]);
   for (const lead of watching) {
     const address = lead.contactEmail!.toLowerCase();
     if (bounced.has(address) && !replies.has(address)) {
@@ -125,12 +133,12 @@ ${body}`,
   }
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
-  const followUp = leads.find(l =>
+  const followUp = inboxChecked && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
   const first = queued
     .filter(l => inSendWindow(l))
     .sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
-  const lead = followUp ?? first;
+  const lead = followUp || first;
   if (!lead) return { ...result, skipped: 'Nothing due inside business hours right now' };
 
   try {
