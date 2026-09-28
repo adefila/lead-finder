@@ -326,12 +326,12 @@ export default function Home() {
             {outbox && (
               <span className={`send-status${outbox.configured ? '' : ' off'}`}
                 title={outbox.configured
-                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time, up to your daily limit.'
+                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time: at most one every 2 hours, up to your limit in any 24 hours.'
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : outbox.queued === 0 ? `Nothing scheduled · ${outbox.sentToday} of ${outbox.limit} sent today`
-                  : `${outbox.queued} scheduled · ${outbox.sentToday} of ${outbox.limit} sent today`}
+                  : outbox.queued === 0 ? `Nothing scheduled · ${outbox.sentToday} of ${outbox.limit} sent in 24h`
+                  : `${outbox.queued} scheduled · ${outbox.sentToday} of ${outbox.limit} sent in 24h`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>

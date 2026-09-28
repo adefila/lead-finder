@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countSentSince, updateLead } from '@/lib/supabase';
+import { getLeads, countSentSince, lastSentAt, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -9,6 +9,10 @@ import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 15);
+// At most one email every MIN_GAP minutes. Spreads sends across the day so every time zone gets
+// a turn (otherwise Australia and New Zealand, whose morning comes first, take the whole limit),
+// and steady spacing looks natural to spam filters.
+const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 120);
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
 // and leaves the lead untouched so the real send still happens later.
 const TEST_MODE = process.env.MAIL_TEST_MODE === 'true';
@@ -42,8 +46,8 @@ export function inSendWindow(lead: Lead, now = new Date()): boolean {
   return !['Sat', 'Sun'].includes(weekday) && hour >= WINDOW_START && hour < WINDOW_END;
 }
 
-function startOfUtcDay(now = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+function last24h(now = new Date()): string {
+  return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
 
 export interface OutboxResult {
@@ -60,7 +64,7 @@ export interface OutboxResult {
 }
 
 export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'queued'>> {
-  const [sentToday, leads] = await Promise.all([countSentSince(startOfUtcDay()), getLeads()]);
+  const [sentToday, leads] = await Promise.all([countSentSince(last24h()), getLeads()]);
   return {
     configured: !!mailConfig(),
     sentToday,
@@ -76,7 +80,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut);
   const result: OutboxResult = {
     configured: !!cfg,
-    sentToday: await countSentSince(startOfUtcDay()),
+    sentToday: await countSentSince(last24h()),
     limit: DAILY_LIMIT,
     queued: queued.length,
     replies: 0,
@@ -116,7 +120,8 @@ export async function runOutbox(): Promise<OutboxResult> {
   }
 
   // 2. Daily cap.
-  if (result.sentToday >= DAILY_LIMIT) return { ...result, skipped: `Daily limit of ${DAILY_LIMIT} reached` };
+  // The limit is a rolling 24 hours, so it cannot be doubled around a midnight reset.
+  if (result.sentToday >= DAILY_LIMIT) return { ...result, skipped: `Limit of ${DAILY_LIMIT} emails in 24 hours reached` };
 
   if (TEST_MODE) {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
@@ -133,6 +138,13 @@ export async function runOutbox(): Promise<OutboxResult> {
     });
     console.log(`[outbox] test email for ${next.title} (would go to ${next.contactEmail})`);
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
+  }
+
+  // Space emails out: at most one every MIN_GAP_MIN minutes.
+  const last = await lastSentAt();
+  if (last && Date.now() - last.getTime() < MIN_GAP_MIN * 60_000) {
+    const next = new Date(last.getTime() + MIN_GAP_MIN * 60_000);
+    return { ...result, skipped: `Next email can go out after ${next.toISOString().slice(11, 16)} UTC (one every ${MIN_GAP_MIN / 60} hours)` };
   }
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
