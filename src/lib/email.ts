@@ -60,8 +60,7 @@ function actions(lead: Lead): string {
   const quiet: string[] = [];
 
   if (lead.contactEmail) {
-    const who = lead.contactName?.split(' ')[0] ?? lead.title;
-    primary.push(button(sendLink(lead.id, 'gmail'), `Email ${esc(who)} in Gmail`, 'primary'));
+    primary.push(button(sendLink(lead.id, 'gmail'), 'Email in Gmail', 'primary'));
     primary.push(button(sendLink(lead.id, 'mail'), 'Mail app', 'secondary'));
   } else if (lead.source === 'freelancer') {
     primary.push(button(sendLink(lead.id, 'bid'), 'Open project and bid', 'primary'));
