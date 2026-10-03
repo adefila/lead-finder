@@ -70,7 +70,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   // First emails carry the link to their website check; follow-ups do not repeat it.
   const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
-  const isJob = lead.source === 'freelancer';
+  const isJob = lead.source === 'freelancer' || lead.source === 'remote';
 
   const writeFollowUp = useCallback(async () => {
     setDrafting(true);
@@ -126,6 +126,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const showScript = !!lead.contactPhone && !email && (status === 'new' || status === 'approved');
 
   const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
+    : lead.source === 'remote' ? 'Your application note'
     : isJob ? 'Your proposal'
     : email ? 'Your email'
     : links.linkedin && lead.source === 'companies_house' ? 'Your LinkedIn message'
@@ -173,7 +174,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               </span>
             ) : (
               isJob ? (
-                <span className="muted">Hidden by Freelancer. You reply through the job post.</span>
+                <span className="muted">{lead.source === 'remote' ? 'You apply through the job post.' : 'Hidden by Freelancer. You reply through the job post.'}</span>
               ) : addingEmail ? (
                 <form className="kv-value" onSubmit={e => { e.preventDefault(); saveEmail(); }}>
                   <input className="field field-sm" type="email" autoFocus placeholder="name@business.com"

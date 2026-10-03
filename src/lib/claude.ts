@@ -45,6 +45,8 @@ ${SAMUEL}
 
 Score each lead 0-100 for how likely it is to turn into a paid website project. Use the full range.
 
+For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, WordPress, Shopify, landing page or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
+
 For source "freelancer" (a client posted a website project; "context" holds budget and bid count):
 - Fit: marketing/business/portfolio/landing sites he can build in Framer or Webflow score high. Heavy custom backend, booking systems, marketplaces or plugin dev score lower.
 - Budget: USD 250+ fixed or USD 20+/hr is good. Under USD 50, or INR under 12500, scores low.
@@ -90,11 +92,12 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'freelancer' | 'places' | 'newco';
+type DraftKind = 'freelancer' | 'places' | 'newco' | 'remote';
 
 function draftKind(l: Lead): DraftKind {
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
+  if (l.source === 'remote') return 'remote';
   return 'freelancer';
 }
 
@@ -141,6 +144,9 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
       `Site text: ${(l.siteText ?? 'none').slice(0, 1200)}`,
     ].join('\n');
   }
+  if (kind === 'remote') {
+    return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
+  }
   return `PROJECT ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBudget and bids: ${l.company}\nBrief: ${l.description.slice(0, 700)}`;
 }
 
@@ -170,6 +176,22 @@ Rules:
 ${VOICE}
 
 Return ONLY valid JSON: {"ID": "proposal text", ...}`,
+
+  remote: `Write a short application note from Samuel Adefila for each remote role below. It goes in the job board's application form or cover letter box. Hiring managers skim, so the first line must show he read the listing.
+
+Rules:
+- No subject line. Open with "Hi," (or "Hi [Company] team,")
+- Under 130 words
+- Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, UI design) and give one concrete example of similar work
+- Mention he works remotely from Nigeria on GMT+1, which overlaps fully with UK and European hours
+- Point to his portfolio at adefilasamuel.com
+- End with one easy next step (a short call, or a small paid test task)
+- Sign off "Samuel"
+- Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": "note text", ...}`,
 
   places: `Write outreach from Samuel Adefila to each local business below. He found them on Google Maps and looked at their website. "Findings" lists what's wrong, or that they have no website. "Site text" is text scraped from their site.
 
@@ -253,7 +275,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['freelancer', 'places', 'newco'] as DraftKind[]) {
+  for (const kind of ['freelancer', 'places', 'newco', 'remote'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {
@@ -288,6 +310,7 @@ export async function draftFollowUp(lead: Lead): Promise<string> {
     ? Math.max(1, Math.round((Date.now() - new Date(lead.contactedAt).getTime()) / 86400000))
     : null;
   const channel = lead.source === 'freelancer' ? 'a Freelancer.com message on his bid'
+    : lead.source === 'remote' ? 'a short follow-up to the hiring manager about his application'
     : lead.contactEmail ? 'an email reply in the same thread' : 'a short DM';
   const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
 

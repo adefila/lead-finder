@@ -4,6 +4,7 @@ import { followUpState, needsAttention, MAX_FOLLOW_UPS } from '@/lib/followup';
 // Where the lead came from, in words a non-technical person would use.
 export const SOURCE_LABEL: Record<Lead['source'], string> = {
   freelancer: 'Job post',
+  remote: 'Remote job',
   places: 'Google Maps',
   osm: 'Local map',
   companies_house: 'Company register',
@@ -30,7 +31,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   skipped: 'faded',
 };
 
-export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done';
+export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'remote';
 export type Sub = 'all' | 'followup' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
@@ -41,6 +42,8 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'approved', label: 'Waiting for reply', hint: 'You have been in touch. Follow-ups go out on their own until they reply.' },
   { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply quickly, this is where deals are won.' },
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
+  // Not a pipeline stage: a shortcut to open remote roles you have not finished with.
+  { id: 'remote', label: 'Remote roles', hint: 'Remote web roles open to you, from job boards. Apply on the job post.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
@@ -52,10 +55,14 @@ export const HEADLINES = ['No website', 'No own website', 'No website yet', 'Out
 
 export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 
+// Job posts (Freelancer projects and remote roles): you apply on the post rather than email.
+export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'freelancer' || l.source === 'remote';
+
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
+  if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
   return s === view;
 }
@@ -160,7 +167,7 @@ export interface LeadStory {
 }
 
 export function leadStory(l: Lead): LeadStory {
-  if (l.source === 'freelancer') return { headline: null, stillOpen: null, problems: [], ownerProblems: [], fixes: [], other: [l.description] };
+  if (isJobLead(l)) return { headline: null, stillOpen: null, problems: [], ownerProblems: [], fixes: [], other: [l.description] };
   const headline = headlineOf(l);
   // Sentences end with ". " then a capital or digit, so "4.8 stars" stays whole.
   const sentences = l.description.replace(/\.$/, '').split(/\.\s+(?=[A-Z0-9])/).map(s => s.trim()).filter(Boolean);
@@ -239,7 +246,7 @@ const DEFAULT_SYSTEMS = [
 ];
 
 export function systemsFor(l: Lead): string[] {
-  if (l.source === 'freelancer') return [];
+  if (isJobLead(l)) return [];
   const trade = `${l.company} ${l.title}`;
   return SYSTEMS.find(([re]) => re.test(trade))?.[1] ?? DEFAULT_SYSTEMS;
 }
@@ -282,7 +289,7 @@ export function fitOf(score?: number): { label: string; tone: string } {
 // company register is ALL CAPS. Show the short, clean name; the full one is on hover.
 export function displayName(l: Lead): string {
   let name = l.title.trim();
-  if (l.source !== 'freelancer') {
+  if (!isJobLead(l)) {
     const short = name.split(/\s+[|–—-]\s+|\s*[|•]\s*/)[0].trim();
     if (short.length >= 3) name = short;
   }
@@ -349,6 +356,7 @@ export function nextStep(l: Lead): { text: string; urgent: boolean } {
   const s = statusOf(l);
   if (s === 'new') {
     if (l.source === 'freelancer') return { text: 'Send a proposal', urgent: false };
+    if (l.source === 'remote') return { text: 'Apply', urgent: false };
     if (l.contactEmail) return { text: 'Email them', urgent: false };
     if (l.source === 'companies_house') return { text: 'Message on LinkedIn', urgent: false };
     return { text: 'Call or message', urgent: false };

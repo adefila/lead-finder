@@ -71,7 +71,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
             const headline = headlineOf(l);
             const step = nextStep(l);
             const reach = l.contactEmail ?? l.contactPhone
-              ?? (l.source === 'freelancer' ? 'Reply on the job post' : l.contactLinks?.linkedin ? 'LinkedIn' : 'No email or phone');
+              ?? (l.source === 'freelancer' ? 'Reply on the job post' : l.source === 'remote' ? 'Apply on the job post' : l.contactLinks?.linkedin ? 'LinkedIn' : 'No email or phone');
             return (
               <tr
                 key={l.id}
@@ -91,7 +91,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   </div>
                 </td>
                 <td className="col-contact">
-                  <div className="cell-title small">{person || <span className="muted">{l.source === 'freelancer' ? 'Client' : 'Name not found'}</span>}</div>
+                  <div className="cell-title small">{person || <span className="muted">{l.source === 'freelancer' ? 'Client' : l.source === 'remote' ? 'Hiring team' : 'Name not found'}</span>}</div>
                   <div className="cell-sub"><span className="ellipsis">{reach}</span></div>
                 </td>
                 <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
