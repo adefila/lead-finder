@@ -106,18 +106,79 @@ a { color: inherit; }
 .pipeline-arrow { color: #c4c7cc; margin-right: 5px; }
 .pipeline-note { margin-left: auto; font-size: 12px; color: var(--fg-3); }
 
-/* ── How it works ───────────────────────── */
-.how { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px 16px; }
-.how-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.how-steps { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-.how-steps li { display: flex; gap: 10px; }
-.how-steps strong { display: block; font-size: 13px; margin-bottom: 2px; }
-.how-steps p { font-size: 13px; color: var(--fg-2); line-height: 1.55; }
-.how-num {
-  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  border: 1px solid var(--border-strong); font-size: 12px; font-weight: 600; color: var(--fg-2);
+/* ── How Lead Finder works (self-playing explainer) ─── */
+.ex { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.ex-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.ex-screen { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); min-height: 340px; }
+.ex-stage { background: var(--bg); border-right: 1px solid var(--border); padding: 18px; display: grid; gap: 10px; align-content: center; min-width: 0; animation: exRise .45s ease both; }
+.ex-caption { padding: 22px 24px; display: grid; gap: 8px; align-content: center; min-width: 0; }
+.ex-step { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--green-ink); }
+.ex-caption h2 { font-size: 22px; line-height: 1.2; letter-spacing: -.02em; text-wrap: balance; }
+.ex-caption p { color: var(--fg-2); font-size: 14px; max-width: 46ch; }
+.ex-facts { list-style: none; display: grid; gap: 6px; margin-top: 2px; }
+.ex-facts li { position: relative; padding-left: 16px; font-size: 13px; }
+.ex-facts li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+@keyframes exRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes exPop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes exFill { to { width: var(--to); } }
+@keyframes exBlink { 50% { opacity: 0; } }
+
+.ex-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.ex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ex-min { min-width: 0; }
+.ex-title { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-sub { font-size: 12px; color: var(--fg-3); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ex-ok { color: var(--green-ink); font-weight: 600; }
+.ex-flag { color: var(--warn-ink); font-weight: 600; }
+.ex-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--green-tint); color: var(--green-ink); white-space: nowrap; }
+.ex-chip.ex-plain { background: transparent; border: 1px solid var(--border); color: var(--fg-2); }
+.ex-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.ex-note { font-size: 12px; color: var(--fg-2); }
+.ex-note b { color: var(--fg); }
+.ex-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; }
+.ex-source { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; display: grid; gap: 1px; opacity: 0; animation: exPop .4s ease forwards; }
+.ex-source span { font-weight: 400; font-size: 11px; color: var(--fg-3); }
+.ex-msg { font-size: 12.5px; line-height: 1.6; }
+.ex-typed { white-space: pre-wrap; }
+.ex-cursor { display: inline-block; width: 6px; height: 13px; background: var(--green); vertical-align: -2px; animation: exBlink 1s steps(1) infinite; }
+.ex-tabs { display: flex; gap: 12px; font-size: 11px; color: var(--fg-3); border-bottom: 1px solid var(--border); padding-bottom: 7px; overflow: hidden; white-space: nowrap; }
+.ex-tabs b { color: var(--fg); box-shadow: inset 0 -2px 0 var(--fg); padding-bottom: 5px; margin-bottom: -7px; }
+.ex-list { display: grid; gap: 9px; margin-top: 8px; }
+.ex-btn { font-size: 11px; font-weight: 600; border-radius: 6px; padding: 5px 9px; border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+.ex-btn.ex-go { background: var(--green); border-color: var(--green); color: #fff; }
+.ex-zones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ex-zone { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px; display: grid; gap: 6px; font-size: 11px; color: var(--fg-2); min-width: 0; }
+.ex-zone b { font-size: 12px; color: var(--fg); }
+.ex-meter { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ex-meter i { display: block; height: 100%; width: 0; background: var(--green); animation: exFill 2.2s ease forwards; }
+.ex-timeline { display: grid; gap: 8px; }
+.ex-tl { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; font-size: 12.5px; opacity: 0; animation: exPop .4s ease forwards; }
+.ex-day { font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.ex-win { justify-items: center; text-align: center; gap: 8px; padding: 18px 12px; }
+.ex-big { font-family: var(--font-script), cursive; font-size: 42px; line-height: 1; color: var(--green-ink); }
+
+.ex-controls { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); }
+.ex-ctrl { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+.ex-ctrl.ex-main { background: var(--fg); border-color: var(--fg); color: var(--surface); }
+.ex-segs { flex: 1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+.ex-seg { border: 0; background: none; padding: 0; cursor: pointer; display: grid; gap: 4px; text-align: left; min-width: 0; }
+.ex-track { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.ex-track i { display: block; height: 100%; background: var(--green); }
+.ex-name { font-size: 10px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-seg.cur .ex-name { color: var(--fg); font-weight: 600; }
+.ex-time { font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ex-ctrl:focus-visible, .ex-seg:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+@media (max-width: 820px) {
+  .ex-screen { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .ex-stage { border-right: 0; border-bottom: 1px solid var(--border); padding: 14px; }
+  .ex-caption { padding: 16px; }
+  .ex-name, .ex-time { display: none; }
+  .ex-zones { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 820px) { .how-steps { grid-template-columns: 1fr; gap: 12px; } }
+@media (prefers-reduced-motion: reduce) {
+  .ex-stage, .ex-source, .ex-tl, .ex-meter i, .ex-cursor { animation: none; opacity: 1; }
+  .ex-meter i { width: var(--to); }
+}
 
 /* ── Top bar status + menu ──────────────── */
 .send-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #bdbdbd; white-space: nowrap; cursor: default; }
