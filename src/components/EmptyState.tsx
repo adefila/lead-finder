@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'remote';
+  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'remote';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
   new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
@@ -17,6 +17,7 @@ const COPY: Record<EmptyKind, { title: string; body: string }> = {
   all: { title: 'No leads yet', body: 'Click Find new leads to get started.' },
   search: { title: 'No matches', body: 'Try a different business name, person or email.' },
   history: { title: 'Nothing here yet', body: 'Each search for new leads shows up here, grouped by day.' },
+  opened: { title: 'No one has opened a note yet', body: 'When someone opens the one-page note from your email, they show up here. Those are your warmest leads.' },
   remote: { title: 'No remote roles yet', body: 'Each search checks the job boards for web roles open to you. New ones show up here.' },
 };
 
@@ -56,6 +57,13 @@ const ART: Record<EmptyKind, ReactNode> = {
       <path className="ill-line" d="M54 52l40 30 40-30" />
       <circle className="ill-badge" cx="136" cy="50" r="15" />
       <path className="ill-check" d="M129 50l5 5 9-10" />
+    </>
+  ),
+  opened: (
+    <>
+      <rect className="ill-card" x="58" y="40" width="84" height="64" rx="8" />
+      <path className="ill-soft" d="M72 58h40M72 72h56M72 86h32" />
+      <circle className="ill-dot" cx="132" cy="96" r="7" />
     </>
   ),
   followup: (

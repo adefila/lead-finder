@@ -84,7 +84,8 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                 <td className="col-lead">
                   <div className="cell-title" title={l.title}>{displayName(l)}</div>
                   <div className="cell-sub">
-                    {isActive(l) && <span className="active-tag" title="Still open: checked when we found them">Active</span>}
+                    {l.noteOpenedAt ? <span className="opened-tag" title="They opened your one-page note">Opened note</span>
+                      : isActive(l) && <span className="active-tag" title="Still open: checked when we found them">Active</span>}
                     {headline && <span className="cell-flag">{headline}</span>}
                     {headline && <span className="sep">·</span>}
                     <span className="ellipsis">{l.company}</span>

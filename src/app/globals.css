@@ -577,3 +577,9 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .offer-list li { position: relative; padding-left: 20px; font-size: 13px; line-height: 1.55; color: var(--fg); }
 .offer-list li::before { content: '✓'; position: absolute; left: 2px; color: var(--green-ink); font-weight: 700; }
 .dsec-sub { font-size: 12px; font-weight: 600; color: var(--fg-3); margin-top: 4px; }
+
+/* "Opened your note": the warmest signal, shown in green */
+.opened-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--green-ink); font-weight: 600; }
+.opened-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-tint); }
+.opened-tag + .cell-flag::before, .opened-tag + .ellipsis::before { content: '·'; color: #c9c9c9; margin-right: 6px; }
+.opened-flag { font-size: 12px; font-weight: 600; color: var(--green-ink); }

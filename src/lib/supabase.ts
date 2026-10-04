@@ -97,6 +97,9 @@ function rowToLead(r: Record<string, unknown>): Lead {
     sendError: r.send_error ? String(r.send_error) : undefined,
     autoSequence: Boolean(r.auto_sequence),
     optedOut: Boolean(r.opted_out),
+    noteOpenedAt: r.note_opened_at ? String(r.note_opened_at) : undefined,
+    noteLastViewedAt: r.note_last_viewed_at ? String(r.note_last_viewed_at) : undefined,
+    noteViews: Number(r.note_views ?? 0),
   };
 }
 

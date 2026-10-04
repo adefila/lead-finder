@@ -32,7 +32,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
 };
 
 export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'remote';
-export type Sub = 'all' | 'followup' | 'won' | 'lost' | 'skipped';
+export type Sub = 'all' | 'followup' | 'opened' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
@@ -47,7 +47,7 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
-  approved: [{ id: 'all', label: 'All' }, { id: 'followup', label: 'Needs a follow-up' }],
+  approved: [{ id: 'all', label: 'All' }, { id: 'opened', label: 'Opened your note' }, { id: 'followup', label: 'Needs a follow-up' }],
   done: [{ id: 'all', label: 'All' }, { id: 'won', label: 'Won' }, { id: 'lost', label: 'Lost' }, { id: 'skipped', label: 'Skipped' }],
 };
 
@@ -64,6 +64,7 @@ export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
+  if (view === 'approved' && sub === 'opened') return s === 'approved' && !!l.noteOpenedAt;
   return s === view;
 }
 

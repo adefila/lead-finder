@@ -157,6 +157,11 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             <span className={`fit ${fit.tone}`} title={FIT_HINT}>{fit.label} fit</span>
             {isFollowUp && <span className="flag">Follow-up due</span>}
             {fu.exhausted && <span className="flag">No reply after {fu.sent} follow-ups</span>}
+            {lead.noteOpenedAt && (
+              <span className="opened-flag" title={`Viewed ${lead.noteViews ?? 1} time${(lead.noteViews ?? 1) === 1 ? '' : 's'}`}>
+                Opened your note {shortDate(lead.noteOpenedAt)}{(lead.noteViews ?? 1) > 1 ? ` · ${lead.noteViews} views` : ''}
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -269,7 +274,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           {lead.checkUrl && !isFollowUp && !isLinkedIn && (status === 'new' || status === 'queued') && (
             <p className="check-hint">
               <Icon name="check" size={13} />
-              <span>A link to their one-page note of ideas is added above your name when this goes out. <a href={lead.checkUrl} target="_blank" rel="noreferrer">See what they will see</a></span>
+              <span>A link to their one-page note of ideas is added above your name when this goes out. <a href={`${lead.checkUrl}${lead.checkUrl?.includes('?') ? '&' : '?'}me=1`} target="_blank" rel="noreferrer">See what they will see</a></span>
             </p>
           )}
 

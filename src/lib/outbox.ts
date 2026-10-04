@@ -155,7 +155,11 @@ export async function runOutbox(): Promise<OutboxResult> {
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
   const first = queued
     .filter(l => inSendWindow(l))
-    .sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
+    .sort((a, b) =>
+      Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
+      || (b.score ?? 0) - (a.score ?? 0)                     // best fit first
+      || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
+    [0];
   const lead = followUp || first;
   if (!lead) return { ...result, skipped: 'Nothing due inside business hours right now' };
 

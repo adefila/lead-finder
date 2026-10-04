@@ -4,10 +4,11 @@ import { getLeads } from '@/lib/supabase';
 import { displayName, hasCheck } from '@/lib/leadview';
 import { noteKeyMatches } from '@/lib/tracking';
 import { NotePage } from '@/components/NotePage';
+import { recordNoteView } from '@/lib/noteviews';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ key: string }> };
+type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ me?: string }> };
 
 // Short, readable link: /n/green-dental-4f9a2c1b07aa. The last part is a signature, so
 // links cannot be guessed or edited to reach another business's note.
@@ -27,6 +28,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function ShortNotePage(props: Props) {
   const lead = await load(props);
   if (!lead) notFound();
-  console.log(`[check] viewed ${lead.id} (${lead.title})`);
+  await recordNoteView(lead, (await props.searchParams).me === '1');
   return <NotePage lead={lead} />;
 }

@@ -4,10 +4,11 @@ import { getLeadById } from '@/lib/supabase';
 import { displayName, hasCheck } from '@/lib/leadview';
 import { verifySig } from '@/lib/tracking';
 import { NotePage } from '@/components/NotePage';
+import { recordNoteView } from '@/lib/noteviews';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ s?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ s?: string; me?: string }> };
 
 // Older, long-form links. New emails use the short /n/ links; these keep working.
 async function load({ params, searchParams }: Props) {
@@ -26,6 +27,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function CheckPage(props: Props) {
   const lead = await load(props);
   if (!lead) notFound();
-  console.log(`[check] viewed ${lead.id} (${lead.title})`);
+  await recordNoteView(lead, (await props.searchParams).me === '1');
   return <NotePage lead={lead} />;
 }

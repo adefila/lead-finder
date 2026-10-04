@@ -42,6 +42,10 @@ export interface Lead {
   sendError?: string;
   autoSequence?: boolean;
   optedOut?: boolean;
+  // One-page note: when a real person first opened it, last viewed it, and how often
+  noteOpenedAt?: string;
+  noteLastViewedAt?: string;
+  noteViews?: number;
   // In-memory only during a cron run: visible text from the business's site, used to find the owner's name
   siteText?: string;
 }
