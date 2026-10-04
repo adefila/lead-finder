@@ -18,7 +18,6 @@ export function useHowItWorks() {
   const show = useCallback(() => {
     setOpen(true);
     try { localStorage.removeItem(KEY); } catch { /* storage blocked */ }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   return { open, hide, show };
 }
@@ -150,13 +149,34 @@ const SCENES: Scene[] = [
 
 const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
-// A short, self-playing walkthrough of how Lead Finder works, shown at the top of the dashboard.
+// A short, self-playing walkthrough of how Lead Finder works, in a pop-up over a blurred dashboard.
 export function HowItWorks({ onClose }: { onClose: () => void }) {
   const [cur, setCur] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(0);
+  const dialogRef = useRef<HTMLElement>(null);
   const scene = SCENES[cur];
+
+  // While open: Esc closes, the page behind stays put, and focus starts inside the pop-up
+  // and returns to where it was when it closes.
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight') { setCur(c => (c + 1) % SCENES.length); setElapsed(0); }
+      else if (e.key === 'ArrowLeft') { setCur(c => (c - 1 + SCENES.length) % SCENES.length); setElapsed(0); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+      before?.focus?.();
+    };
+  }, [onClose]);
 
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(false);
@@ -181,10 +201,12 @@ export function HowItWorks({ onClose }: { onClose: () => void }) {
   const go = (i: number) => { setCur((i + SCENES.length) % SCENES.length); setElapsed(0); };
 
   return (
-    <section className="ex" aria-label="How Lead Finder works">
+    <div className="ex-overlay">
+    <div className="ex-scrim" onClick={onClose} aria-hidden />
+    <section className="ex" role="dialog" aria-modal="true" aria-labelledby="ex-title" tabIndex={-1} ref={dialogRef}>
       <div className="ex-head">
-        <span className="section-title">How Lead Finder works</span>
-        <button className="icon-btn quiet" onClick={onClose} aria-label="Hide this" title="Hide this"><Icon name="x" size={14} /></button>
+        <span className="section-title" id="ex-title">How Lead Finder works</span>
+        <button className="icon-btn quiet" onClick={onClose} aria-label="Close" title="Close (Esc)"><Icon name="x" size={14} /></button>
       </div>
 
       <div className="ex-screen">
@@ -216,5 +238,6 @@ export function HowItWorks({ onClose }: { onClose: () => void }) {
         <span className="ex-time">{fmt((cur * SCENE_MS + elapsed) / 1000)} / {fmt((SCENES.length * SCENE_MS) / 1000)}</span>
       </div>
     </section>
+    </div>
   );
 }

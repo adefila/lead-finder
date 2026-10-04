@@ -106,8 +106,24 @@ a { color: inherit; }
 .pipeline-arrow { color: #c4c7cc; margin-right: 5px; }
 .pipeline-note { margin-left: auto; font-size: 12px; color: var(--fg-3); }
 
-/* ── How Lead Finder works (self-playing explainer) ─── */
-.ex { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+/* ── How Lead Finder works (self-playing explainer, in a pop-up) ─── */
+.ex-overlay {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+}
+.ex-scrim {
+  position: absolute; inset: 0; background: rgba(15, 15, 15, 0.32);
+  -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%);
+  animation: exFade .2s ease both;
+}
+.ex {
+  position: relative; width: min(960px, 100%); max-height: 100%; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25); animation: exIn .25s cubic-bezier(.22, 1, .36, 1) both;
+}
+.ex:focus { outline: none; }
+@keyframes exFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes exIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 .ex-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .ex-screen { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); min-height: 340px; }
 .ex-stage { background: var(--bg); border-right: 1px solid var(--border); padding: 18px; display: grid; gap: 10px; align-content: center; min-width: 0; animation: exRise .45s ease both; }
@@ -176,7 +192,7 @@ a { color: inherit; }
   .ex-zones { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ex-stage, .ex-source, .ex-tl, .ex-meter i, .ex-cursor { animation: none; opacity: 1; }
+  .ex-stage, .ex-source, .ex-tl, .ex-meter i, .ex-cursor, .ex, .ex-scrim { animation: none; opacity: 1; }
   .ex-meter i { width: var(--to); }
 }
 
