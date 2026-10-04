@@ -239,6 +239,10 @@ export default function Home() {
     return c;
   }, [scoped]);
   const followUpsDue = useMemo(() => scoped.filter(needsAttention).length, [scoped]);
+  // Scheduled emails or automatic follow-ups that failed to send, newest first.
+  const sendFailures = useMemo(() => leads
+    .filter(l => l.sendError && (statusOf(l) === 'queued' || (statusOf(l) === 'approved' && !l.autoSequence)))
+    .sort((a, b) => (b.queuedAt ?? b.contactedAt ?? '').localeCompare(a.queuedAt ?? a.contactedAt ?? '')), [leads]);
   const sort = sortOverride ?? defaultSort(view);
   const rows = useMemo(() => sortLeads(scoped.filter(l => inView(l, view, sub)), sort.key, sort.dir), [scoped, view, sub, sort.key, sort.dir]);
 
@@ -377,6 +381,18 @@ export default function Home() {
               <button className="link-btn plain" onClick={() => { changeView('new'); setRunSummary(null); }}>Show them</button>
             )}
             <button className="banner-close" onClick={() => setRunSummary(null)} aria-label="Dismiss"><Icon name="x" size={12} /></button>
+          </div>
+        )}
+
+        {sendFailures.length > 0 && (
+          <div className="banner error" role="status">
+            <span>
+              <strong>{sendFailures.length} email{sendFailures.length === 1 ? '' : 's'} could not be sent.</strong>
+              {' '}Latest reason: {sendFailures[0].sendError}
+            </span>
+            <button className="link-btn plain" onClick={() => { changeView(sendFailures.some(l => statusOf(l) === 'queued') ? 'queued' : 'approved'); setSearch(''); }}>
+              Show them
+            </button>
           </div>
         )}
 

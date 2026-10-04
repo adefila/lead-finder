@@ -13,6 +13,8 @@ export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 15);
 // a turn (otherwise Australia and New Zealand, whose morning comes first, take the whole limit),
 // and steady spacing looks natural to spam filters.
 const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 120);
+// A first email that keeps failing is retried this many times, then handed back to you.
+const MAX_TRIES = 3;
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
 // and leaves the lead untouched so the real send still happens later.
 const TEST_MODE = process.env.MAIL_TEST_MODE === 'true';
@@ -196,8 +198,24 @@ export async function runOutbox(): Promise<OutboxResult> {
     }
     result.sentToday++;
   } catch (e) {
-    const message = (e as Error).message.slice(0, 300);
-    await updateLead(lead.id, { send_error: message });
+    // A failing email must never block the rest of the queue.
+    const message = (e as Error).message.slice(0, 240);
+    if (lead === followUp) {
+      // Hand the follow-up to you: it appears under "Needs a follow-up" with the reason.
+      await updateLead(lead.id, { auto_sequence: false, send_error: `Automatic follow-up failed: ${message}. Send it yourself from the lead page.` });
+    } else {
+      const tries = Number(lead.sendError?.match(/\(try (\d)\)/)?.[1] ?? 0) + 1;
+      if (tries >= MAX_TRIES) {
+        await updateLead(lead.id, {
+          status: 'new', auto_sequence: false, queued_at: null,
+          send_error: `Could not send after ${MAX_TRIES} tries: ${message}`,
+        });
+      } else {
+        // Back of the queue, so the next scheduled email goes out instead.
+        await updateLead(lead.id, { queued_at: new Date().toISOString(), send_error: `${message} (try ${tries})` });
+      }
+    }
+    console.error(`[outbox] send failed for ${lead.title}: ${message}`);
     result.error = message;
   }
 
