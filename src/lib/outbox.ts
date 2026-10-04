@@ -65,13 +65,14 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'queued'>> {
-  const [sentToday, leads] = await Promise.all([countSentSince(last24h()), getLeads()]);
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'queued'> & { lastSent: string | null }> {
+  const [sentToday, leads, last] = await Promise.all([countSentSince(last24h()), getLeads(), lastSentAt()]);
   return {
     configured: !!mailConfig(),
     sentToday,
     limit: DAILY_LIMIT,
     queued: leads.filter(l => l.status === 'queued').length,
+    lastSent: last ? last.toISOString() : null,
   };
 }
 

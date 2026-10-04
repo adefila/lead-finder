@@ -18,7 +18,13 @@ import { useFeedback } from '@/components/feedback';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number };
+type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number; lastSent?: string | null };
+
+// "Fri 2 Oct, 15:10" in your own time zone.
+function lastSentLabel(iso?: string | null): string {
+  if (!iso) return 'nothing sent yet';
+  return `last sent ${new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+}
 type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { title: string; kind: string }; skipped?: string; error?: string };
 
 const PAGE_SIZE = 15;
@@ -334,8 +340,7 @@ export default function Home() {
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : outbox.queued === 0 ? `Nothing scheduled · ${outbox.sentToday} of ${outbox.limit} sent in 24h`
-                  : `${outbox.queued} scheduled · ${outbox.sentToday} of ${outbox.limit} sent in 24h`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} sent in 24h · ${lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>
