@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, leadStory, personOf, shortDate, statusOf, systemsFor,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isJobLead, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -70,7 +70,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   // First emails carry the link to their website check; follow-ups do not repeat it.
   const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
-  const isJob = lead.source === 'freelancer' || lead.source === 'remote';
+  const isJob = isJobLead(lead);
 
   const writeFollowUp = useCallback(async () => {
     setDrafting(true);
@@ -127,6 +127,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
 
   const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
     : lead.source === 'remote' ? 'Your application note'
+    : lead.source === 'tender' ? 'Your bid opener'
     : isJob ? 'Your proposal'
     : email ? 'Your email'
     : links.linkedin && lead.source === 'companies_house' ? 'Your LinkedIn message'
@@ -179,7 +180,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               </span>
             ) : (
               isJob ? (
-                <span className="muted">{lead.source === 'remote' ? 'You apply through the job post.' : 'Hidden by Freelancer. You reply through the job post.'}</span>
+                <span className="muted">{lead.source === 'remote' ? 'You apply through the job post.' : lead.source === 'tender' ? 'You bid on the tender page. The buyer contact is in the details.' : 'Hidden by Freelancer. You reply through the job post.'}</span>
               ) : addingEmail ? (
                 <form className="kv-value" onSubmit={e => { e.preventDefault(); saveEmail(); }}>
                   <input className="field field-sm" type="email" autoFocus placeholder="name@business.com"
@@ -209,7 +210,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             <div className="kv">
               <span>Links</span>
               <div className="link-row">
-                {isJob && <a className="text-link" href={lead.url} target="_blank" rel="noreferrer">Job post</a>}
+                {isJob && <a className="text-link" href={lead.url} target="_blank" rel="noreferrer">{lead.source === 'tender' ? 'Tender page' : 'Job post'}</a>}
                 {LINK_LABELS.filter(([k]) => links[k]).map(([k, label]) => (
                   <a key={k} className="text-link" href={links[k]} target="_blank" rel="noreferrer">{label}</a>
                 ))}
@@ -299,7 +300,15 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             {isFollowUp && !email && (
               <Btn className="btn btn-primary" onClick={() => { copyBody(); toast('Message copied'); }}><Icon name="copy" />Copy message</Btn>
             )}
-            {status === 'new' && !email && isJob && (
+            {status === 'new' && lead.source === 'tender' && (
+              <>
+                <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer">
+                  <Icon name="external" />Open tender
+                </LinkBtn>
+                <Btn className="btn" onClick={markContacted}>I have sent my bid</Btn>
+              </>
+            )}
+            {status === 'new' && !email && isJob && lead.source !== 'tender' && (
               <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"
                 onClick={() => { copyBody(); markContacted(); }}>
                 <Icon name="external" />Copy and open job post

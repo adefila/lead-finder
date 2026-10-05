@@ -66,6 +66,8 @@ function actions(lead: Lead): string {
     primary.push(button(sendLink(lead.id, 'bid'), 'Open project and bid', 'primary'));
   } else if (lead.source === 'remote') {
     primary.push(button(sendLink(lead.id, 'bid'), 'Open job post and apply', 'primary'));
+  } else if (lead.source === 'tender') {
+    primary.push(button(sendLink(lead.id, 'bid'), 'Open tender', 'primary'));
   }
   if (lead.contactPhone) {
     primary.push(button(`tel:${lead.contactPhone.replace(/\s/g, '')}`, `Call ${esc(lead.contactPhone)}`, lead.contactEmail ? 'secondary' : 'primary'));

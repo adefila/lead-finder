@@ -17,7 +17,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'freelancer' | 'places' | 'osm' | 'companies_house' | 'remote';
+  source: 'freelancer' | 'places' | 'osm' | 'companies_house' | 'remote' | 'tender';
   // Signed link to the lead's one-page website check (added by the API, not stored).
   checkUrl?: string;
   postedAt: string;

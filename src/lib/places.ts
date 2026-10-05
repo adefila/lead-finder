@@ -8,14 +8,20 @@ const DEFAULT_CATEGORIES = [
   'landscaping company', 'chiropractor', 'boutique hotel', 'architecture firm', 'veterinary clinic',
 ];
 
+// Australia and Singapore: English-speaking, and both allow a relevant email to an address a
+// business publishes on its own website. Germany is left out on purpose (strict cold-email law).
 const DEFAULT_CITIES = [
-  'Austin, TX', 'Denver, CO', 'Miami, FL', 'San Diego, CA', 'Nashville, TN', 'Toronto, Canada',
-  'Calgary, Canada', 'Manchester, UK', 'Leeds, UK', 'Dublin, Ireland', 'Sydney, Australia', 'Auckland, New Zealand',
+  'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
+  'Adelaide, Australia', 'Gold Coast, Australia', 'Canberra, Australia', 'Singapore',
 ];
 
-// Each search is one billed Text Search (Enterprise) call. 4 per run x 2 runs/day stays well under
-// Google's free monthly allowance for that SKU.
-const SEARCHES_PER_RUN = 4;
+// Each search is one billed Text Search (Enterprise) call. 6 per run x 2 runs/day (about 370 a
+// month) stays under Google's free monthly allowance for that SKU.
+const SEARCHES_PER_RUN = 6;
+// Only keep businesses we can actually email: an address published on their own website.
+const REQUIRE_EMAIL = true;
+// Checking websites is slow; stop starting new ones after this so the twice-daily run finishes.
+const BUDGET_MS = 110_000;
 const MIN_REVIEWS = 10;
 // A business is only a lead if customers are still reviewing it.
 const MAX_REVIEW_AGE_DAYS = 365;
@@ -124,6 +130,9 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
   let links: Lead['contactLinks'] = { maps: p.googleMapsUri };
   let siteText: string | undefined;
 
+  // No website (or only a Facebook page) means no published email to use.
+  if (REQUIRE_EMAIL && (!p.websiteUri || platformOf(p.websiteUri))) return null;
+
   const platform = p.websiteUri ? platformOf(p.websiteUri) : null;
   if (!p.websiteUri) {
     headline = 'No website';
@@ -144,6 +153,7 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     links = { ...links, website: p.websiteUri, ...report.links };
     siteText = report.siteText;
   }
+  if (REQUIRE_EMAIL && !emails[0]) return null;
 
   return {
     id: `places-${p.id}`,
@@ -167,6 +177,7 @@ export async function fetchPlacesLeads(): Promise<Lead[]> {
     return [];
   }
 
+  const started = Date.now();
   const searches = pickSearches();
   const results = await Promise.all(
     searches.map(async s => ({ ...s, places: await textSearch(`${s.category} in ${s.city}`, apiKey) })),
@@ -192,6 +203,10 @@ export async function fetchPlacesLeads(): Promise<Lead[]> {
   const leads: Lead[] = [];
   const BATCH = 10;
   for (let i = 0; i < candidates.length; i += BATCH) {
+    if (Date.now() - started > BUDGET_MS) {
+      console.log(`[places] Time budget reached, checked ${i} of ${candidates.length} businesses`);
+      break;
+    }
     const batch = await Promise.all(candidates.slice(i, i + BATCH).map(c => toLead(c.place, c.category, c.city)));
     for (const l of batch) if (l) leads.push(l);
   }

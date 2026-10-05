@@ -42,12 +42,12 @@ interface Scene { name: string; headline: string; body: string; facts: string[];
 const SCENES: Scene[] = [
   {
     name: 'Find', headline: 'It finds businesses that need you',
-    body: 'Twice a day it searches five sources for businesses with no website or a weak one, plus remote web roles open to you. It only keeps businesses that are still trading.',
+    body: 'Twice a day it searches for businesses with a weak website and a published email, plus remote web roles and public website tenders open to you. It only keeps businesses that are still trading.',
     facts: ['Checks they are open, with recent reviews or an active register entry', 'Reads their website and notes what is wrong in plain words', 'Skips duplicates found in more than one place'],
     stage: (
       <>
         <div className="ex-sources">
-          {[['Google Maps', 'local businesses'], ['Local map', 'OpenStreetMap'], ['Company register', 'new UK companies'], ['Job posts', 'Freelancer.com'], ['Remote roles', '4 job boards']]
+          {[['Google Maps', 'Australia, Singapore'], ['Local map', 'OpenStreetMap'], ['Company register', 'new UK companies'], ['Job posts', 'Freelancer.com'], ['Remote roles', '4 job boards'], ['Tenders', 'EU and Australia']]
             .map(([t, s], i) => <div key={t} className="ex-source" style={{ animationDelay: `${0.1 + i * 0.25}s` }}>{t}<span>{s}</span></div>)}
         </div>
         <div className="ex-card">

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'remote';
+  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'remote' | 'tenders';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
   new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
@@ -19,6 +19,7 @@ const COPY: Record<EmptyKind, { title: string; body: string }> = {
   history: { title: 'Nothing here yet', body: 'Each search for new leads shows up here, grouped by day.' },
   opened: { title: 'No one has opened a note yet', body: 'When someone opens the one-page note from your email, they show up here. Those are your warmest leads.' },
   remote: { title: 'No remote roles yet', body: 'Each search checks the job boards for web roles open to you. New ones show up here.' },
+  tenders: { title: 'No open tenders right now', body: 'Each search checks the EU and Australian tender sites for website projects with a deadline still ahead. New ones show up here.' },
 };
 
 // Shared stroke styles live in globals.css (.ill-*), so every drawing matches the dashboard.
@@ -126,6 +127,13 @@ const ART: Record<EmptyKind, ReactNode> = {
       <circle className="ill-line ill-fill" cx="100" cy="72" r="32" />
       <path className="ill-soft" d="M68 72h64M100 40c-10 9-14 20-14 32s4 23 14 32M100 40c10 9 14 20 14 32s-4 23-14 32" />
       <circle className="ill-dot" cx="128" cy="50" r="6" />
+    </>
+  ),
+  tenders: (
+    <>
+      <rect className="ill-card" x="62" y="36" width="76" height="84" rx="8" />
+      <path className="ill-soft" d="M76 56h48M76 68h48M76 80h30" />
+      <circle className="ill-dot" cx="118" cy="100" r="6" />
     </>
   ),
   history: (

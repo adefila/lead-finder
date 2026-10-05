@@ -5,6 +5,7 @@ import { followUpState, needsAttention, MAX_FOLLOW_UPS } from '@/lib/followup';
 export const SOURCE_LABEL: Record<Lead['source'], string> = {
   freelancer: 'Job post',
   remote: 'Remote job',
+  tender: 'Tender',
   places: 'Google Maps',
   osm: 'Local map',
   companies_house: 'Company register',
@@ -31,7 +32,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   skipped: 'faded',
 };
 
-export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'remote';
+export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'remote' | 'tenders';
 export type Sub = 'all' | 'followup' | 'opened' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
@@ -44,6 +45,7 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
   // Not a pipeline stage: a shortcut to open remote roles you have not finished with.
   { id: 'remote', label: 'Remote roles', hint: 'Remote web roles open to you, from job boards. Apply on the job post.' },
+  { id: 'tenders', label: 'Tenders', hint: 'Website projects that public buyers in Germany, Austria, Ireland and Australia have put out to bid. You bid on the tender page before the deadline.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
@@ -55,14 +57,15 @@ export const HEADLINES = ['No website', 'No own website', 'No website yet', 'Out
 
 export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 
-// Job posts (Freelancer projects and remote roles): you apply on the post rather than email.
-export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'freelancer' || l.source === 'remote';
+// Job posts (Freelancer projects, remote roles and tenders): you apply on the post rather than email.
+export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'freelancer' || l.source === 'remote' || l.source === 'tender';
 
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
+  if (view === 'tenders') return l.source === 'tender' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
   if (view === 'approved' && sub === 'opened') return s === 'approved' && !!l.noteOpenedAt;
   return s === view;
@@ -358,11 +361,13 @@ export function nextStep(l: Lead): { text: string; urgent: boolean } {
   if (s === 'new') {
     if (l.source === 'freelancer') return { text: 'Send a proposal', urgent: false };
     if (l.source === 'remote') return { text: 'Apply', urgent: false };
+    if (l.source === 'tender') return { text: 'Read and bid', urgent: false };
     if (l.contactEmail) return { text: 'Email them', urgent: false };
     if (l.source === 'companies_house') return { text: 'Message on LinkedIn', urgent: false };
     return { text: 'Call or message', urgent: false };
   }
   if (s === 'approved') {
+    if (l.source === 'tender') return { text: 'Wait for the result', urgent: false };
     const fu = followUpState(l);
     if (fu.exhausted) return { text: 'No reply, close it', urgent: true };
     if (fu.due) return l.autoSequence

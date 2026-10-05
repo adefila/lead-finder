@@ -25,6 +25,8 @@ export function followUpState(lead: Lead, now = new Date()): FollowUpState {
 }
 
 export function needsAttention(lead: Lead): boolean {
+  // A tender bid has no follow-up: the buyer announces the result.
+  if (lead.source === 'tender') return false;
   const s = followUpState(lead);
   // Auto-sent sequences follow up on their own; they only need you once they run out.
   return s.exhausted || (s.due && !lead.autoSequence);

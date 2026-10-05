@@ -5,6 +5,7 @@ import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchRemoteRoles } from '@/lib/remote';
+import { fetchTenders } from '@/lib/tenders';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
@@ -21,14 +22,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boardJobs, placesLeads, osmLeads, companyLeads, remoteRoles] = await Promise.all([
+    const [boardJobs, placesLeads, osmLeads, companyLeads, remoteRoles, tenders] = await Promise.all([
       fetchAllJobs(),
       fetchPlacesLeads(),
       fetchOsmLeads(),
       fetchCompaniesHouseLeads(),
       fetchRemoteRoles(),
+      fetchTenders(),
     ]);
-    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...remoteRoles];
+    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...remoteRoles, ...tenders];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -76,6 +78,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
         remoteRoles: remoteRoles.length,
+        tenders: tenders.length,
         withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,

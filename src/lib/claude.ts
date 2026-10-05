@@ -47,6 +47,8 @@ Score each lead 0-100 for how likely it is to turn into a paid website project. 
 
 For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, WordPress, Shopify, landing page or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
+For source "tender" (a public buyer in Germany, Austria, Ireland or Australia put a website project out to bid; "context" holds buyer, country and deadline): a website design, redesign or relaunch for a single organisation, with bids in English, scores high (65-85). A German-only tender scores lower (40-60). Multi-year frameworks, hosting-only or maintenance-only contracts, heavy IT systems, or estimated values over EUR 500,000 score low (15-35), because a solo freelancer rarely wins them. A deadline less than a week away lowers the score.
+
 For source "freelancer" (a client posted a website project; "context" holds budget and bid count):
 - Fit: marketing/business/portfolio/landing sites he can build in Framer or Webflow score high. Heavy custom backend, booking systems, marketplaces or plugin dev score lower.
 - Budget: USD 250+ fixed or USD 20+/hr is good. Under USD 50, or INR under 12500, scores low.
@@ -92,12 +94,13 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'freelancer' | 'places' | 'newco' | 'remote';
+type DraftKind = 'freelancer' | 'places' | 'newco' | 'remote' | 'tender';
 
 function draftKind(l: Lead): DraftKind {
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
   if (l.source === 'remote') return 'remote';
+  if (l.source === 'tender') return 'tender';
   return 'freelancer';
 }
 
@@ -147,6 +150,9 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
   if (kind === 'remote') {
     return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
   }
+  if (kind === 'tender') {
+    return `TENDER ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBuyer, country and deadline: ${l.company}\nNotice: ${l.description.slice(0, 900)}`;
+  }
   return `PROJECT ${i + 1} (ID: ${l.id}):\nTitle: ${l.title}\nBudget and bids: ${l.company}\nBrief: ${l.description.slice(0, 700)}`;
 }
 
@@ -192,6 +198,18 @@ Rules:
 ${VOICE}
 
 Return ONLY valid JSON: {"ID": "note text", ...}`,
+
+  tender: `For each public tender below, write a short plain-English brief for Samuel Adefila, followed by an opening paragraph he can adapt for his bid. Titles and scope may be in German: translate them.
+
+Format (plain text, no headings, no bullets):
+- First paragraph, starting "What they want:": one or two sentences on what the buyer is asking for, in English.
+- Second paragraph, starting "Before you bid:": one or two sentences on what to check first, based only on the notice (bid language, deadline, whether it looks like a small website job or a large framework). Never invent requirements the notice does not show.
+- Third paragraph, starting "Opening for your bid:": three or four sentences in Samuel's voice, in the bid language if the notice names only German, otherwise English. Restate the buyer's goal, name one concrete thing he would do for it, and mention his portfolio at adefilasamuel.com.
+- Under 170 words in total.
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": "brief text", ...}`,
 
   places: `Write outreach from Samuel Adefila to each local business below. He found them on Google Maps and looked at their website. "Findings" lists what's wrong, or that they have no website. "Site text" is text scraped from their site.
 
@@ -275,7 +293,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['freelancer', 'places', 'newco', 'remote'] as DraftKind[]) {
+  for (const kind of ['freelancer', 'places', 'newco', 'remote', 'tender'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {

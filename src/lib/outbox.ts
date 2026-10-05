@@ -32,7 +32,11 @@ const TZ_HINTS: [RegExp, string][] = [
   [/Toronto|Ottawa|Montreal|Canada/i, 'America/Toronto'],
   [/Dublin|Ireland/i, 'Europe/Dublin'],
   [/\bUK\b|London|Manchester|Leeds|Birmingham|United Kingdom/i, 'Europe/London'],
-  [/Sydney|Melbourne|Australia/i, 'Australia/Sydney'],
+  [/Perth|Western Australia/i, 'Australia/Perth'],
+  [/Adelaide|South Australia/i, 'Australia/Adelaide'],
+  [/Brisbane|Gold Coast|Queensland/i, 'Australia/Brisbane'],
+  [/Sydney|Melbourne|Canberra|Australia/i, 'Australia/Sydney'],
+  [/Singapore/i, 'Asia/Singapore'],
   [/Auckland|New Zealand/i, 'Pacific/Auckland'],
 ];
 
