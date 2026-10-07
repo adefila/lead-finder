@@ -152,8 +152,8 @@ function buildEmailHtml(leads: Lead[], followUpsDue: number): string {
 
     ${followUpsDue ? `
     <div style="margin-top:12px;padding:14px 16px;background:${C.warnTint};border:1px solid #f3d9b1;border-radius:6px;font-size:13px;color:#6b4000">
-      <strong>${followUpsDue} follow-up${followUpsDue === 1 ? ' is' : 's are'} due.</strong> Claude has drafted them for you.
-      <div style="margin-top:10px">${button(`${APP_URL}`, 'Open the Follow up tab', 'secondary')}</div>
+      <strong>${followUpsDue} follow-up${followUpsDue === 1 ? ' is' : 's are'} due.</strong> A message is ready for each one.
+      <div style="margin-top:10px">${button(`${APP_URL}`, 'See who needs a follow-up', 'secondary')}</div>
     </div>` : ''}
 
     ${section('Ready to email', withEmail)}
