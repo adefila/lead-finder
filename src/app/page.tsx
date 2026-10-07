@@ -15,7 +15,7 @@ import { LeadTable } from '@/components/LeadTable';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
-import { EmailHuntBanner, HUNT_STEP, type EmailHunt } from '@/components/EmailHunt';
+import { EmailHuntDock, EmailHuntModal, HUNT_STEP, type EmailHunt } from '@/components/EmailHunt';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
@@ -62,6 +62,8 @@ export default function Home() {
   const [sendingNow, setSendingNow] = useState(false);
   const [hunt, setHunt] = useState<EmailHunt | null>(null);
   const stopHunt = useRef(false);
+  // The progress pop-up; hidden, it shrinks to a badge in the corner.
+  const [huntOpen, setHuntOpen] = useState(false);
   const findingEmails = !!hunt && !hunt.done;
   const how = useHowItWorks();
   const { toast, confirm } = useFeedback();
@@ -116,6 +118,12 @@ export default function Home() {
     await loadData();
   }
 
+  // Hiding while it runs keeps the corner badge; closing once it has finished clears it.
+  const hideHunt = useCallback(() => {
+    setHuntOpen(false);
+    setHunt(h => (h?.done ? null : h));
+  }, []);
+
   // Looks for an email for every lead without one; leads still without one move to Skipped.
   // Works a few leads at a time so the banner can show who is being checked and what was found.
   async function findEmails() {
@@ -136,6 +144,7 @@ export default function Home() {
     });
     if (!ok) return;
     stopHunt.current = false;
+    setHuntOpen(true);
     let lookups = 300;
     let state: EmailHunt = { total: todo.length, checked: 0, found: 0, skipped: 0, current: [], recent: [], done: false, phase: todo.length ? 'find' : 'write', writeTotal: rewrite.length, written: 0 };
     const show = (next: Partial<EmailHunt>) => { state = { ...state, ...next }; setHunt(state); };
@@ -464,7 +473,7 @@ export default function Home() {
               dark
               items={[
                 ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
-                { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: () => { if (!findingEmails) findEmails(); } },
+                { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: () => { if (findingEmails) setHuntOpen(true); else findEmails(); } },
                 { label: 'How it works', icon: 'help', onSelect: how.show },
                 'divider',
                 { label: 'Log out', icon: 'logout', onSelect: logOut },
@@ -478,7 +487,15 @@ export default function Home() {
       <main className="page">
         {how.open && <HowItWorks onClose={how.hide} />}
 
-        {hunt && <EmailHuntBanner hunt={hunt} onStop={() => { stopHunt.current = true; }} onClose={() => setHunt(null)} onShowSkipped={() => { changeView('done'); setHunt(null); }} />}
+        {hunt && huntOpen && (
+          <EmailHuntModal
+            hunt={hunt}
+            onHide={hideHunt}
+            onStop={() => { stopHunt.current = true; }}
+            onShowSkipped={() => { changeView('done'); setHunt(null); setHuntOpen(false); }}
+          />
+        )}
+        {hunt && !huntOpen && <EmailHuntDock hunt={hunt} onOpen={() => setHuntOpen(true)} />}
 
         {running && (
           <div className="banner info" role="status">
