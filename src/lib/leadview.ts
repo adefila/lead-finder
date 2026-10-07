@@ -39,7 +39,7 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
   { id: 'all', label: 'All', hint: 'Every lead, whatever stage it is at.' },
   { id: 'new', label: 'To contact', hint: 'New leads you have not reached out to yet. Best fit first.' },
-  { id: 'queued', label: 'Scheduled', hint: 'Emails that go out on their own, a few each weekday morning.' },
+  { id: 'queued', label: 'Scheduled', hint: 'Emails that go out on their own on weekdays, during their business hours. Up to 20 new a day.' },
   { id: 'approved', label: 'Waiting for reply', hint: 'You have been in touch. Follow-ups go out on their own until they reply.' },
   { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply quickly, this is where deals are won.' },
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },

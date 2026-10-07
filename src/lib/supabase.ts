@@ -136,9 +136,14 @@ export async function lastSentAt(): Promise<Date | null> {
   return data?.last_sent_at ? new Date(String(data.last_sent_at)) : null;
 }
 
-export async function countSentSince(sinceIso: string): Promise<number> {
-  const { count } = await db().from('leads').select('id', { count: 'exact', head: true }).gte('last_sent_at', sinceIso);
-  return count ?? 0;
+// First emails only: follow-ups do not count towards the sending limits.
+export async function countFirstSentSince(sinceIso: string): Promise<number> {
+  const { count, error } = await db().from('leads').select('id', { count: 'exact', head: true }).gte('first_sent_at', sinceIso);
+  if (!error) return count ?? 0;
+  // Until the first_sent_at column exists: leads whose latest email was the first one.
+  const fallback = await db().from('leads').select('id', { count: 'exact', head: true })
+    .gte('last_sent_at', sinceIso).eq('follow_ups', 0);
+  return fallback.count ?? 0;
 }
 
 export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {

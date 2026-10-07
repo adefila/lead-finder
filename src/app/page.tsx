@@ -18,7 +18,7 @@ import { useFeedback } from '@/components/feedback';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; limit: number; queued: number; lastSent?: string | null };
+type OutboxStatus = { configured: boolean; sentToday: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null };
 
 // "Fri 2 Oct, 15:10" in your own time zone.
 function lastSentLabel(iso?: string | null): string {
@@ -336,11 +336,11 @@ export default function Home() {
             {outbox && (
               <span className={`send-status${outbox.configured ? '' : ' off'}`}
                 title={outbox.configured
-                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time: at most one every 2 hours, up to your limit in any 24 hours.'
+                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time: spaced out through the day, up to 20 new emails a day and 100 a week. Follow-ups go out on top of that.'
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} sent in 24h · ${lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''} · ${lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>
@@ -470,7 +470,7 @@ export default function Home() {
                   <button className="link-btn plain" onClick={() => setSelection(new Set())}>Clear</button>
                   <span className="spacer" />
                   {picked.some(l => statusOf(l) === 'new' && l.contactEmail) && (
-                    <Btn className="btn btn-sm btn-primary" title="Send these automatically, a few each weekday morning"
+                    <Btn className="btn btn-sm btn-primary" title="Send these automatically on weekdays, during their business hours"
                       onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new' && l.contactEmail).map(l => l.id), 'queued')}>
                       <Icon name="clock" />Schedule {picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length} email{picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length === 1 ? '' : 's'}
                     </Btn>

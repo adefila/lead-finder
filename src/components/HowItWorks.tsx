@@ -97,7 +97,7 @@ const SCENES: Scene[] = [
   {
     name: 'Send', headline: 'It sends at the right time',
     body: 'Scheduled emails go out from your own address on weekdays, between 9am and 4pm in each business’s time zone, spaced out so they look natural to spam filters.',
-    facts: ['A daily limit while the address warms up', 'One every 2 hours, best fit first', 'A failed send moves aside so the rest keep going'],
+    facts: ['A daily limit while the address warms up', 'Spaced out, best fit first', 'A failed send moves aside so the rest keep going'],
     stage: (
       <>
         <div className="ex-zones">
@@ -109,7 +109,7 @@ const SCENES: Scene[] = [
         </div>
         <div className="ex-card">
           <div className="ex-row"><div className="ex-title">From samuel@adefilasamuel.com</div><span className="ex-chip">10/10 spam score</span></div>
-          <div className="ex-sub">Within the limit for any 24 hours · one every 2 hours · best fit first · weekdays only</div>
+          <div className="ex-sub">20 new a day, 100 a week · follow-ups on top · best fit first · weekdays only</div>
         </div>
       </>
     ),

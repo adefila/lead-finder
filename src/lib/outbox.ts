@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countSentSince, lastSentAt, updateLead } from '@/lib/supabase';
+import { getLeads, countFirstSentSince, lastSentAt, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -8,11 +8,12 @@ import { noteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
-export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 15);
-// At most one email every MIN_GAP minutes. Spreads sends across the day so every time zone gets
-// a turn (otherwise Australia and New Zealand, whose morning comes first, take the whole limit),
-// and steady spacing looks natural to spam filters.
-const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 120);
+// Limits count first emails only. Follow-ups to people already contacted go out on top.
+export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
+export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
+// At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
+// so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
+const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 10);
 // A first email that keeps failing is retried this many times, then handed back to you.
 const MAX_TRIES = 3;
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
@@ -56,10 +57,16 @@ function last24h(now = new Date()): string {
   return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
 
+function last7d(now = new Date()): string {
+  return new Date(now.getTime() - 7 * 24 * 3600_000).toISOString();
+}
+
 export interface OutboxResult {
   configured: boolean;
   sentToday: number;
   limit: number;
+  sentWeek: number;
+  weekLimit: number;
   queued: number;
   replies: number;
   optOuts: number;
@@ -69,12 +76,14 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'queued'> & { lastSent: string | null }> {
-  const [sentToday, leads, last] = await Promise.all([countSentSince(last24h()), getLeads(), lastSentAt()]);
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null }> {
+  const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(last7d()), getLeads(), lastSentAt()]);
   return {
     configured: !!mailConfig(),
     sentToday,
     limit: DAILY_LIMIT,
+    sentWeek,
+    weekLimit: WEEKLY_LIMIT,
     queued: leads.filter(l => l.status === 'queued').length,
     lastSent: last ? last.toISOString() : null,
   };
@@ -87,8 +96,10 @@ export async function runOutbox(): Promise<OutboxResult> {
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut);
   const result: OutboxResult = {
     configured: !!cfg,
-    sentToday: await countSentSince(last24h()),
+    sentToday: await countFirstSentSince(last24h()),
     limit: DAILY_LIMIT,
+    sentWeek: await countFirstSentSince(last7d()),
+    weekLimit: WEEKLY_LIMIT,
     queued: queued.length,
     replies: 0,
     optOuts: 0,
@@ -126,11 +137,14 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // 2. Daily cap.
-  // The limit is a rolling 24 hours, so it cannot be doubled around a midnight reset.
-  if (result.sentToday >= DAILY_LIMIT) return { ...result, skipped: `Limit of ${DAILY_LIMIT} emails in 24 hours reached` };
+  // 2. Limits on first emails: rolling 24 hours and rolling 7 days, so neither can be doubled
+  // around a reset. Follow-ups are not limited here.
+  const capReason = result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
+    : result.sentWeek >= WEEKLY_LIMIT ? `Limit of ${WEEKLY_LIMIT} new emails in 7 days reached`
+    : null;
 
   if (TEST_MODE) {
+    if (capReason) return { ...result, skipped: capReason };
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
@@ -151,13 +165,13 @@ export async function runOutbox(): Promise<OutboxResult> {
   const last = await lastSentAt();
   if (last && Date.now() - last.getTime() < MIN_GAP_MIN * 60_000) {
     const next = new Date(last.getTime() + MIN_GAP_MIN * 60_000);
-    return { ...result, skipped: `Next email can go out after ${next.toISOString().slice(11, 16)} UTC (one every ${MIN_GAP_MIN / 60} hours)` };
+    return { ...result, skipped: `Next email can go out after ${next.toISOString().slice(11, 16)} UTC (one every ${MIN_GAP_MIN} minutes)` };
   }
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUp = inboxChecked && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
-  const first = queued
+  const first = capReason ? undefined : queued
     .filter(l => inSendWindow(l))
     .sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
@@ -165,7 +179,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
     [0];
   const lead = followUp || first;
-  if (!lead) return { ...result, skipped: 'Nothing due inside business hours right now' };
+  if (!lead) return { ...result, skipped: capReason ? `${capReason}, no follow-ups due` : 'Nothing due inside business hours right now' };
 
   try {
     if (lead === followUp) {
@@ -194,7 +208,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead)) : body);
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text) });
       const now = new Date().toISOString();
-      await updateLead(lead.id, {
+      const sentPatch = {
         status: 'approved',
         contacted_at: now,
         last_sent_at: now,
@@ -202,10 +216,13 @@ export async function runOutbox(): Promise<OutboxResult> {
         send_subject: finalSubject,
         last_message_id: messageId,
         send_error: null,
-      });
+      };
+      // If the first_sent_at column is missing, still mark the lead as sent so it is never emailed twice.
+      if (await updateLead(lead.id, { ...sentPatch, first_sent_at: now })) await updateLead(lead.id, sentPatch);
       result.sent = { id: lead.id, title: lead.title, kind: 'first' };
+      result.sentToday++;
+      result.sentWeek++;
     }
-    result.sentToday++;
   } catch (e) {
     // A failing email must never block the rest of the queue.
     const message = (e as Error).message.slice(0, 240);
