@@ -26,7 +26,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!(await isAllowed(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const found = await findMissingEmails(150);
-    const rewritten = await rewriteAsEmails(undefined, 20);
+    const rewritten = await rewriteAsEmails(undefined, 10);
     return NextResponse.json({ ...found, rewritten: rewritten.rewritten });
   } catch (e) {
     console.error('[find-emails]', e);

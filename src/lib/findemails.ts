@@ -9,7 +9,8 @@ import { getLeads, updateLead } from '@/lib/supabase';
 // (homepage, about and contact pages), or looks the business up on Google Maps to find the
 // website first. A lead that still has no working email is moved to Skipped.
 
-const BUDGET_MS = 230_000;
+// Leaves room in the 5-minute limit for rewriting the messages of leads we found emails for.
+const BUDGET_MS = 140_000;
 const BATCH = 6;
 
 export interface FindEmailsResult {
