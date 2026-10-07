@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, needsEmailDraft, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, needsEmailDraft, readyToSchedule, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -306,10 +306,35 @@ export default function Home() {
     return true;
   }
 
+  // Every lead in To contact (within the current search and source filter) that is ready to email.
+  async function scheduleAll() {
+    const ids = readyAll.map(l => l.id);
+    const waitingRewrite = scoped.filter(needsEmailDraft).filter(l => statusOf(l) === 'new').length;
+    const perDay = outbox?.limit ?? 20;
+    const perWeek = outbox?.weekLimit ?? 100;
+    const weekdays = Math.max(1, Math.ceil(ids.length / perDay));
+    const weeks = Math.ceil(ids.length / perWeek);
+    const pace = weeks > 1 ? `about ${weeks} weeks` : `about ${weekdays} weekday${weekdays === 1 ? '' : 's'}`;
+    const ok = await confirm({
+      title: `Schedule ${ids.length} email${ids.length === 1 ? '' : 's'}?`,
+      body: [
+        `They go out on their own during each business's weekday hours, best fit first, up to ${perDay} new a day and ${perWeek} a week. At that pace this takes ${pace}.`,
+        waitingRewrite ? `${waitingRewrite} lead${waitingRewrite === 1 ? ' has' : 's have'} an email but an old DM-style message, so ${waitingRewrite === 1 ? 'it is' : 'they are'} left out. Run Find missing emails from the menu to rewrite them first.` : '',
+        'You can unschedule any of them from the Scheduled tab.',
+      ].filter(Boolean).join(' '),
+      confirmLabel: `Schedule ${ids.length}`,
+    });
+    if (ok) await bulkStatus(ids, 'queued');
+  }
+
   async function bulkStatus(ids: string[], status: LeadStatus) {
     const before = new Map(leads.filter(l => ids.includes(l.id)).map(l => [l.id, statusOf(l)]));
     setSelection(new Set());
-    const results = await Promise.all(ids.map(id => setStatus(id, status, true)));
+    // Ten at a time, so scheduling hundreds of leads doesn't flood the server.
+    const results: boolean[] = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      results.push(...await Promise.all(ids.slice(i, i + 10).map(id => setStatus(id, status, true))));
+    }
     const done = ids.filter((_, i) => results[i]);
     if (!done.length) return;
     const verb = { approved: 'moved to Waiting for reply', queued: 'scheduled', skipped: 'skipped', new: 'moved back to To contact' }[status as string] ?? 'updated';
@@ -331,6 +356,7 @@ export default function Home() {
     return c;
   }, [scoped]);
   const followUpsDue = useMemo(() => scoped.filter(needsAttention).length, [scoped]);
+  const readyAll = useMemo(() => scoped.filter(readyToSchedule), [scoped]);
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
   const sendFailures = useMemo(() => leads
     .filter(l => l.sendError && (statusOf(l) === 'queued' || (statusOf(l) === 'approved' && !l.autoSequence)))
@@ -385,6 +411,7 @@ export default function Home() {
   }
 
   const picked = rows.filter(l => selection.has(l.id));
+  const pickedReady = picked.filter(readyToSchedule);
   const pickedOnPage = pageRows.filter(l => selection.has(l.id));
   const pickedIds = picked.map(l => l.id);
 
@@ -505,6 +532,12 @@ export default function Home() {
               ))}
             </div>
             <div className="view-head">
+              {mode === 'table' && view === 'new' && sub === 'all' && readyAll.length > 0 && (
+                <Btn className="btn btn-sm btn-primary view-action" onClick={scheduleAll}
+                  title="Schedule every lead here that has an email and an email message">
+                  <Icon name="clock" />Schedule all {readyAll.length}
+                </Btn>
+              )}
               <h2 className="view-title">
                 {mode === 'history' ? 'By day' : VIEWS.find(v => v.id === view)?.label}
                 {mode === 'table' && sub !== 'all' && <span className="muted"> · {SUBS[view]?.find(s => s.id === sub)?.label}</span>}
@@ -558,10 +591,10 @@ export default function Home() {
                   <strong>{picked.length} selected</strong>
                   <button className="link-btn plain" onClick={() => setSelection(new Set())}>Clear</button>
                   <span className="spacer" />
-                  {picked.some(l => statusOf(l) === 'new' && l.contactEmail) && (
+                  {pickedReady.length > 0 && (
                     <Btn className="btn btn-sm btn-primary" title="Send these automatically on weekdays, during their business hours"
-                      onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new' && l.contactEmail).map(l => l.id), 'queued')}>
-                      <Icon name="clock" />Schedule {picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length} email{picked.filter(l => statusOf(l) === 'new' && l.contactEmail).length === 1 ? '' : 's'}
+                      onClick={() => bulkStatus(pickedReady.map(l => l.id), 'queued')}>
+                      <Icon name="clock" />Schedule {pickedReady.length} email{pickedReady.length === 1 ? '' : 's'}
                     </Btn>
                   )}
                   {picked.some(l => statusOf(l) === 'new') && (

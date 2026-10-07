@@ -68,6 +68,10 @@ export const needsEmail = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l) &&
 export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(l)) && !isJobLead(l)
   && !!l.contactEmail && !l.optedOut && !/^\s*Subject:/i.test(l.proposal ?? '');
 
+// Ready to go out on its own: a new business lead with an email and a message written as an email.
+export const readyToSchedule = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l)
+  && !!l.contactEmail && !l.optedOut && /^\s*Subject:/i.test(l.proposal ?? '');
+
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;

@@ -242,7 +242,13 @@ a { color: inherit; }
 .tab[aria-selected='true'] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--fg); }
 
 /* Heading for the current tab */
-.view-head { display: grid; gap: 2px; }
+.view-head { display: grid; gap: 2px; grid-template-columns: minmax(0, 1fr) auto; }
+.view-head > :not(.view-action) { grid-column: 1; }
+.view-action { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; }
+@media (max-width: 640px) {
+  .view-head { grid-template-columns: minmax(0, 1fr); }
+  .view-action { grid-column: 1; grid-row: auto; justify-self: start; order: 3; margin-top: 8px; }
+}
 .view-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; color: var(--fg); }
 .view-title .muted { font-weight: 500; }
 .view-hint { font-size: 13px; color: var(--fg-3); }
