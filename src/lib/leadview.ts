@@ -63,6 +63,11 @@ export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'freelancer' 
 // A business lead you would email but have no address for yet.
 export const needsEmail = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l) && !l.contactEmail && !l.optedOut;
 
+// Has an email now, but the message was written as a DM or LinkedIn note (no subject line),
+// because the address was found later.
+export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(l)) && !isJobLead(l)
+  && !!l.contactEmail && !l.optedOut && !/^\s*Subject:/i.test(l.proposal ?? '');
+
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;

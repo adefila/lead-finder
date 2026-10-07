@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, needsEmailDraft, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -122,16 +122,22 @@ export default function Home() {
     const todo = leads.filter(needsEmail)
       // Leads with a website first: they need no Google Maps lookup.
       .sort((a, b) => Number(!a.contactLinks?.website) - Number(!b.contactLinks?.website));
-    if (!todo.length) { toast('Every lead you can email already has an address', { tone: 'success' }); return; }
+    // Leads that already have an email but still carry a DM-style message.
+    const rewrite = leads.filter(needsEmailDraft);
+    if (!todo.length && !rewrite.length) { toast('Every lead you can email has an address and an email message', { tone: 'success' }); return; }
     const ok = await confirm({
-      title: `Find emails for ${todo.length} leads?`,
-      body: 'We read each business website and contact page, or look the business up on Google Maps to find its site. Leads with no working email move to Skipped, and you can bring any of them back. You can keep working while it runs.',
+      title: todo.length ? `Find emails for ${todo.length} leads?` : `Rewrite ${rewrite.length} messages as emails?`,
+      body: [
+        todo.length ? 'We read each business website and contact page, or look the business up on Google Maps to find its site. Leads with no working email move to Skipped, and you can bring any of them back.' : '',
+        rewrite.length ? `${rewrite.length} lead${rewrite.length === 1 ? ' has' : 's have'} an email but a message written for a DM or LinkedIn. We rewrite ${rewrite.length === 1 ? 'it' : 'them'} as proper emails.` : '',
+        'You can keep working while it runs.',
+      ].filter(Boolean).join(' '),
       confirmLabel: 'Find emails',
     });
     if (!ok) return;
     stopHunt.current = false;
     let lookups = 300;
-    let state: EmailHunt = { total: todo.length, checked: 0, found: 0, skipped: 0, current: [], recent: [], done: false };
+    let state: EmailHunt = { total: todo.length, checked: 0, found: 0, skipped: 0, current: [], recent: [], done: false, phase: todo.length ? 'find' : 'write', writeTotal: rewrite.length, written: 0 };
     const show = (next: Partial<EmailHunt>) => { state = { ...state, ...next }; setHunt(state); };
     show({});
     try {
@@ -159,6 +165,30 @@ export default function Home() {
           skipped: state.skipped + (data.skipped ?? 0),
           recent: [...results.map(r => ({ name: r.name, email: r.email })), ...state.recent].slice(0, 4),
         });
+      }
+      // Then rewrite the old DM-style messages of leads that already had an email.
+      if (!stopHunt.current && !state.error && rewrite.length) {
+        show({ phase: 'write' });
+        for (let i = 0; i < rewrite.length && !stopHunt.current; i += 4) {
+          const batch = rewrite.slice(i, i + 4);
+          show({ current: batch.map(displayName) });
+          const res = await fetch('/api/find-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rewrite: true, ids: batch.map(l => l.id) }),
+          });
+          const data = await res.json().catch(() => ({ error: res.statusText })) as {
+            rewritten?: number; results?: { id: string; name: string; ok: boolean; proposal?: string }[]; error?: string;
+          };
+          if (!res.ok || data.error) { show({ error: `Stopped: ${data.error ?? res.statusText}. Run it again to pick up where it stopped.` }); break; }
+          const fresh = new Map((data.results ?? []).filter(r => r.ok && r.proposal).map(r => [r.id, r.proposal!]));
+          setLeads(prev => prev.map(l => (fresh.has(l.id) ? { ...l, proposal: fresh.get(l.id) } : l)));
+          show({
+            written: (state.written ?? 0) + batch.length,
+            rewritten: (state.rewritten ?? 0) + (data.rewritten ?? 0),
+            recent: [...(data.results ?? []).map(r => ({ name: r.name, email: r.ok ? 'Rewritten as an email' : null, note: r.ok ? undefined : 'Could not rewrite, open it and click Write a new version' })), ...state.recent].slice(0, 4),
+          });
+        }
       }
     } catch {
       show({ error: 'Lost the connection. Run it again to pick up where it stopped.' });

@@ -54,7 +54,13 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
     if (!res?.ok) { toast(data.error ?? 'Could not save the email', { tone: 'error' }); return; }
     onUpdate({ contactEmail: newEmail.trim().toLowerCase(), sendError: undefined });
     setAddingEmail(false);
-    toast('Email saved. Click "Write a new version" to turn the message into an email.', { tone: 'success' });
+    // The old message was written for a DM or LinkedIn: rewrite it as an email straight away.
+    if (!/^\s*Subject:/i.test(lead.proposal ?? '')) {
+      toast('Email saved. Rewriting your message as an email…');
+      await redraft();
+    } else {
+      toast('Email saved', { tone: 'success' });
+    }
   }
   const { toast } = useFeedback();
 

@@ -1,7 +1,8 @@
 import type { Lead } from '@/types/lead';
 import { findSiteEmails, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
-import { displayName, needsEmail } from '@/lib/leadview';
+import { displayName, needsEmail, needsEmailDraft } from '@/lib/leadview';
+import { generateColdEmails } from '@/lib/claude';
 import { getLeads, updateLead } from '@/lib/supabase';
 
 // Goes through every lead you could email but have no address for. It reads their website
@@ -75,6 +76,7 @@ export async function findMissingEmails(maxLookups: number, ids?: string[]): Pro
   const todo = (await getLeads(5000)).filter(l => needsEmail(l) && (!wanted || wanted.has(l.id)))
     .sort((a, b) => Number(!siteOf(a)) - Number(!siteOf(b)));
   const result: FindEmailsResult = { checked: 0, found: 0, skipped: 0, lookups: 0, remaining: todo.length, results: [] };
+  const foundLeads: Lead[] = [];
   let lookupsLeft = maxLookups;
   const canLookUp = () => (lookupsLeft > 0 ? (lookupsLeft--, true) : false);
 
@@ -89,6 +91,7 @@ export async function findMissingEmails(maxLookups: number, ids?: string[]): Pro
           contact_links: { ...(l.contactLinks ?? {}), ...(r.website ? { website: r.website } : {}) },
         });
         result.found++;
+        foundLeads.push({ ...l, contactEmail: r.email });
       } else {
         await updateLead(l.id, { status: 'skipped' });
         result.skipped++;
@@ -97,7 +100,45 @@ export async function findMissingEmails(maxLookups: number, ids?: string[]): Pro
       result.results.push({ id: l.id, name: displayName(l), email: r.email });
     }));
   }
+  // Their old message was written for a DM or LinkedIn: write it again as an email.
+  if (foundLeads.length) await saveEmailDrafts(foundLeads);
   result.remaining = todo.length - result.checked;
   console.log(`[find-emails] checked ${result.checked}, found ${result.found}, skipped ${result.skipped}, ${result.lookups} Maps lookups, ${result.remaining} left`);
   return result;
+}
+
+async function saveEmailDrafts(leads: Lead[]): Promise<string[]> {
+  const drafted = await generateColdEmails(leads.map(l => (l.contactName === l.title ? { ...l, contactName: undefined } : l)));
+  const done: string[] = [];
+  for (const d of drafted) {
+    if (!d.proposal || !/^\s*Subject:/i.test(d.proposal)) continue;
+    const error = await updateLead(d.id, {
+      draft_email: d.proposal,
+      contact_name: d.contactName ?? null,
+      contact_title: d.contactTitle ?? null,
+    });
+    if (!error) done.push(d.id);
+  }
+  return done;
+}
+
+export interface RewriteResult {
+  rewritten: number;
+  results: { id: string; name: string; ok: boolean; proposal?: string }[];
+  remaining: number;
+}
+
+// Leads that have an email but still carry a DM-style message get a proper email instead.
+export async function rewriteAsEmails(ids?: string[], max = 8): Promise<RewriteResult> {
+  const wanted = ids ? new Set(ids) : null;
+  const all = (await getLeads(5000)).filter(l => needsEmailDraft(l) && (!wanted || wanted.has(l.id)));
+  const batch = all.slice(0, max);
+  const done = new Set(batch.length ? await saveEmailDrafts(batch) : []);
+  const fresh = done.size ? new Map((await getLeads(5000)).filter(l => done.has(l.id)).map(l => [l.id, l.proposal])) : new Map();
+  console.log(`[find-emails] rewrote ${done.size} of ${batch.length} messages as emails, ${all.length - batch.length} left`);
+  return {
+    rewritten: done.size,
+    results: batch.map(l => ({ id: l.id, name: displayName(l), ok: done.has(l.id), proposal: fresh.get(l.id) })),
+    remaining: all.length - batch.length,
+  };
 }
