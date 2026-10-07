@@ -18,3 +18,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 }
+
+// Vercel's daily timer (12:00 UTC): works through existing leads without an email on its own.
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  if (!(await isAllowed(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    return NextResponse.json(await findMissingEmails(150));
+  } catch (e) {
+    console.error('[find-emails]', e);
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
