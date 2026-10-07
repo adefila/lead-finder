@@ -10,6 +10,7 @@ import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
 import { sendLeadsEmail } from '@/lib/email';
+import { isJobLead } from '@/lib/leadview';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
     const freshJobs = allJobs.filter(j => {
       if (knownLeads.has(j.id)) return false;
+      // Businesses are only worth keeping when we found an email to write to.
+      if (!isJobLead(j) && !j.contactEmail) return false;
       const host = hostOf(j.contactLinks?.website);
       const email = j.contactEmail?.toLowerCase();
       if ((host && seenHosts.has(host)) || (email && seenEmails.has(email))) return false;

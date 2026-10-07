@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, inView, matchesSearch, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, inView, matchesSearch, needsEmail, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -59,6 +59,7 @@ export default function Home() {
   const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
   const [sendingNow, setSendingNow] = useState(false);
+  const [findingEmails, setFindingEmails] = useState(false);
   const how = useHowItWorks();
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
@@ -110,6 +111,43 @@ export default function Home() {
     const data = await res.json() as { leadsDeleted?: number; error?: string };
     if (data.error) fail(`Could not delete: ${data.error}`); else toast(`Deleted ${data.leadsDeleted ?? 0} leads`, { tone: 'success' });
     await loadData();
+  }
+
+  // Looks for an email for every lead without one; leads still without one move to Skipped.
+  async function findEmails() {
+    const waiting = leads.filter(needsEmail).length;
+    if (!waiting) { toast('Every lead you can email already has an address', { tone: 'success' }); return; }
+    const ok = await confirm({
+      title: `Find emails for ${waiting} leads?`,
+      body: 'We read each business website and contact page, or look the business up on Google Maps to find its site. Leads with no working email move to Skipped, and you can bring any of them back. This can take a few minutes.',
+      confirmLabel: 'Find emails',
+    });
+    if (!ok) return;
+    setFindingEmails(true);
+    let lookups = 300;
+    const total = { found: 0, skipped: 0 };
+    try {
+      for (let round = 0; round < 10; round++) {
+        toast(`Looking for emails… ${total.found + total.skipped} of ${waiting} checked`);
+        const res = await fetch('/api/find-emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ maxLookups: lookups }),
+        });
+        const data = await res.json() as { found?: number; skipped?: number; lookups?: number; remaining?: number; error?: string };
+        if (!res.ok || data.error) { fail(`Could not finish: ${data.error ?? res.statusText}`); break; }
+        total.found += data.found ?? 0;
+        total.skipped += data.skipped ?? 0;
+        lookups = Math.max(0, lookups - (data.lookups ?? 0));
+        if (!data.remaining) break;
+      }
+      toast(`Found ${total.found} emails. ${total.skipped} leads without one moved to Skipped.`, { tone: 'success' });
+    } catch {
+      fail('Lost the connection while looking for emails. Run it again to pick up where it stopped.');
+    } finally {
+      setFindingEmails(false);
+      await loadData();
+    }
   }
 
   async function patch(id: string, payload: Record<string, unknown>, optimistic: (l: Lead) => Lead): Promise<boolean> {
@@ -351,6 +389,7 @@ export default function Home() {
               dark
               items={[
                 ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
+                { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: findEmails },
                 { label: 'How it works', icon: 'help', onSelect: how.show },
                 'divider',
                 { label: 'Log out', icon: 'logout', onSelect: logOut },

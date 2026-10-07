@@ -8,9 +8,11 @@ export interface SiteReport {
   siteText?: string;
 }
 
-const MAX_BYTES = 600_000;
+const MAX_BYTES = 1_000_000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36';
 
+// Placeholder addresses from templates and forms ("youremail@gmail.com", "jane@mail.com").
+const PLACEHOLDER_EMAIL = /^(you|your|youremail|yourname|name|jane|john|johndoe|janedoe|user|email|test|someone)@|@(mail\.com|test\.com|company\.com)$/i;
 const JUNK_EMAIL = /(example\.|sentry|wixpress|domain\.com|email\.com|yourdomain|yoursite|godaddy|squarespace\.com|\.(png|jpe?g|gif|webp|svg|css|js)$|^u00|@2x)/i;
 
 type Fetched = { kind: 'ok'; html: string; finalUrl: string } | { kind: 'dead' } | { kind: 'unknown' };
@@ -26,7 +28,9 @@ async function getHtml(url: string): Promise<Fetched> {
     });
     if (res.status === 404 || res.status === 410 || res.status >= 500) return { kind: 'dead' };
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('html')) return { kind: 'unknown' };
-    const html = (await res.text()).slice(0, MAX_BYTES);
+    // Big pages (Framer, Webflow) put the contact email in the footer: keep the start and the end.
+    const full = await res.text();
+    const html = full.length > MAX_BYTES ? full.slice(0, MAX_BYTES / 2) + full.slice(-MAX_BYTES / 2) : full;
     return { kind: 'ok', html, finalUrl: res.url || url };
   } catch (e) {
     const err = e as Error & { cause?: { code?: string; message?: string } };
@@ -48,7 +52,7 @@ function extractEmails(html: string): string[] {
   for (const m of html.matchAll(/data-cfemail="([0-9a-f]+)"/gi)) found.add(decodeCfEmail(m[1]));
   const text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ');
   for (const m of text.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)) found.add(m[0]);
-  return [...found].map(e => e.trim().toLowerCase()).filter(e => e.includes('@') && !JUNK_EMAIL.test(e));
+  return [...found].map(e => e.trim().toLowerCase()).filter(e => e.includes('@') && !JUNK_EMAIL.test(e) && !PLACEHOLDER_EMAIL.test(e));
 }
 
 function extractLinks(html: string): ContactLinks {
@@ -178,4 +182,27 @@ export function platformOf(url: string): { kind: 'booking' | 'social'; name: str
   try { host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.toLowerCase(); } catch { return null; }
   const hit = PLATFORMS.find(p => p.re.test(host));
   return hit ? { kind: hit.kind, name: hit.name } : null;
+}
+
+// Every email we can find for a business website: the homepage, its about and contact pages,
+// and the usual contact addresses when the menu is built in a way we can't read.
+export async function findSiteEmails(url: string): Promise<{ reachable: boolean | null; emails: string[]; links: ContactLinks }> {
+  const report = await analyzeWebsite(url);
+  if (report.emails.length || !report.reachable) return { ...report, emails: ownDomainFirst(report.emails, url) };
+  let origin: string;
+  try { origin = new URL(url).origin; } catch { return report; }
+  for (const path of ['/contact', '/contact-us', '/contact/', '/kontakt', '/about']) {
+    const page = await getHtml(origin + path);
+    if (page.kind !== 'ok') continue;
+    const found = extractEmails(page.html);
+    if (found.length) return { ...report, emails: ownDomainFirst([...new Set(found)], url) };
+  }
+  return { ...report, emails: ownDomainFirst(report.emails, url) };
+}
+
+// An address on the business's own domain beats a personal or agency one.
+function ownDomainFirst(emails: string[], url: string): string[] {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return emails; }
+  return [...emails].sort((a, b) => Number(!a.endsWith('@' + host)) - Number(!b.endsWith('@' + host)));
 }

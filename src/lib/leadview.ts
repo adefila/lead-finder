@@ -60,6 +60,9 @@ export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 // Job posts (Freelancer projects, remote roles and tenders): you apply on the post rather than email.
 export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'freelancer' || l.source === 'remote' || l.source === 'tender';
 
+// A business lead you would email but have no address for yet.
+export const needsEmail = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l) && !l.contactEmail && !l.optedOut;
+
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;
