@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, inView, matchesSearch, needsEmail, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -15,6 +15,7 @@ import { LeadTable } from '@/components/LeadTable';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
+import { EmailHuntBanner, HUNT_STEP, type EmailHunt } from '@/components/EmailHunt';
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
@@ -59,7 +60,9 @@ export default function Home() {
   const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [outbox, setOutbox] = useState<OutboxStatus | null>(null);
   const [sendingNow, setSendingNow] = useState(false);
-  const [findingEmails, setFindingEmails] = useState(false);
+  const [hunt, setHunt] = useState<EmailHunt | null>(null);
+  const stopHunt = useRef(false);
+  const findingEmails = !!hunt && !hunt.done;
   const how = useHowItWorks();
   const { toast, confirm } = useFeedback();
   const notify = useCallback((text: string, action?: { label: string; run: () => void }) => toast(text, { action }), [toast]);
@@ -114,38 +117,53 @@ export default function Home() {
   }
 
   // Looks for an email for every lead without one; leads still without one move to Skipped.
+  // Works a few leads at a time so the banner can show who is being checked and what was found.
   async function findEmails() {
-    const waiting = leads.filter(needsEmail).length;
-    if (!waiting) { toast('Every lead you can email already has an address', { tone: 'success' }); return; }
+    const todo = leads.filter(needsEmail)
+      // Leads with a website first: they need no Google Maps lookup.
+      .sort((a, b) => Number(!a.contactLinks?.website) - Number(!b.contactLinks?.website));
+    if (!todo.length) { toast('Every lead you can email already has an address', { tone: 'success' }); return; }
     const ok = await confirm({
-      title: `Find emails for ${waiting} leads?`,
-      body: 'We read each business website and contact page, or look the business up on Google Maps to find its site. Leads with no working email move to Skipped, and you can bring any of them back. This can take a few minutes.',
+      title: `Find emails for ${todo.length} leads?`,
+      body: 'We read each business website and contact page, or look the business up on Google Maps to find its site. Leads with no working email move to Skipped, and you can bring any of them back. You can keep working while it runs.',
       confirmLabel: 'Find emails',
     });
     if (!ok) return;
-    setFindingEmails(true);
+    stopHunt.current = false;
     let lookups = 300;
-    const total = { found: 0, skipped: 0 };
+    let state: EmailHunt = { total: todo.length, checked: 0, found: 0, skipped: 0, current: [], recent: [], done: false };
+    const show = (next: Partial<EmailHunt>) => { state = { ...state, ...next }; setHunt(state); };
+    show({});
     try {
-      for (let round = 0; round < 10; round++) {
-        toast(`Looking for emails… ${total.found + total.skipped} of ${waiting} checked`);
+      for (let i = 0; i < todo.length && !stopHunt.current; i += HUNT_STEP) {
+        const batch = todo.slice(i, i + HUNT_STEP);
+        show({ current: batch.map(displayName) });
         const res = await fetch('/api/find-emails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ maxLookups: lookups }),
+          body: JSON.stringify({ maxLookups: lookups, ids: batch.map(l => l.id) }),
         });
-        const data = await res.json() as { found?: number; skipped?: number; lookups?: number; remaining?: number; error?: string };
-        if (!res.ok || data.error) { fail(`Could not finish: ${data.error ?? res.statusText}`); break; }
-        total.found += data.found ?? 0;
-        total.skipped += data.skipped ?? 0;
+        const data = await res.json().catch(() => ({ error: res.statusText })) as {
+          found?: number; skipped?: number; lookups?: number; results?: { id: string; name: string; email: string | null }[]; error?: string;
+        };
+        if (!res.ok || data.error) { show({ error: `Stopped: ${data.error ?? res.statusText}. Run it again to pick up where it stopped.` }); break; }
         lookups = Math.max(0, lookups - (data.lookups ?? 0));
-        if (!data.remaining) break;
+        const results = data.results ?? [];
+        // Update the table straight away: found emails appear, skipped leads leave the list.
+        const byId = new Map(results.map(r => [r.id, r.email]));
+        setLeads(prev => prev.map(l => !byId.has(l.id) ? l
+          : byId.get(l.id) ? { ...l, contactEmail: byId.get(l.id)! } : { ...l, status: 'skipped' }));
+        show({
+          checked: state.checked + batch.length,
+          found: state.found + (data.found ?? 0),
+          skipped: state.skipped + (data.skipped ?? 0),
+          recent: [...results.map(r => ({ name: r.name, email: r.email })), ...state.recent].slice(0, 4),
+        });
       }
-      toast(`Found ${total.found} emails. ${total.skipped} leads without one moved to Skipped.`, { tone: 'success' });
     } catch {
-      fail('Lost the connection while looking for emails. Run it again to pick up where it stopped.');
+      show({ error: 'Lost the connection. Run it again to pick up where it stopped.' });
     } finally {
-      setFindingEmails(false);
+      show({ done: true, current: [] });
       await loadData();
     }
   }
@@ -389,7 +407,7 @@ export default function Home() {
               dark
               items={[
                 ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
-                { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: findEmails },
+                { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: () => { if (!findingEmails) findEmails(); } },
                 { label: 'How it works', icon: 'help', onSelect: how.show },
                 'divider',
                 { label: 'Log out', icon: 'logout', onSelect: logOut },
@@ -402,6 +420,8 @@ export default function Home() {
 
       <main className="page">
         {how.open && <HowItWorks onClose={how.hide} />}
+
+        {hunt && <EmailHuntBanner hunt={hunt} onStop={() => { stopHunt.current = true; }} onClose={() => setHunt(null)} onShowSkipped={() => { changeView('done'); setHunt(null); }} />}
 
         {running && (
           <div className="banner info" role="status">

@@ -17,6 +17,8 @@ export interface FindEmailsResult {
   skipped: number;
   lookups: number;
   remaining: number;
+  // What happened to each lead, so the dashboard can show it as it goes.
+  results: { id: string; name: string; email: string | null }[];
 }
 
 const words = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
@@ -63,13 +65,16 @@ async function resolve(l: Lead, apiKey: string | undefined, canLookUp: () => boo
 }
 
 // maxLookups caps paid Google Maps searches for this call (the free monthly allowance is shared
-// with the twice-daily lead search).
-export async function findMissingEmails(maxLookups: number): Promise<FindEmailsResult> {
+// with the twice-daily lead search). ids limits the call to those leads: the dashboard sends a
+// few at a time so it can show progress.
+export async function findMissingEmails(maxLookups: number, ids?: string[]): Promise<FindEmailsResult> {
   const started = Date.now();
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   // Leads with a website first: they need no paid lookup.
-  const todo = (await getLeads(5000)).filter(needsEmail).sort((a, b) => Number(!siteOf(a)) - Number(!siteOf(b)));
-  const result: FindEmailsResult = { checked: 0, found: 0, skipped: 0, lookups: 0, remaining: todo.length };
+  const wanted = ids ? new Set(ids) : null;
+  const todo = (await getLeads(5000)).filter(l => needsEmail(l) && (!wanted || wanted.has(l.id)))
+    .sort((a, b) => Number(!siteOf(a)) - Number(!siteOf(b)));
+  const result: FindEmailsResult = { checked: 0, found: 0, skipped: 0, lookups: 0, remaining: todo.length, results: [] };
   let lookupsLeft = maxLookups;
   const canLookUp = () => (lookupsLeft > 0 ? (lookupsLeft--, true) : false);
 
@@ -89,6 +94,7 @@ export async function findMissingEmails(maxLookups: number): Promise<FindEmailsR
         result.skipped++;
       }
       result.checked++;
+      result.results.push({ id: l.id, name: displayName(l), email: r.email });
     }));
   }
   result.remaining = todo.length - result.checked;
