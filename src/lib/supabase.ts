@@ -130,6 +130,14 @@ export async function updateLeadStatus(id: string, status: LeadStatus): Promise<
 }
 
 // When the most recent email (first or follow-up) went out, for spacing sends apart.
+// When the latest first email (not a follow-up) went out.
+export async function lastFirstSentAt(): Promise<Date | null> {
+  const { data, error } = await db().from('leads').select('first_sent_at').not('first_sent_at', 'is', null)
+    .order('first_sent_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) return lastSentAt();
+  return data?.first_sent_at ? new Date(String(data.first_sent_at)) : null;
+}
+
 export async function lastSentAt(): Promise<Date | null> {
   const { data } = await db().from('leads').select('last_sent_at').not('last_sent_at', 'is', null)
     .order('last_sent_at', { ascending: false }).limit(1).maybeSingle();

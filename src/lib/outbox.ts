@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countFirstSentSince, lastSentAt, updateLead } from '@/lib/supabase';
+import { getLeads, countFirstSentSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -14,6 +14,9 @@ export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
 // At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
 // so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
 const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 10);
+// New emails are spread across the whole day instead of going out in one burst: with a limit of
+// 20, one new email about every 72 minutes, so each time zone's business hours get some.
+const FIRST_GAP_MIN = Math.max(MIN_GAP_MIN, Math.floor((24 * 60) / Math.max(1, DAILY_LIMIT)));
 // A first email that keeps failing is retried this many times, then handed back to you.
 const MAX_TRIES = 3;
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
@@ -171,7 +174,9 @@ export async function runOutbox(): Promise<OutboxResult> {
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUp = inboxChecked && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
-  const first = capReason ? undefined : queued
+  const lastFirst = capReason ? null : await lastFirstSentAt();
+  const firstWait = lastFirst ? lastFirst.getTime() + FIRST_GAP_MIN * 60_000 - Date.now() : 0;
+  const first = capReason || firstWait > 0 ? undefined : queued
     .filter(l => inSendWindow(l))
     .sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
@@ -179,7 +184,12 @@ export async function runOutbox(): Promise<OutboxResult> {
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
     [0];
   const lead = followUp || first;
-  if (!lead) return { ...result, skipped: capReason ? `${capReason}, no follow-ups due` : 'Nothing due inside business hours right now' };
+  if (!lead) {
+    const why = capReason ? `${capReason}, no follow-ups due`
+      : firstWait > 0 ? `Next new email after ${new Date(Date.now() + firstWait).toISOString().slice(11, 16)} UTC (one every ${FIRST_GAP_MIN} minutes, spread over the day)`
+      : 'Nothing due inside business hours right now';
+    return { ...result, skipped: why };
+  }
 
   try {
     if (lead === followUp) {
