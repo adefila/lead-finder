@@ -19,7 +19,7 @@ import { EmailHuntDock, EmailHuntModal, HUNT_STEP, type EmailHunt } from '@/comp
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null };
+type OutboxStatus = { configured: boolean; sentToday: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean };
 
 // "Fri 2 Oct, 15:10" in your own time zone.
 function lastSentLabel(iso?: string | null): string {
@@ -369,7 +369,8 @@ export default function Home() {
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
   const sendFailures = useMemo(() => leads
     // A temporary "try again later" (4xx) while it is still being retried is not a failure yet.
-    .filter(l => l.sendError && !(statusOf(l) === 'queued' && /\(try \d\)/.test(l.sendError) && /\b4\d\d\b/.test(l.sendError)))
+    // A temporary "try again later" from Gmail is retried on its own, so it is not a failure.
+    .filter(l => l.sendError && !/^Temporary \(/.test(l.sendError) && !(statusOf(l) === 'queued' && /\(try \d\)/.test(l.sendError) && /\b4\d\d\b/.test(l.sendError)))
     .filter(l => statusOf(l) === 'queued' || (statusOf(l) === 'approved' && !l.autoSequence))
     .sort((a, b) => (b.queuedAt ?? b.contactedAt ?? '').localeCompare(a.queuedAt ?? a.contactedAt ?? '')), [leads]);
   const sort = sortOverride ?? defaultSort(view);
@@ -464,7 +465,7 @@ export default function Home() {
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''} · ${lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''} · ${outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>

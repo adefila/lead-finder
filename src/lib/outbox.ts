@@ -56,6 +56,34 @@ export function inSendWindow(lead: Lead, now = new Date()): boolean {
   return !['Sat', 'Sun'].includes(weekday) && hour >= WINDOW_START && hour < WINDOW_END;
 }
 
+// Gmail's "try again later" answers (4xx, e.g. 421 or 451 4.3.0): it wants us to slow down.
+// Such failures are saved as "Temporary (<time>): ..." on the lead, which is all the state the
+// back-off needs: after one, nothing is sent for an hour, and new emails go out half as often
+// for a day.
+const BACKOFF_PAUSE_MIN = 60;
+const BACKOFF_SLOW_HOURS = 24;
+const isTemporary = (message: string) => /^\s*4\d\d\b|\b4\d\d[ -]4\.\d\.\d|\b4\.\d\.\d\b/.test(message);
+const TEMP_MARK = /^Temporary \((\S+)\)/;
+
+export function lastTemporaryFailure(leads: Lead[]): Date | null {
+  let latest = 0;
+  for (const l of leads) {
+    const at = Date.parse(l.sendError?.match(TEMP_MARK)?.[1] ?? '');
+    if (!isNaN(at) && at > latest) latest = at;
+  }
+  return latest ? new Date(latest) : null;
+}
+
+export function backoffState(leads: Lead[], now = Date.now()): { pausedUntil: Date | null; slowed: boolean } {
+  const last = lastTemporaryFailure(leads);
+  if (!last) return { pausedUntil: null, slowed: false };
+  const until = last.getTime() + BACKOFF_PAUSE_MIN * 60_000;
+  return {
+    pausedUntil: until > now ? new Date(until) : null,
+    slowed: now - last.getTime() < BACKOFF_SLOW_HOURS * 3600_000,
+  };
+}
+
 function last24h(now = new Date()): string {
   return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
@@ -79,7 +107,7 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null }> {
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
   const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(last7d()), getLeads(), lastSentAt()]);
   return {
     configured: !!mailConfig(),
@@ -88,6 +116,8 @@ export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 
     sentWeek,
     weekLimit: WEEKLY_LIMIT,
     queued: leads.filter(l => l.status === 'queued').length,
+    pausedUntil: backoffState(leads).pausedUntil?.toISOString() ?? null,
+    slowed: backoffState(leads).slowed,
     lastSent: last ? last.toISOString() : null,
   };
 }
@@ -164,6 +194,12 @@ export async function runOutbox(): Promise<OutboxResult> {
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
   }
 
+  // Gmail asked us to slow down recently: send nothing for an hour.
+  const backoff = backoffState(leads);
+  if (backoff.pausedUntil) {
+    return { ...result, skipped: `Gmail asked to slow down, sending paused until ${backoff.pausedUntil.toISOString().slice(11, 16)} UTC` };
+  }
+
   // Space emails out: at most one every MIN_GAP_MIN minutes.
   const last = await lastSentAt();
   if (last && Date.now() - last.getTime() < MIN_GAP_MIN * 60_000) {
@@ -175,7 +211,9 @@ export async function runOutbox(): Promise<OutboxResult> {
   const followUp = inboxChecked && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
   const lastFirst = capReason ? null : await lastFirstSentAt();
-  const firstWait = lastFirst ? lastFirst.getTime() + FIRST_GAP_MIN * 60_000 - Date.now() : 0;
+  // For a day after Gmail pushed back, new emails go out half as often.
+  const firstGap = backoff.slowed ? FIRST_GAP_MIN * 2 : FIRST_GAP_MIN;
+  const firstWait = lastFirst ? lastFirst.getTime() + firstGap * 60_000 - Date.now() : 0;
   const first = capReason || firstWait > 0 ? undefined : queued
     .filter(l => inSendWindow(l))
     .sort((a, b) =>
@@ -186,7 +224,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   const lead = followUp || first;
   if (!lead) {
     const why = capReason ? `${capReason}, no follow-ups due`
-      : firstWait > 0 ? `Next new email after ${new Date(Date.now() + firstWait).toISOString().slice(11, 16)} UTC (one every ${FIRST_GAP_MIN} minutes, spread over the day)`
+      : firstWait > 0 ? `Next new email after ${new Date(Date.now() + firstWait).toISOString().slice(11, 16)} UTC (one every ${firstGap} minutes${backoff.slowed ? ', slowed after Gmail pushed back' : ', spread over the day'})`
       : 'Nothing due inside business hours right now';
     return { ...result, skipped: why };
   }
@@ -236,7 +274,12 @@ export async function runOutbox(): Promise<OutboxResult> {
   } catch (e) {
     // A failing email must never block the rest of the queue.
     const message = (e as Error).message.slice(0, 240);
-    if (lead === followUp) {
+    const temporary = isTemporary(message);
+    const stamp = temporary ? `Temporary (${new Date().toISOString()}): ` : '';
+    if (lead === followUp && temporary) {
+      // Gmail said "later": keep it automatic, it goes out on a later run once the pause is over.
+      await updateLead(lead.id, { send_error: `${stamp}${message}` });
+    } else if (lead === followUp) {
       // Hand the follow-up to you: it appears under "Needs a follow-up" with the reason.
       await updateLead(lead.id, { auto_sequence: false, send_error: `Automatic follow-up failed: ${message}. Send it yourself from the lead page.` });
     } else {
@@ -248,7 +291,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         });
       } else {
         // Back of the queue, so the next scheduled email goes out instead.
-        await updateLead(lead.id, { queued_at: new Date().toISOString(), send_error: `${message} (try ${tries})` });
+        await updateLead(lead.id, { queued_at: new Date().toISOString(), send_error: `${stamp}${message} (try ${tries})` });
       }
     }
     console.error(`[outbox] send failed for ${lead.title}: ${message}`);

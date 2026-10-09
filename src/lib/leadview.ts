@@ -388,6 +388,7 @@ export function nextStep(l: Lead): { text: string; urgent: boolean } {
     if (fu.sent >= MAX_FOLLOW_UPS) return { text: 'Waiting', urgent: false };
     return { text: `Follow up ${shortDate(fu.dueAt)}`, urgent: false };
   }
+  if (s === 'queued' && l.sendError?.startsWith('Temporary (')) return { text: 'Retrying later', urgent: false };
   if (s === 'queued') return { text: l.sendError ? 'Could not send' : 'Goes out on its own', urgent: !!l.sendError };
   if (s === 'replied') return { text: 'Reply to them', urgent: false };
   return { text: '', urgent: false };
