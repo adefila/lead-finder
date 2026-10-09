@@ -368,7 +368,9 @@ export default function Home() {
   const readyAll = useMemo(() => scoped.filter(readyToSchedule), [scoped]);
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
   const sendFailures = useMemo(() => leads
-    .filter(l => l.sendError && (statusOf(l) === 'queued' || (statusOf(l) === 'approved' && !l.autoSequence)))
+    // A temporary "try again later" (4xx) while it is still being retried is not a failure yet.
+    .filter(l => l.sendError && !(statusOf(l) === 'queued' && /\(try \d\)/.test(l.sendError) && /\b4\d\d\b/.test(l.sendError)))
+    .filter(l => statusOf(l) === 'queued' || (statusOf(l) === 'approved' && !l.autoSequence))
     .sort((a, b) => (b.queuedAt ?? b.contactedAt ?? '').localeCompare(a.queuedAt ?? a.contactedAt ?? '')), [leads]);
   const sort = sortOverride ?? defaultSort(view);
   const rows = useMemo(() => sortLeads(scoped.filter(l => inView(l, view, sub)), sort.key, sort.dir), [scoped, view, sub, sort.key, sort.dir]);

@@ -77,12 +77,21 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   await client.connect();
   const lock = await client.getMailboxLock('INBOX');
   try {
-    for (const { email, since } of checks) {
-      const uids = await client.search({ from: email, since }, { uid: true });
-      if (!uids || !uids.length) continue;
+    // One pass over the inbox since our earliest email (sender and date only), instead of one
+    // search per lead, which got too slow once dozens of leads were waiting for a reply.
+    const earliest = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
+    const sinceFor = new Map(checks.map(ch => [ch.email.toLowerCase(), ch.since.getTime()]));
+    const latestFrom = new Map<string, number>();
+    for await (const m of client.fetch({ since: earliest }, { uid: true, envelope: true, internalDate: true }, { uid: true })) {
+      const from = m.envelope?.from?.[0]?.address?.toLowerCase();
+      if (!from || !sinceFor.has(from)) continue;
+      const at = m.internalDate ? new Date(m.internalDate).getTime() : Date.now();
+      if (at < (sinceFor.get(from) ?? 0)) continue;
+      if ((latestFrom.get(from) ?? -1) < m.uid) latestFrom.set(from, m.uid);
+    }
 
+    for (const [email, latest] of latestFrom) {
       let optedOut = false;
-      const latest = uids[uids.length - 1];
       const msg = await client.fetchOne(String(latest), { source: true }, { uid: true });
       if (msg && msg.source) {
         const parsed = await simpleParser(msg.source);
