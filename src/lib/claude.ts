@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { systemsFor } from '@/lib/leadview';
+import { systemsFor, hasCheck } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -331,6 +331,17 @@ export async function draftFollowUp(lead: Lead): Promise<string> {
     : lead.source === 'remote' ? 'a short follow-up to the hiring manager about his application'
     : lead.contactEmail ? 'an email reply in the same thread' : 'a short DM';
   const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
+  // They opened the one-page note: build this follow-up around one idea from it.
+  const ideas = lead.noteOpenedAt && hasCheck(lead) ? systemsFor(lead) : [];
+  const noteBlock = ideas.length ? `
+
+His first email linked a one-page note with these ideas for their business. They have looked at it but not replied:
+${ideas.map(i => `- ${i}`).join('\n')}
+
+For this follow-up:
+- Pick the ONE idea above that fits their business best and say in one or two sentences how it would work for them day to day (who does what, what they no longer have to do). Be concrete, no jargon.
+- Then make an easy offer: a 10-minute call, or a short video walking through it for their business. End with a simple yes/no question.
+- Never say or hint that you know they opened or read the note (no "I saw you looked at", "noticed you checked"). Write as if it is a natural next step.` : '';
 
   const prompt = `Samuel Adefila contacted this lead${since ? ` ${since} days ago` : ''} and hasn't heard back. Write follow-up number ${number} of 2, sent as ${channel}.
 
@@ -340,7 +351,7 @@ What we know: ${lead.description.slice(0, 400)}
 His first message:
 """
 ${lead.proposal ?? ''}
-"""
+"""${noteBlock}
 
 Rules:
 - No subject line. Start with the same greeting style as the first message.
