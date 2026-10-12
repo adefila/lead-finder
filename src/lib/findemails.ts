@@ -74,7 +74,7 @@ export async function findMissingEmails(maxLookups: number, ids?: string[]): Pro
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   // Leads with a website first: they need no paid lookup.
   const wanted = ids ? new Set(ids) : null;
-  const todo = (await getLeads(5000)).filter(l => needsEmail(l) && (!wanted || wanted.has(l.id)))
+  const todo = (await getLeads()).filter(l => needsEmail(l) && (!wanted || wanted.has(l.id)))
     .sort((a, b) => Number(!siteOf(a)) - Number(!siteOf(b)));
   const result: FindEmailsResult = { checked: 0, found: 0, skipped: 0, lookups: 0, remaining: todo.length, results: [] };
   const foundLeads: Lead[] = [];
@@ -132,10 +132,10 @@ export interface RewriteResult {
 // Leads that have an email but still carry a DM-style message get a proper email instead.
 export async function rewriteAsEmails(ids?: string[], max = 8): Promise<RewriteResult> {
   const wanted = ids ? new Set(ids) : null;
-  const all = (await getLeads(5000)).filter(l => needsEmailDraft(l) && (!wanted || wanted.has(l.id)));
+  const all = (await getLeads()).filter(l => needsEmailDraft(l) && (!wanted || wanted.has(l.id)));
   const batch = all.slice(0, max);
   const done = new Set(batch.length ? await saveEmailDrafts(batch) : []);
-  const fresh = done.size ? new Map((await getLeads(5000)).filter(l => done.has(l.id)).map(l => [l.id, l.proposal])) : new Map();
+  const fresh = done.size ? new Map((await getLeads()).filter(l => done.has(l.id)).map(l => [l.id, l.proposal])) : new Map();
   console.log(`[find-emails] rewrote ${done.size} of ${batch.length} messages as emails, ${all.length - batch.length} left`);
   return {
     rewritten: done.size,

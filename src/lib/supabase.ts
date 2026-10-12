@@ -30,10 +30,20 @@ export async function markSent(ids: string[]): Promise<void> {
 
 // ─── Leads ───────────────────────────────────────────────────────────────────
 
+// Supabase returns at most 1000 rows per request, so anything bigger is read page by page.
+const PAGE = 1000;
+
 export async function getExistingLeadIds(): Promise<string[]> {
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
-  const { data } = await db().from('leads').select('id').gte('created_at', since);
-  return (data ?? []).map((r: { id: string }) => r.id);
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db().from('leads').select('id').gte('created_at', since)
+      .order('created_at', { ascending: false }).range(from, from + PAGE - 1);
+    if (error) { console.error('[supabase] getExistingLeadIds:', error); break; }
+    ids.push(...(data ?? []).map((r: { id: string }) => r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
 }
 
 export async function saveLeads(leads: Lead[]): Promise<void> {
@@ -103,14 +113,22 @@ function rowToLead(r: Record<string, unknown>): Lead {
   };
 }
 
-export async function getLeads(limit = 1000): Promise<Lead[]> {
-  const { data, error } = await db()
-    .from('leads')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) { console.error('[supabase] getLeads:', error); return []; }
-  return (data ?? []).map(rowToLead);
+// Every lead, newest first (or the newest `limit`), read 1000 at a time.
+export async function getLeads(limit = Infinity): Promise<Lead[]> {
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0; from < limit; from += PAGE) {
+    const to = Math.min(from + PAGE, limit) - 1;
+    const { data, error } = await db()
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) { console.error('[supabase] getLeads:', error); break; }
+    rows.push(...(data ?? []));
+    if (!data || data.length < to - from + 1) break;
+  }
+  return rows.map(rowToLead);
 }
 
 export async function getLeadById(id: string): Promise<Lead | null> {
