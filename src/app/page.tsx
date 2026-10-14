@@ -648,8 +648,8 @@ export default function Home() {
                   )}
                   {picked.some(l => statusOf(l) === 'new') && (
                     <>
-                      <Btn className="btn btn-sm" title="You contacted them yourself" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
-                        I contacted these
+                      <Btn className="btn btn-sm" title="You contacted them or applied yourself" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'approved')}>
+                        I contacted or applied
                       </Btn>
                       <Btn className="btn btn-sm" onClick={() => bulkStatus(picked.filter(l => statusOf(l) === 'new').map(l => l.id), 'skipped')}>
                         Skip

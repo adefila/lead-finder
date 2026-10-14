@@ -1,6 +1,8 @@
 import type { Lead } from '@/types/lead';
 import { analyzeWebsite, extractEmails, findPage, getHtml, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
+import { generateColdEmails } from '@/lib/claude';
+import { getLeads, updateLead } from '@/lib/supabase';
 
 // For a job post, find the company's own website and an address to pitch to directly: the hiring
 // or HR inbox first, then a named person (founder, CEO), then the general one. The about page text
@@ -119,24 +121,57 @@ async function contactFor(l: Lead): Promise<JobContact | null> {
 }
 
 // Adds the company website, a pitch address and their site text to job leads, within a time budget.
-export async function findJobContacts(leads: Lead[]): Promise<Lead[]> {
+// Every job it gets to is marked as searched, found or not.
+export async function findJobContacts(leads: Lead[], budgetMs = BUDGET_MS): Promise<Lead[]> {
   const started = Date.now();
   const out = new Map<string, Lead>();
-  const todo = leads.filter(l => l.source === 'job' && !l.contactEmail);
+  const todo = leads.filter(l => l.source === 'job' && !l.contactEmail && !l.contactLinks?.searched);
+  const searched = new Date().toISOString();
   let found = 0;
-  for (let i = 0; i < todo.length && Date.now() - started < BUDGET_MS; i += BATCH) {
+  let sites = 0;
+  for (let i = 0; i < todo.length && Date.now() - started < budgetMs; i += BATCH) {
     await Promise.all(todo.slice(i, i + BATCH).map(async l => {
       const c = await contactFor(l).catch(() => null);
-      if (!c) return;
-      if (c.email) found++;
-      out.set(l.id, {
+      if (c) sites++;
+      if (c?.email) found++;
+      out.set(l.id, c ? {
         ...l,
         contactEmail: c.email ?? undefined,
-        contactLinks: { ...(l.contactLinks ?? {}), ...c.links, website: c.website },
+        contactLinks: { ...(l.contactLinks ?? {}), ...c.links, website: c.website, searched },
         siteText: c.siteText,
-      });
+      } : { ...l, contactLinks: { ...(l.contactLinks ?? {}), searched } });
     }));
   }
-  console.log(`[job-contacts] ${todo.length} jobs, ${out.size} company sites, ${found} emails to pitch to`);
+  console.log(`[job-contacts] ${out.size} of ${todo.length} jobs searched, ${sites} company sites, ${found} emails to pitch to`);
   return leads.map(l => out.get(l.id) ?? l);
+}
+
+// Jobs already in the dashboard (still To contact, never searched): find who to pitch, and for the
+// ones with an email, write the pitch email in place of the application note. One pitch per company.
+export async function backfillJobContacts(budgetMs: number): Promise<{ searched: number; emails: number; left: number }> {
+  const all = await getLeads();
+  const todo = all.filter(l => l.source === 'job' && (l.status ?? 'new') === 'new' && !l.contactEmail && !l.contactLinks?.searched);
+  if (!todo.length || budgetMs < 10_000) return { searched: 0, emails: 0, left: todo.length };
+
+  const taken = new Set(all.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
+  const done = (await findJobContacts(todo, budgetMs)).filter(l => l.contactLinks?.searched);
+  const withEmail: Lead[] = [];
+  for (const l of done) {
+    const email = l.contactEmail?.toLowerCase();
+    if (email && !taken.has(email)) { taken.add(email); withEmail.push(l); continue; }
+    await updateLead(l.id, { contact_links: l.contactLinks ?? null });
+  }
+
+  const drafted = withEmail.length ? await generateColdEmails(withEmail) : [];
+  for (const d of drafted) {
+    const pitch = d.proposal && /^\s*Subject:/i.test(d.proposal) ? d.proposal : null;
+    await updateLead(d.id, {
+      contact_email: d.contactEmail,
+      contact_links: d.contactLinks ?? null,
+      ...(pitch ? { draft_email: pitch, contact_name: d.contactName ?? null, contact_title: d.contactTitle ?? null } : {}),
+    });
+  }
+  const left = todo.length - done.length;
+  console.log(`[job-contacts] backfill: ${done.length} existing jobs searched, ${withEmail.length} now have an email, ${left} left`);
+  return { searched: done.length, emails: withEmail.length, left };
 }

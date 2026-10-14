@@ -6,6 +6,8 @@ export interface ContactLinks {
   instagram?: string;
   facebook?: string;
   register?: string;
+  // Job leads: when we last looked for the company's website and email (not shown as a link).
+  searched?: string;
 }
 
 export const LEAD_STATUSES = ['new', 'queued', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
