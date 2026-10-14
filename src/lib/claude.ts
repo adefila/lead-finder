@@ -186,6 +186,31 @@ const VOICE = `Voice (strict, applies to every message):
 - No flattery formulas ("says a lot about", "clearly passionate", "impressive work"). If you compliment, make it concrete and brief, and skip it entirely when there's nothing real to say.
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
+// How every cold message is built: help first, pitch last. Most freelancers open with
+// themselves and a list of services; these messages open with the reader's business.
+const APPROACH = `Approach (help first, applies to every cold message):
+- Write as someone who noticed something useful about their business and is passing it on, not as a seller. Even if they never reply, they should finish the message knowing one useful thing they didn't before.
+- Build it in this order:
+  1. One specific observation about their business, in their terms: what a customer sees or goes through today. Use only what the findings or site text show.
+  2. Why it matters to them, in one sentence, in their world (enquiries that arrive after hours and wait until morning, a booking that needs three messages, a quote that goes quiet). Frame it as common for businesses like theirs, never as their failure.
+  3. One small, concrete idea that would fix it, described as what changes on an ordinary day. Give the idea away freely, as if they could do it themselves.
+  4. A low-pressure offer to help with it, then one question they can answer in a line (yes or no, or a choice between two things).
+- Talk about them and their customers far more than about Samuel. At most one short sentence about him, and only to show why he is a sensible person to help (what he builds and for whom).
+- Assume they are busy and good at what they do. No lecturing, no scare tactics ("you are losing customers"), no criticism of their current site or whoever built it.
+- Never sound like a pitch: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of what Samuel offers.
+- It should read like a thoughtful professional typed it for this one person: plain words, natural rhythm, a contraction or two, warm but not chummy.
+
+Example of the shape (for a dentist with no online booking). Do not copy its wording or topic:
+"Hi Dr. Okafor,
+
+I was looking at Bright Smile's site and noticed the only way to book is to call during opening hours.
+
+A lot of people decide to book a check-up in the evening, after work. When they can't do it there and then, many forget or book somewhere that lets them.
+
+A simple fix is an online booking page that shows your free slots and sends a reminder the day before. Patients book at 10pm, and your front desk starts the day with the diary already filled in.
+
+I set these up for small clinics. Would it help if I sent a short example of how it would look for Bright Smile?"`;
+
 const PROMPTS: Record<DraftKind, string> = {
   job: `Write a message from Samuel Adefila for each role below. Each is full-time: either remote and open to someone in Nigeria (the listing starts "Open to:"), or on-site abroad with visa sponsorship or relocation support (the listing starts "Relocation:"). Hiring managers and founders skim, so the first line must show he read the listing.
 
@@ -200,7 +225,8 @@ If Channel is EMAIL, it is a direct pitch to the company, sent to the address sh
 - Step 1, find the person. Look in "Company site text" for the founder, co-founder, CEO, or the person who runs hiring (head of people, talent, HR, recruiter). Only use a name the text clearly ties to that role. Never guess. If the address is clearly one person's (e.g. jane@ or jane.doe@) and the text names that person, use them. Otherwise leave name empty.
 - Line 1 is "Subject: ..." (under 7 words, about the role or the work, no clickbait), blank line, then the body.
 - Greeting: "Hi [FirstName]," when you found a person, else "Hi [Company] team,".
-- Open by saying he saw they are hiring for the role, then pitch: he can take on that work now, as a hire or on a contract basis so they can start sooner.
+- Open by saying he saw they are hiring for the role. Then be useful before asking for anything: name what the role is really there to fix for them (for example, a marketing site that the team can't update quickly, or design that can't keep up with the product), and how Samuel would approach the first few weeks, in one or two sentences. If the company site text shows something specific related to the role, mention it as an observation, never as criticism.
+- Then the offer, plainly: he can take on that work now, as a hire or on a contract basis so they can start sooner.
 - Under 120 words. Close with one short opt-out line before the sign-off, e.g. "If the role is already filled, just say so and I won't follow up."
 - Offer one easy next step (a short call, or a small paid test task).
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
@@ -255,9 +281,11 @@ Rules:
 - Step 1, find the person: look in "Site text" for the founder, CEO, or head of marketing. Only use a name the text clearly ties to that role, else leave name empty.
 - Line 1 "Subject: ..." (under 7 words, about their business), blank line, body under 100 words.
 - Greeting "Hi [FirstName]," or "Hi [Company] team,".
-- Open with one specific thing from their site text, then one concrete idea for their website (a landing page, a faster marketing site in Framer, a redesign of one page). Never invent problems the site text does not show.
-- One easy next step (a short call, or a free one-page idea for their homepage).
+- Follow the Approach below: one specific thing from their site text, why it matters to their customers, then one concrete idea for their website (a landing page for one offer, a faster marketing site, one page made clearer). Never invent problems the site text does not show.
+- One easy next step (a short call, or a free one-page sketch of the idea for their homepage).
 - Close with a short opt-out line, then sign off "Samuel" and "adefilasamuel.com".
+
+${APPROACH}
 
 ${VOICE}
 
@@ -273,9 +301,9 @@ Step 2, write the message.
 - Greeting: "Hi [FirstName]," when you found a person (use "Hi Dr. [LastName]," for doctors and dentists). If no person but it's clearly a team, "Hi [Business name] team,". Otherwise "Hi there,".
 - If Channel is EMAIL: line 1 is "Subject: ..." (under 7 words, about their business, no clickbait), blank line, then body under 110 words.
 - If Channel is DM: no subject line, under 65 words. It goes out as an Instagram, Facebook or LinkedIn message.
-- Open the way the "Angle" line says. Every business gets a different angle on purpose, so the batch never reads like one template.
+- Follow the Approach below. Use the "Angle" line for how the first observation is framed. Every business gets a different angle on purpose, so the batch never reads like one template.
 - Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
-- Lead with the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
+- The idea in the message is the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
 - Then, only if it fits naturally, mention ONE website issue from the findings in plain words (e.g. "on a phone the text is tiny"). Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
 - No website: you may add that people who find them on Google have nowhere to click through to, but keep the idea as the main point.
 - Offer ONE easy next step and vary it between messages: a short one-page note of ideas for their business, a quick demo of how it would work for them, or a ten-minute call. Don't reuse "no strings attached" in every message.
@@ -283,6 +311,8 @@ Step 2, write the message.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 - Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
 - Never state anything that isn't in the findings or site text.
+
+${APPROACH}
 
 ${VOICE}
 
@@ -293,13 +323,15 @@ Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "O
 Rules:
 - Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
 - Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
-- Lead with the "Idea to offer": setting it up from day one saves them time as they grow. Mention that a simple site helps them look established only as a second point, if at all.
+- Then follow the Approach below, with the "Idea to offer" as the idea: what setting it up from day one saves them as they start taking customers. Mention that a simple site helps them look established only as a second point, if at all.
 - If they have a website with issues: mention ONE issue from the findings in plain words.
 - Offer one easy next step: a short note of ideas for their business, or a short call.
 - If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
 - If Channel is LINKEDIN: no subject, under 280 characters in total (LinkedIn connection note limit), sign off "Samuel".
 - Close with one short opt-out line when Channel is EMAIL.
 - Never state anything that isn't in the findings.
+
+${APPROACH}
 
 ${VOICE}
 
@@ -407,9 +439,9 @@ ${lead.proposal ?? ''}
 
 Rules:
 - No subject line. Start with the same greeting style as the first message.
-- Follow-up 1: under 60 words. Don't repeat the first message. Add one new, useful thing (a quick idea for their homepage, or offer to send the free mockup this week). End with a yes/no question.
+- Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
 - Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
-- Never guilt-trip ("just bumping this", "did you see my email"). No fake urgency.
+- Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
 - Sign off "Samuel".
 
 ${VOICE}
