@@ -42,12 +42,12 @@ interface Scene { name: string; headline: string; body: string; facts: string[];
 const SCENES: Scene[] = [
   {
     name: 'Find', headline: 'It finds businesses that need you',
-    body: 'Twice a day it searches for businesses with a weak website and a published email, plus remote web roles and public website tenders open to you. It only keeps businesses that are still trading.',
+    body: 'Twice a day it searches for businesses with a weak website and a published email, plus web jobs in the US, Canada, Germany and Ireland and remote web roles open to you. It only keeps businesses that are still trading.',
     facts: ['Checks they are open, with recent reviews or an active register entry', 'Reads their website and notes what is wrong in plain words', 'Skips duplicates found in more than one place'],
     stage: (
       <>
         <div className="ex-sources">
-          {[['Google Maps', 'Australia, Singapore'], ['Local map', 'OpenStreetMap'], ['Company register', 'new UK companies'], ['Job posts', 'Freelancer.com'], ['Remote roles', '4 job boards'], ['Tenders', 'EU and Australia']]
+          {[['Google Maps', 'Australia, Singapore'], ['Local map', 'OpenStreetMap'], ['Company register', 'new UK companies'], ['Jobs', 'US, Canada, Germany, Ireland'], ['Remote roles', '5 job boards']]
             .map(([t, s], i) => <div key={t} className="ex-source" style={{ animationDelay: `${0.1 + i * 0.25}s` }}>{t}<span>{s}</span></div>)}
         </div>
         <div className="ex-card">
@@ -83,7 +83,7 @@ const SCENES: Scene[] = [
     stage: (
       <>
         <div className="ex-card">
-          <div className="ex-tabs"><span>All</span><b>To contact</b><span>Scheduled</span><span>Waiting for reply</span><span>Replied</span><span>Done</span><span>Remote roles</span></div>
+          <div className="ex-tabs"><span>All</span><b>To contact</b><span>Scheduled</span><span>Waiting for reply</span><span>Replied</span><span>Done</span><span>Jobs</span><span>Remote roles</span></div>
           <div className="ex-list">
             <div className="ex-row"><div className="ex-min"><div className="ex-title">Harbour Dental Care</div><div className="ex-sub"><span className="ex-ok">Active</span>· Dentist · Leeds</div></div><span className="ex-btn ex-go">Schedule</span></div>
             <div className="ex-row"><div className="ex-min"><div className="ex-title">Northlight Architects Ltd</div><div className="ex-sub"><span className="ex-flag">No website yet</span>· Liverpool</div></div><span className="ex-btn">Copy for LinkedIn</span></div>

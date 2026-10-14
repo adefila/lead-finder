@@ -113,6 +113,9 @@ function rowToLead(r: Record<string, unknown>): Lead {
   };
 }
 
+// Sources no longer searched. Their old rows stay in the table (so they are never re-added) but are hidden.
+const RETIRED_SOURCES = new Set(['freelancer', 'tender']);
+
 // Every lead, newest first (or the newest `limit`), read 1000 at a time.
 export async function getLeads(limit = Infinity): Promise<Lead[]> {
   const rows: Record<string, unknown>[] = [];
@@ -128,7 +131,7 @@ export async function getLeads(limit = Infinity): Promise<Lead[]> {
     rows.push(...(data ?? []));
     if (!data || data.length < to - from + 1) break;
   }
-  return rows.map(rowToLead);
+  return rows.filter(r => !RETIRED_SOURCES.has(String(r.source))).map(rowToLead);
 }
 
 export async function getLeadById(id: string): Promise<Lead | null> {
