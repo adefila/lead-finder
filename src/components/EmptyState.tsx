@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'jobs' | 'remote';
+  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'inbound' | 'visited' | 'jobs' | 'remote';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
   new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
@@ -18,6 +18,8 @@ const COPY: Record<EmptyKind, { title: string; body: string }> = {
   search: { title: 'No matches', body: 'Try a different business name, person or email.' },
   history: { title: 'Nothing here yet', body: 'Each search for new leads shows up here, grouped by day.' },
   opened: { title: 'No one has opened a note yet', body: 'When someone opens the one-page note from your email, they show up here. Those are your warmest leads.' },
+  inbound: { title: 'Nothing from your site yet', body: 'When someone fills in the form on adefilasamuel.com, or a company is identified visiting it, they show up here.' },
+  visited: { title: 'No visits yet', body: 'When someone you emailed clicks through to adefilasamuel.com, they show up here. A good moment to follow up.' },
   remote: { title: 'No remote roles yet', body: 'Each search checks the job boards for web roles open to you. New ones show up here.' },
   jobs: { title: 'No jobs yet', body: 'Each search checks the job boards for web roles at employers in the United States, Canada, Germany and Ireland. New ones show up here.' },
 };
@@ -120,6 +122,20 @@ const ART: Record<EmptyKind, ReactNode> = {
       <circle className="ill-line ill-fill" cx="92" cy="70" r="26" />
       <path className="ill-line" d="M111 89l22 22" />
       <path className="ill-accent" d="M84 62l16 16M100 62L84 78" />
+    </>
+  ),
+  inbound: (
+    <>
+      <rect className="ill-card" x="56" y="40" width="88" height="64" rx="8" />
+      <path className="ill-soft" d="M56 56h88M70 72h44M70 86h30" />
+      <circle className="ill-dot" cx="132" cy="92" r="6" />
+    </>
+  ),
+  visited: (
+    <>
+      <rect className="ill-card" x="56" y="40" width="88" height="64" rx="8" />
+      <path className="ill-soft" d="M56 56h88" />
+      <path className="ill-accent" d="M96 70l14 28 4-12 12-4z" />
     </>
   ),
   remote: (

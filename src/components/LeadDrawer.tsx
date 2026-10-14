@@ -224,7 +224,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         </section>
 
         <section className="dsec">
-          <h3 className="dsec-title">{isJob ? 'What they asked for' : 'What you can offer'}</h3>
+          <h3 className="dsec-title">{isJob || lead.source === 'website' ? 'What they asked for' : lead.source === 'visitor' ? 'How we found them' : 'What you can offer'}</h3>
           {offers.length > 0 && (
             <ul className="offer-list">
               {offers.map(o => <li key={o}>{o}</li>)}
@@ -240,6 +240,9 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           )}
           {story.stillOpen && <p className="why-ok"><Icon name="check" size={14} /><span><strong>{lead.source === 'companies_house' ? 'Active.' : 'Still open.'}</strong> {story.stillOpen}</span></p>}
           {story.other.length > 0 && <p className="why">{story.other.join(' ').slice(0, 900)}</p>}
+          {lead.contactLinks?.siteVisitedAt && (
+            <p className="why-ok"><Icon name="check" size={14} /><span><strong>Visited your site</strong> {shortDate(lead.contactLinks.siteVisitedAt)}{(lead.contactLinks.siteVisits ?? 0) > 1 ? `, ${lead.contactLinks.siteVisits} visits` : ''}{lead.contactLinks.sitePages?.length ? ` (${lead.contactLinks.sitePages.join(', ')})` : ''}.</span></p>
+          )}
         </section>
 
         {showScript && (

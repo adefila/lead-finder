@@ -61,13 +61,14 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // A plain-looking HTML copy of the email: same words, but the note link hides behind
 // friendly text ("a short one-page note") instead of a long web address. No images,
 // no colours, so it still reads like a person typed it.
-export function toHtml(text: string): string {
+// siteUrl: a tracked link to use for "adefilasamuel.com", so a visit from this email is recorded.
+export function toHtml(text: string, siteUrl = 'https://adefilasamuel.com'): string {
   const paras = text.trim().split(/\n\s*\n/).map(p => {
     const note = p.match(/^I put together a short one-page note with a few ideas for you:\s*\n?(https?:\/\/\S+)$/);
     if (note) return `I put together a <a href="${esc(note[1])}">short one-page note with a few ideas for you</a>.`;
     return esc(p)
       .replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}">${u.replace(/^https?:\/\//, '')}</a>`)
-      .replace(/(^|\n|\s)(adefilasamuel\.com)(?=\s|$)/g, '$1<a href="https://adefilasamuel.com">$2</a>')
+      .replace(/(^|\n|\s)(adefilasamuel\.com)(?=\s|$)/g, `$1<a href="${esc(siteUrl)}">$2</a>`)
       .replace(/\n/g, '<br>');
   });
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222">${paras.map(p => `<p style="margin:0 0 14px">${p}</p>`).join('')}</div>`;

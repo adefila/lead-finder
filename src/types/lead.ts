@@ -8,6 +8,10 @@ export interface ContactLinks {
   register?: string;
   // Job leads: when we last looked for the company's website and email (not shown as a link).
   searched?: string;
+  // Visits to adefilasamuel.com: from the tracked link in your emails, or an identified company network.
+  siteVisitedAt?: string;
+  siteVisits?: number;
+  sitePages?: string[];
 }
 
 export const LEAD_STATUSES = ['new', 'queued', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;
@@ -19,7 +23,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'job' | 'places' | 'osm' | 'companies_house' | 'remote';
+  source: 'job' | 'places' | 'osm' | 'companies_house' | 'remote' | 'website' | 'visitor';
   // Signed link to the lead's one-page website check (added by the API, not stored).
   checkUrl?: string;
   postedAt: string;

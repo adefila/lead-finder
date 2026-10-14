@@ -8,6 +8,7 @@ const MODEL = 'claude-haiku-4-5-20251001';
 const SAMUEL = `
 Samuel Adefila is a Top-Rated Framer developer (Upwork, 100% Job Success Score, 50+ sites delivered).
 He specialises in: Figma-to-Framer conversions, landing pages, marketing sites, SaaS websites, portfolio sites, startup homepages, template customisation, Webflow migrations to Framer.
+He also does UI/UX and product design in Figma, and front-end product engineering.
 Typical turnaround: 14 days. Portfolio: adefilasamuel.com.
 He works with startups, SaaS companies, agencies, solo founders, and anyone who needs a polished web presence fast.
 For local businesses he also sets up simple systems that save time: online booking with reminders, quote and enquiry forms that go straight to the owner's phone, automatic review requests, and follow-up on quiet quotes. Many local businesses need one of these more than a new website.
@@ -45,9 +46,9 @@ ${SAMUEL}
 
 Score each lead 0-100 for how likely it is to turn into a paid website project. Use the full range.
 
-For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, WordPress, Shopify, landing page or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
+For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
-For source "job" (a web role at an employer based in the United States, Canada, Germany or Ireland; "context" holds company, country, terms and salary): hands-on Framer, Webflow, WordPress, Shopify, landing page, front-end or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that offers visa sponsorship, relocation support or remote work adds points. A listing that requires existing work authorisation or citizenship, or a security clearance, scores low (15-35).
+For source "job" (a web role at an employer based in the United States, Canada, Germany or Ireland; "context" holds company, country, terms and salary): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that offers visa sponsorship, relocation support or remote work adds points. A listing that requires existing work authorisation or citizenship, or a security clearance, scores low (15-35).
 
 For source "places" (a local business found on Google with no website or a weak one):
 - Established business (many Google reviews, good rating) with no website or a clearly outdated/broken one scores high.
@@ -89,12 +90,14 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'job' | 'places' | 'newco' | 'remote';
+type DraftKind = 'job' | 'places' | 'newco' | 'remote' | 'inbound' | 'visitor';
 
 function draftKind(l: Lead): DraftKind {
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
   if (l.source === 'remote') return 'remote';
+  if (l.source === 'website') return 'inbound';
+  if (l.source === 'visitor') return 'visitor';
   return 'job';
 }
 
@@ -144,6 +147,24 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
   if (kind === 'remote') {
     return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
   }
+  if (kind === 'inbound') {
+    return [
+      `ENQUIRY ${i + 1} (ID: ${l.id}):`,
+      `From: ${l.contactName ?? 'unknown'} <${l.contactEmail}>`,
+      `Company or name: ${l.title}`,
+      `Details: ${l.company}`,
+      `Their website: ${l.contactLinks?.website ?? 'none given'}`,
+      `What they wrote: ${l.description.slice(0, 1500)}`,
+    ].join('\n');
+  }
+  if (kind === 'visitor') {
+    return [
+      `COMPANY ${i + 1} (ID: ${l.id}):`,
+      `Company: ${l.title}`,
+      `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Site text: ${(l.siteText ?? 'none').slice(0, 1500)}`,
+    ].join('\n');
+  }
   return [
     `ROLE ${i + 1} (ID: ${l.id}):`,
     `Channel: ${l.contactEmail ? `EMAIL to ${l.contactEmail}` : 'APPLICATION'}`,
@@ -185,7 +206,7 @@ If Channel is EMAIL, it is a direct pitch to the company, sent to the address sh
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 
 For both channels:
-- Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, front-end, UI design) and give one concrete example of similar work
+- Name the one thing in the listing that matches Samuel best (Framer, Webflow, landing pages, marketing sites, product design, UI/UX, product engineering) and give one concrete example of similar work
 - Do not mention where Samuel lives, his work authorisation, visa or relocation. He adds that himself.
 - Point to his portfolio at adefilasamuel.com
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
@@ -199,7 +220,7 @@ Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "F
 Rules:
 - No subject line. Open with "Hi," (or "Hi [Company] team,")
 - Under 130 words
-- Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, UI design) and give one concrete example of similar work
+- Name the one thing in the listing that matches Samuel best (Framer, Webflow, landing pages, marketing sites, product design, UI/UX, product engineering) and give one concrete example of similar work
 - Mention he works remotely from Nigeria on GMT+1, which overlaps fully with UK and European hours
 - Point to his portfolio at adefilasamuel.com
 - End with one easy next step (a short call, or a small paid test task)
@@ -209,6 +230,37 @@ Rules:
 ${VOICE}
 
 Return ONLY valid JSON: {"ID": "note text", ...}`,
+
+  inbound: `Each person below filled in the contact form on Samuel Adefila's website, adefilasamuel.com. Write Samuel's reply to each one. They came to him, so this is a warm reply, not a pitch.
+
+Rules:
+- Line 1 is "Subject: Re: your enquiry" or a short subject naming their project (under 7 words). Blank line, then the body.
+- Greet them by first name if you have it ("Hi Sarah,"), else "Hi there,".
+- Thank them in a few words, then show you read what they wrote: restate their goal in one sentence, in your own words.
+- If what they need is clear, say how Samuel would approach it in one or two sentences and give a rough timeline only if their message gives enough to judge. Never quote a price.
+- If key details are missing (what the site is for, pages, deadline, budget), ask at most two short questions.
+- Offer a short call as the next step and ask which day suits them.
+- Under 130 words. Sign off "Samuel" and on the next line "adefilasamuel.com".
+- No opt-out line: they wrote first.
+- Never state anything they did not say.
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`,
+
+  visitor: `Write a short first email from Samuel Adefila to each company below. Their team has been looking at his portfolio, but NEVER mention or hint at that (no "noticed you visited", "saw you on my site"): write it as an ordinary introduction based on their website.
+
+Rules:
+- Step 1, find the person: look in "Site text" for the founder, CEO, or head of marketing. Only use a name the text clearly ties to that role, else leave name empty.
+- Line 1 "Subject: ..." (under 7 words, about their business), blank line, body under 100 words.
+- Greeting "Hi [FirstName]," or "Hi [Company] team,".
+- Open with one specific thing from their site text, then one concrete idea for their website (a landing page, a faster marketing site in Framer, a redesign of one page). Never invent problems the site text does not show.
+- One easy next step (a short call, or a free one-page idea for their homepage).
+- Close with a short opt-out line, then sign off "Samuel" and "adefilasamuel.com".
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`,
 
   places: `Write outreach from Samuel Adefila to each local business below. He found them on Google Maps and looked at their website. "Findings" lists what's wrong, or that they have no website. "Site text" is text scraped from their site.
 
@@ -292,7 +344,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['job', 'places', 'newco', 'remote'] as DraftKind[]) {
+  for (const kind of ['job', 'places', 'newco', 'remote', 'inbound', 'visitor'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {
