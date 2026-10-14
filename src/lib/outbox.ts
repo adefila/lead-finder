@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countFirstSentSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
+import { getLeads, countFirstSentSince, countFollowUpsSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -92,15 +92,18 @@ function last24h(now = new Date()): string {
   return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
 
-// The week runs Monday to Sunday (UTC). Emails only go out on weekdays, so in practice Monday
-// to Friday; the weekly count goes back to 0 every Monday at 00:00 UTC.
+// The weekly count resets at Sunday 00:00 UTC. Emails only go out Monday to Friday, 9am to 4pm
+// in each lead's own time zone, and no country is in those hours at that moment: the last
+// sends of the week (US west coast, Friday 4pm) end around Saturday 00:00 UTC, and the first
+// (New Zealand, Monday 9am) start around Sunday 20:00 UTC. So every country's Monday to Friday
+// falls inside the same week.
 export function startOfWeek(now = new Date()): Date {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
   return d;
 }
 
-function nextMonday(now = new Date()): Date {
+function nextWeekStart(now = new Date()): Date {
   const d = startOfWeek(now);
   d.setUTCDate(d.getUTCDate() + 7);
   return d;
@@ -121,9 +124,10 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
-  const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(startOfWeek().toISOString()), getLeads(), lastSentAt()]);
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
+  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(last24h()), getLeads(), lastSentAt()]);
   return {
+    followUpsToday,
     configured: !!mailConfig(),
     sentToday,
     limit: DAILY_LIMIT,
@@ -184,12 +188,10 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // 2. Limits. Daily: new emails in a rolling 24 hours (follow-ups still go out). Weekly: once
-  // WEEKLY_LIMIT new emails have gone out this week, nothing at all is sent (follow-ups
-  // included) until the count resets on Monday.
-  const weekFull = result.sentWeek >= WEEKLY_LIMIT;
-  const weekReason = `Weekly limit of ${WEEKLY_LIMIT} reached. Sending resumes Monday ${nextMonday().toISOString().slice(0, 10)}`;
-  const capReason = weekFull ? weekReason
+  // 2. Limits count new (first) emails only: a rolling 24 hours, and the week since Sunday
+  // 00:00 UTC. Follow-ups are counted separately, never limited here, and keep going out.
+  const capReason = result.sentWeek >= WEEKLY_LIMIT
+    ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
     : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
     : null;
 
@@ -210,8 +212,6 @@ export async function runOutbox(): Promise<OutboxResult> {
     console.log(`[outbox] test email for ${next.title} (would go to ${next.contactEmail})`);
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
   }
-
-  if (weekFull) return { ...result, skipped: weekReason };
 
   // Gmail asked us to slow down recently: send nothing for an hour.
   const backoff = backoffState(leads);

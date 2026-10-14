@@ -19,7 +19,7 @@ import { EmailHuntDock, EmailHuntModal, HUNT_STEP, type EmailHunt } from '@/comp
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean };
+type OutboxStatus = { configured: boolean; sentToday: number; followUpsToday?: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean };
 
 // "Fri 2 Oct, 15:10" in your own time zone.
 function lastSentLabel(iso?: string | null): string {
@@ -272,8 +272,8 @@ export default function Home() {
   useEffect(() => {
     if (!outbox?.configured) return;
     const today = new Date().toLocaleDateString('en-CA');
-    // Weeks start on Monday (UTC), like the outbox's weekly count.
-    const week = `w${Math.floor((Date.now() / 86400000 + 3) / 7)}`;
+    // Weeks start on Sunday 00:00 UTC, like the outbox's weekly count.
+    const week = `w${Math.floor((Date.now() / 86400000 + 4) / 7)}`;
     const warnOnce = (key: string, text: string) => {
       let seen = limitWarned.current.has(key);
       try { seen ||= localStorage.getItem(`limit-warned:${key}`) === '1'; } catch { /* storage blocked */ }
@@ -289,7 +289,7 @@ export default function Home() {
       else if (left <= Math.max(2, Math.ceil(limit * 0.2))) warnOnce(`${key}:near`, `Nearly at ${period} limit: ${sent} of ${limit} new emails sent, ${left} left. After that, scheduled emails wait until ${later}.`);
     };
     check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow. Follow-ups still go out');
-    check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'Monday, when the weekly count resets. Follow-ups pause too');
+    check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'the week resets over the weekend (Sunday 00:00 UTC), ready for Monday. Follow-ups still go out');
   }, [outbox, toast]);
 
   async function logOut() {
@@ -495,7 +495,7 @@ export default function Home() {
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''} · ${outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>
