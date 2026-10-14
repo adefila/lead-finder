@@ -48,7 +48,7 @@ Score each lead 0-100 for how likely it is to turn into a paid website project. 
 
 For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
-For source "job" (a web role at an employer based in the United States, Canada, Germany or Ireland; "context" holds company, country, terms and salary): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that offers visa sponsorship, relocation support or remote work adds points. A listing that requires existing work authorisation or citizenship, or a security clearance, scores low (15-35).
+For source "job" (a remote role open to people anywhere in the world; "context" holds company, terms and salary): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A role that is clearly a contract or freelance engagement adds points.
 
 For source "places" (a local business found on Google with no website or a weak one):
 - Established business (many Google reviews, good rating) with no website or a clearly outdated/broken one scores high.
@@ -187,7 +187,7 @@ const VOICE = `Voice (strict, applies to every message):
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
 const PROMPTS: Record<DraftKind, string> = {
-  job: `Write a message from Samuel Adefila for each role below. The employers are based in the United States, Canada, Germany or Ireland. Hiring managers and founders skim, so the first line must show he read the listing.
+  job: `Write a message from Samuel Adefila for each role below. The roles are remote and open to people anywhere in the world. Hiring managers and founders skim, so the first line must show he read the listing.
 
 If Channel is APPLICATION, it goes in the job board's application form or cover letter box:
 - No subject line. Open with "Hi," (or "Hi [Company] team,")
@@ -207,7 +207,7 @@ If Channel is EMAIL, it is a direct pitch to the company, sent to the address sh
 
 For both channels:
 - Name the one thing in the listing that matches Samuel best (Framer, Webflow, landing pages, marketing sites, product design, UI/UX, product engineering) and give one concrete example of similar work
-- Do not mention where Samuel lives, his work authorisation, visa or relocation. He adds that himself.
+- You may mention he works remotely from Nigeria on GMT+1. Never mention work authorisation, visa or relocation.
 - Point to his portfolio at adefilasamuel.com
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
 

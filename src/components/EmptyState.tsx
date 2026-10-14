@@ -21,7 +21,7 @@ const COPY: Record<EmptyKind, { title: string; body: string }> = {
   inbound: { title: 'Nothing from your site yet', body: 'When someone fills in the form on adefilasamuel.com, or a company is identified visiting it, they show up here.' },
   visited: { title: 'No visits yet', body: 'When someone you emailed clicks through to adefilasamuel.com, they show up here. A good moment to follow up.' },
   remote: { title: 'No remote roles yet', body: 'Each search checks the job boards for web roles open to you. New ones show up here.' },
-  jobs: { title: 'No jobs yet', body: 'Each search checks the job boards for web roles at employers in the United States, Canada, Germany and Ireland. New ones show up here.' },
+  jobs: { title: 'No jobs yet', body: 'Each search checks the job boards for remote roles in your niche that are open to anyone, anywhere. New ones show up here.' },
 };
 
 // Shared stroke styles live in globals.css (.ill-*), so every drawing matches the dashboard.

@@ -3,7 +3,7 @@ import { isAllowed } from '@/lib/session';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
-import { fetchJobBoards, isNicheRole } from '@/lib/remote';
+import { fetchJobBoards, isNicheRole, savedJobOpenToAll } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus } from '@/lib/supabase';
@@ -22,14 +22,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boards, placesLeads, osmLeads, companyLeads] = await Promise.all([
+    const [jobs, placesLeads, osmLeads, companyLeads] = await Promise.all([
       fetchJobBoards(),
       fetchPlacesLeads(),
       fetchOsmLeads(),
       fetchCompaniesHouseLeads(),
     ]);
-    const { remote: remoteRoles, jobs: countryJobs } = boards;
-    const allJobs = [...countryJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...remoteRoles];
+    const allJobs = [...jobs, ...placesLeads, ...osmLeads, ...companyLeads];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -40,8 +39,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const knownLeads = new Set([...sentIds, ...existingLeadIds]);
     // The same business can come from Google, OpenStreetMap and Companies House: match on website and email.
     const existing = await getLeads();
-    // Jobs already saved that are outside your niche move to Skipped (you can bring them back).
-    const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new' && !isNicheRole(l.title, l.description));
+    // Jobs already saved that are outside your niche, or not open to anyone anywhere, move to
+    // Skipped (you can bring them back).
+    const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new'
+      && (!isNicheRole(l.title, l.description) || !savedJobOpenToAll(l)));
     for (const l of offNiche) await updateLeadStatus(l.id, 'skipped');
     const seenHosts = new Set(existing.map(l => hostOf(l.contactLinks?.website)).filter(Boolean) as string[]);
     const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       stats: {
-        jobs: countryJobs.length,
+        jobs: jobs.length,
         offNicheJobsSkipped: offNiche.length,
         jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
         existingJobsSearched: backfill.searched,
@@ -97,7 +98,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         localBusinesses: placesLeads.length,
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
-        remoteRoles: remoteRoles.length,
         withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
