@@ -8,10 +8,10 @@ import type { Lead } from '@/types/lead';
 
 const UA = 'Mozilla/5.0 (compatible; LeadFinder/1.0; +https://adefilasamuel.com)';
 const MAX_AGE_DAYS = 14;
-const WEB_ROLE = /\b(web|front[- ]?end|framer|webflow|wordpress|shopify|landing|ui|ux|product designer|web designer|digital designer)\b/i;
-// Samuel's niche: the listing has to be about Framer, Webflow, no-code, landing pages or marketing
-// websites. A generic React engineer or app UI designer role is not.
-const NICHE = /\b(framer|webflow|no-?code|landing[- ]pages?|marketing (site|website|pages?)s?|websites? (design|redesign|build|builds|development)|web ?design(er|ers)?)\b/i;
+const WEB_ROLE = /\b(web|front[- ]?end|framer|webflow|wordpress|shopify|landing|ui|ux|product designer|product design|product engineer|web designer|digital designer)\b/i;
+// Samuel's niche: Framer, Webflow, no-code, landing pages, marketing websites, product design,
+// UI/UX design and product engineering. A generic backend or React engineer role is not.
+const NICHE = /\b(framer|webflow|no-?code|landing[- ]pages?|marketing (site|website|pages?)s?|websites? (design|redesign|build|builds|development)|web ?design(er|ers)?|product design(er|ers)?|product engineer(s|ing)?|ui ?\/ ?ux|ux ?\/ ?ui|ui designer|ux designer|ui and ux|ux and ui|user experience|user interface)\b/i;
 const NOT_A_FIT = /\b(intern|internship|werkstudent|praktik|student|director|vp|head of|chief|principal|manager|linguist|translator|interpreter)\b|\(m\/w\/d\)/i;
 // "South Africa" alone is not us; Africa as a whole, EMEA, Nigeria or worldwide is.
 const OPEN_TO_US = /worldwide|anywhere|global|\bremote\b|emea|nigeria|(?<!south\s)\bafrica\b/i;
@@ -77,7 +77,7 @@ async function himalayas(): Promise<Role[]> {
     locationRestrictions?: string[]; timezoneRestrictions?: number[]; pubDate: number; applicationLink: string; guid: string;
     minSalary?: number | null; maxSalary?: number | null; currency?: string | null;
   };
-  const queries = ['framer', 'webflow', 'web designer', 'landing page', 'no-code', 'marketing website'];
+  const queries = ['framer', 'webflow', 'web designer', 'landing page', 'no-code', 'marketing website', 'product designer', 'ui ux designer', 'product engineer'];
   const results = await Promise.all(queries.map(q => getJson<{ jobs?: J[] }>(`https://himalayas.app/jobs/api/search?q=${encodeURIComponent(q)}&limit=50`)));
   return results.flatMap(r => r?.jobs ?? []).map(j => {
     const places = j.locationRestrictions ?? [];

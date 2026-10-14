@@ -8,6 +8,7 @@ const MODEL = 'claude-haiku-4-5-20251001';
 const SAMUEL = `
 Samuel Adefila is a Top-Rated Framer developer (Upwork, 100% Job Success Score, 50+ sites delivered).
 He specialises in: Figma-to-Framer conversions, landing pages, marketing sites, SaaS websites, portfolio sites, startup homepages, template customisation, Webflow migrations to Framer.
+He also does UI/UX and product design in Figma, and front-end product engineering.
 Typical turnaround: 14 days. Portfolio: adefilasamuel.com.
 He works with startups, SaaS companies, agencies, solo founders, and anyone who needs a polished web presence fast.
 For local businesses he also sets up simple systems that save time: online booking with reminders, quote and enquiry forms that go straight to the owner's phone, automatic review requests, and follow-up on quiet quotes. Many local businesses need one of these more than a new website.
@@ -45,9 +46,9 @@ ${SAMUEL}
 
 Score each lead 0-100 for how likely it is to turn into a paid website project. Use the full range.
 
-For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, WordPress, Shopify, landing page or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
+For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
-For source "job" (a web role at an employer based in the United States, Canada, Germany or Ireland; "context" holds company, country, terms and salary): hands-on Framer, Webflow, WordPress, Shopify, landing page, front-end or UI/UX roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that offers visa sponsorship, relocation support or remote work adds points. A listing that requires existing work authorisation or citizenship, or a security clearance, scores low (15-35).
+For source "job" (a web role at an employer based in the United States, Canada, Germany or Ireland; "context" holds company, country, terms and salary): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that offers visa sponsorship, relocation support or remote work adds points. A listing that requires existing work authorisation or citizenship, or a security clearance, scores low (15-35).
 
 For source "places" (a local business found on Google with no website or a weak one):
 - Established business (many Google reviews, good rating) with no website or a clearly outdated/broken one scores high.
@@ -205,7 +206,7 @@ If Channel is EMAIL, it is a direct pitch to the company, sent to the address sh
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 
 For both channels:
-- Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, front-end, UI design) and give one concrete example of similar work
+- Name the one thing in the listing that matches Samuel best (Framer, Webflow, landing pages, marketing sites, product design, UI/UX, product engineering) and give one concrete example of similar work
 - Do not mention where Samuel lives, his work authorisation, visa or relocation. He adds that himself.
 - Point to his portfolio at adefilasamuel.com
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
@@ -219,7 +220,7 @@ Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "F
 Rules:
 - No subject line. Open with "Hi," (or "Hi [Company] team,")
 - Under 130 words
-- Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, UI design) and give one concrete example of similar work
+- Name the one thing in the listing that matches Samuel best (Framer, Webflow, landing pages, marketing sites, product design, UI/UX, product engineering) and give one concrete example of similar work
 - Mention he works remotely from Nigeria on GMT+1, which overlaps fully with UK and European hours
 - Point to his portfolio at adefilasamuel.com
 - End with one easy next step (a short call, or a small paid test task)
