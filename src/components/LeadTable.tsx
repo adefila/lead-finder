@@ -107,6 +107,11 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                         Schedule
                       </button>
                     )}
+                    {status === 'new' && (l.source === 'job' || l.source === 'remote') && (
+                      <button className="row-btn" title="You applied on the job post. Moves it to Waiting for reply" onClick={() => onStatus(l.id, 'approved')}>
+                        Applied
+                      </button>
+                    )}
                     {status === 'new' && (
                       <button className="icon-btn quiet" title="Skip this lead" aria-label="Skip" onClick={() => onStatus(l.id, 'skipped')}>
                         <Icon name="x" />

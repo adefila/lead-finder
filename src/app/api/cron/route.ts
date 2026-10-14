@@ -4,7 +4,7 @@ import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards } from '@/lib/remote';
-import { findJobContacts } from '@/lib/jobcontacts';
+import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
@@ -76,6 +76,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       await markSent(jobsWithEmails.map(j => j.id));
     }
 
+    // 5. Jobs already in the dashboard get the same contact search, with whatever time is left.
+    const backfill = await backfillJobContacts(Math.min(60_000, 250_000 - (Date.now() - start)));
+
     const durationMs = Date.now() - start;
     console.log(`[cron] Done in ${(durationMs / 1000).toFixed(1)}s — ${jobsWithEmails.length} leads saved`);
 
@@ -84,6 +87,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       stats: {
         jobs: countryJobs.length,
         jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
+        existingJobsSearched: backfill.searched,
+        existingJobsWithEmail: backfill.emails,
+        existingJobsLeft: backfill.left,
         localBusinesses: placesLeads.length,
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,

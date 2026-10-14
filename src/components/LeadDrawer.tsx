@@ -306,7 +306,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             )}
             {status === 'new' && !email && isJob && (
               <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"
-                onClick={() => { copyBody(); markContacted(); }}>
+                onClick={() => { copyBody(); toast('Note copied. Paste it into the application, then click "I have applied".'); }}>
                 <Icon name="external" />Copy and open job post
               </LinkBtn>
             )}
@@ -328,6 +328,12 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
               </LinkBtn>
             )}
             {status === 'new' && !email && !isJob && <Btn className="btn" onClick={markContacted}>I have sent it</Btn>}
+            {status === 'new' && isJob && (
+              <Btn className="btn" title="Moves it to Waiting for reply" onClick={markContacted}>I have applied</Btn>
+            )}
+            {status === 'new' && isJob && email && (
+              <a className="btn btn-quiet" href={lead.url} target="_blank" rel="noreferrer">Open job post</a>
+            )}
             {isFollowUp && !email && <Btn className="btn" onClick={onFollowedUp}>I have followed up</Btn>}
             {status === 'queued' && <Btn className="btn" onClick={() => onStatus('new')}>Do not send</Btn>}
             {status === 'approved' && !isFollowUp && email && (
