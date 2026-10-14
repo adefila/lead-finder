@@ -1,10 +1,7 @@
 import type { Lead } from '@/types/lead';
 
-// Web roles from free job boards, split two ways:
-// - Remote roles: someone based in Nigeria can do them (open worldwide, or to EMEA / Europe-and-Africa
-//   time zones). Markets of interest (UK, Germany, Australia) are noted on the lead.
-// - Jobs: roles at employers based in the United States, Canada, Germany or Ireland, whether
-//   on-site, hybrid or remote within that country.
+// Remote roles in your niche from free job boards, kept only when they are open to anyone,
+// anywhere: no country or region limit, and no time-zone limit that leaves out Nigeria.
 
 const UA = 'Mozilla/5.0 (compatible; LeadFinder/1.0; +https://adefilasamuel.com)';
 const MAX_AGE_DAYS = 14;
@@ -13,27 +10,9 @@ const WEB_ROLE = /\b(web|front[- ]?end|framer|webflow|wordpress|shopify|landing|
 // UI/UX design and product engineering. A generic backend or React engineer role is not.
 const NICHE = /\b(framer|webflow|no-?code|landing[- ]pages?|marketing (site|website|pages?)s?|websites? (design|redesign|build|builds|development)|web ?design(er|ers)?|product design(er|ers)?|product engineer(s|ing)?|ui ?\/ ?ux|ux ?\/ ?ui|ui designer|ux designer|ui and ux|ux and ui|user experience|user interface)\b/i;
 const NOT_A_FIT = /\b(intern|internship|werkstudent|praktik|student|director|vp|head of|chief|principal|manager|linguist|translator|interpreter)\b|\(m\/w\/d\)/i;
-// "South Africa" alone is not us; Africa as a whole, EMEA, Nigeria or worldwide is.
-const OPEN_TO_US = /worldwide|anywhere|global|\bremote\b|emea|nigeria|(?<!south\s)\bafrica\b/i;
-const MARKETS = /united kingdom|\buk\b|england|germany|deutschland|australia/i;
+// A location that means no limit. "Remote (USA)" or "EMEA" is a limit.
+const WORLDWIDE = /^\s*(worldwide|anywhere|global|everywhere|anywhere in the world|remote,? worldwide|all countries)\s*$/i;
 const NIGERIA_UTC = 1;
-
-// Countries for the Jobs list. US state codes ("Austin, TX") are matched case-sensitively.
-// Indiana's "IN" is left out: boards also use it for India ("Chennai, IN").
-const US_STATE = /,\s*(A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADL]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])\b/;
-const COUNTRIES: [string, RegExp][] = [
-  ['United States', /\b(united states|usa|u\.s\.a?\.?|us only|us-based|north america|americas)\b/i],
-  ['Canada', /\b(canada|north america|americas|toronto|vancouver|montr[eé]al|ottawa|calgary|edmonton|waterloo)\b/i],
-  ['Germany', /\b(germany|deutschland|berlin|m[uü]nchen|munich|hamburg|frankfurt|k[oö]ln|cologne|stuttgart|d[uü]sseldorf|leipzig)\b/i],
-  ['Ireland', /(?<!northern\s)\bireland\b|\b(dublin|cork|galway|limerick)\b/i],
-];
-
-function countriesOf(where: string): string[] {
-  if (/\bindia\b/i.test(where)) return [];
-  const found = COUNTRIES.filter(([, re]) => re.test(where)).map(([name]) => name);
-  if (US_STATE.test(where) && !found.includes('United States')) found.unshift('United States');
-  return found;
-}
 
 interface Role {
   key: string;
@@ -113,9 +92,7 @@ async function remotive(): Promise<Role[]> {
 async function jobicy(): Promise<Role[]> {
   type J = { id: number; url: string; jobTitle: string; companyName: string; jobGeo?: string; jobType?: string[]; pubDate: string; jobExcerpt?: string; jobDescription?: string; salaryMin?: number; salaryMax?: number; salaryCurrency?: string };
   const industries = ['design-multimedia', 'dev'];
-  // The open feed, plus roles limited to each country we want jobs in.
-  const geos = ['', 'usa', 'canada', 'germany', 'ireland'];
-  const urls = geos.flatMap(g => industries.map(i => `https://jobicy.com/api/v2/remote-jobs?count=50&industry=${i}${g ? `&geo=${g}` : ''}`));
+  const urls = industries.map(i => `https://jobicy.com/api/v2/remote-jobs?count=50&industry=${i}`);
   const results = await Promise.all(urls.map(u => getJson<{ jobs?: J[] }>(u)));
   return results.flatMap(r => r?.jobs ?? []).map(j => ({
     key: `jobicy-${j.id}`, board: 'Jobicy', title: j.jobTitle, company: j.companyName, url: j.url,
@@ -127,7 +104,8 @@ async function jobicy(): Promise<Role[]> {
   }));
 }
 
-// German board. Remote roles go to the remote list; office and hybrid roles are German jobs.
+// German board: "remote" there usually means remote within Germany, so it only counts when
+// the listing says it is open worldwide.
 async function arbeitnow(): Promise<Role[]> {
   type J = { slug: string; title: string; company_name: string; remote: boolean; url: string; location?: string; job_types?: string[]; created_at: number; description?: string };
   const r = await getJson<{ data?: J[] }>('https://www.arbeitnow.com/api/job-board-api');
@@ -136,38 +114,10 @@ async function arbeitnow(): Promise<Role[]> {
     return {
       key: `arbeitnow-${j.slug}`, board: 'Arbeitnow', title: j.title, company: j.company_name, url: j.url,
       where: j.remote ? `Remote (${j.location || 'Germany'})` : city,
-      places: j.remote ? [] : [city],
+      places: j.remote && /\b(worldwide|anywhere in the world|work from anywhere)\b/i.test(j.description ?? '') ? [] : [city],
       type: (j.job_types ?? []).join(', '),
       posted: new Date(j.created_at * 1000), text: plain(j.description),
     };
-  });
-}
-
-// The Muse: office, hybrid and remote roles at named employers, mostly in the US.
-async function theMuse(): Promise<Role[]> {
-  type J = {
-    id: number; name: string; contents?: string; publication_date: string; locations?: { name: string }[];
-    levels?: { name: string }[]; refs?: { landing_page?: string }; company?: { name?: string };
-  };
-  const categories = ['Software Engineering', 'Design and UX'];
-  // Cities outside the US, so those countries are not crowded out by US listings.
-  const cities = ['Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Berlin, Germany', 'Munich, Germany', 'Hamburg, Germany', 'Dublin, Ireland'];
-  const cityQuery = cities.map(c => `&location=${encodeURIComponent(c)}`).join('');
-  const urls = categories.flatMap(c => {
-    const base = `https://www.themuse.com/api/public/jobs?descending=true&category=${encodeURIComponent(c)}`;
-    return [0, 1, 2].map(p => `${base}&page=${p}`).concat(`${base}${cityQuery}&page=0`);
-  });
-  const results = await Promise.all(urls.map(u => getJson<{ results?: J[] }>(u)));
-  return results.flatMap(r => r?.results ?? []).flatMap(j => {
-    // "Flexible / Remote" alone says nothing about where the employer hires.
-    const places = (j.locations ?? []).map(l => l.name).filter(n => !/flexible|remote/i.test(n));
-    if (!places.length || !j.refs?.landing_page) return [];
-    return [{
-      key: `muse-${j.id}`, board: 'The Muse', title: j.name, company: j.company?.name ?? '', url: j.refs.landing_page,
-      where: places.join(' / '), places,
-      type: (j.levels ?? []).map(l => l.name).join(', '),
-      posted: new Date(j.publication_date), text: plain(j.contents),
-    }];
   });
 }
 
@@ -175,12 +125,18 @@ export function isNicheRole(title: string, text: string): boolean {
   return WEB_ROLE.test(title) && !NOT_A_FIT.test(title) && NICHE.test(`${title} ${text}`);
 }
 
-const openToYou = (r: Role) =>
-  (!r.places.length || r.places.some(p => OPEN_TO_US.test(p)))
+const openToAll = (r: Role) =>
+  (!r.places.length || r.places.every(p => WORLDWIDE.test(p)))
   && (!r.zones?.length || r.zones.some(z => Math.abs(z - NIGERIA_UTC) <= 1));
 
-export async function fetchJobBoards(): Promise<{ remote: Lead[]; jobs: Lead[] }> {
-  const all = (await Promise.all([himalayas(), remotive(), jobicy(), arbeitnow(), theMuse()])).flat();
+// For jobs already saved: their description starts "Open to: <where>." (older ones "Based in: ...").
+export function savedJobOpenToAll(l: Pick<Lead, 'description'>): boolean {
+  const where = l.description.match(/^Open to: (.*?)\.\s/)?.[1];
+  return !!where && WORLDWIDE.test(where.replace(/^Remote \((.*)\)$/, '$1'));
+}
+
+export async function fetchJobBoards(): Promise<Lead[]> {
+  const all = (await Promise.all([himalayas(), remotive(), jobicy(), arbeitnow()])).flat();
   const cutoff = Date.now() - MAX_AGE_DAYS * 86400000;
   const seen = new Set<string>();
   const roles = all.filter(r => {
@@ -189,48 +145,19 @@ export async function fetchJobBoards(): Promise<{ remote: Lead[]; jobs: Lead[] }
     seen.add(dupe);
     return isNicheRole(r.title, r.text) && r.posted.getTime() >= cutoff && looksEnglish(r.text);
   });
+  const open = roles.filter(openToAll);
 
-  const remote: Lead[] = [];
-  const jobs: Lead[] = [];
-  const perCountry = new Map<string, number>();
-  for (const r of roles) {
-    if (openToYou(r)) {
-      const market = `${r.where} ${r.text.slice(0, 400)}`.match(MARKETS)?.[0];
-      remote.push({
-        id: `remote-${r.key}`.slice(0, 180),
-        title: r.title,
-        company: [r.company, r.type, r.salary].filter(Boolean).join(' · '),
-        description: [
-          `Open to: ${r.where}.`,
-          market ? `Market: ${market.replace(/^uk$/i, 'UK')}.` : '',
-          `Posted on ${r.board}.`,
-          r.text.slice(0, 1100),
-        ].filter(Boolean).join(' '),
-        url: r.url,
-        source: 'remote',
-        postedAt: r.posted.toISOString(),
-      });
-      continue;
-    }
-    const countries = countriesOf(r.places.join(' | '));
-    if (!countries.length) continue;
-    for (const c of countries) perCountry.set(c, (perCountry.get(c) ?? 0) + 1);
-    jobs.push({
-      id: `job-${r.key}`.slice(0, 180),
-      title: r.title,
-      company: [r.company, countries.join(', '), r.type, r.salary].filter(Boolean).join(' · '),
-      description: [
-        `Based in: ${countries.join(', ')} (${r.where}).`,
-        `Posted on ${r.board}.`,
-        r.text.slice(0, 1100),
-      ].join(' '),
-      url: r.url,
-      source: 'job',
-      postedAt: r.posted.toISOString(),
-    });
-  }
+  const jobs: Lead[] = open.map(r => ({
+    // Same id as when these were "remote" leads, so a role saved before is not added twice.
+    id: `remote-${r.key}`.slice(0, 180),
+    title: r.title,
+    company: [r.company, r.type, r.salary].filter(Boolean).join(' · '),
+    description: [`Open to: Anywhere.`, `Posted on ${r.board}.`, r.text.slice(0, 1100)].join(' '),
+    url: r.url,
+    source: 'job',
+    postedAt: r.posted.toISOString(),
+  }));
 
-  const byCountry = COUNTRIES.map(([name]) => `${name} ${perCountry.get(name) ?? 0}`).join(', ');
-  console.log(`[jobs] ${all.length} listings: ${remote.length} remote roles open to you, ${jobs.length} jobs (${byCountry})`);
-  return { remote, jobs };
+  console.log(`[jobs] ${all.length} listings, ${roles.length} in your niche, ${jobs.length} open to anyone anywhere`);
+  return jobs;
 }
