@@ -46,7 +46,7 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
   // Not pipeline stages: shortcuts to open leads you have not finished with.
   { id: 'inbound', label: 'From your site', hint: 'People who filled in the form on adefilasamuel.com, and companies identified visiting it. Reply to form enquiries first.' },
-  { id: 'jobs', label: 'Jobs', hint: 'Remote roles in your niche, open to anyone anywhere, that you have not applied for yet. Click Applied when done and it moves to Waiting for reply.' },
+  { id: 'jobs', label: 'Jobs', hint: 'Jobs in your niche you have not applied for yet: full-time remote roles open to you, and on-site roles abroad that offer visa sponsorship or relocation. Click Applied when done and it moves to Waiting for reply.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
@@ -60,6 +60,12 @@ export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 
 // Job posts (jobs in the US, Canada, Germany and Ireland, and remote roles): you apply on the post rather than email.
 export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'job' || l.source === 'remote';
+
+// "Relocation · Ireland" or "Remote", for the tag on a job row.
+export function jobTag(l: Pick<Lead, 'description'>): string {
+  const market = l.description.match(/^Relocation: (.*?) \(/)?.[1];
+  return market ? `Relocation · ${market}` : 'Remote';
+}
 
 // A business lead you would email but have no address for yet.
 export const needsEmail = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l) && !l.contactEmail && !l.optedOut;
