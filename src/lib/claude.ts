@@ -21,11 +21,34 @@ function getClient() {
 
 // ─── Job lead scoring ────────────────────────────────────────────────────────
 
+// Leads below this score are not saved, and saved ones still in To contact move to Skipped.
+export const MIN_FIT = Number(process.env.MIN_FIT_SCORE ?? 70);
+const SCORE_BATCH = 40;
+
+// Scores every lead 0-100. Done in batches so a long list never cuts the answer short. A lead
+// whose batch fails comes back without a score: it is not saved this time and is tried again
+// on the next search.
 export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
   if (!jobs.length) return [];
-  console.log(`[claude] Scoring ${jobs.length} jobs...`);
+  console.log(`[claude] Scoring ${jobs.length} leads in batches of ${SCORE_BATCH}...`);
+  const batches: Lead[][] = [];
+  for (let i = 0; i < jobs.length; i += SCORE_BATCH) batches.push(jobs.slice(i, i + SCORE_BATCH));
+  const scores = new Map<string, number>();
+  for (let i = 0; i < batches.length; i += 3) {
+    const results = await Promise.all(batches.slice(i, i + 3).map(b => scoreBatch(b).catch(e => {
+      console.error('[claude] scoring batch failed:', (e as Error).message);
+      return new Map<string, number>();
+    })));
+    results.forEach(m => m.forEach((v, k) => scores.set(k, v)));
+  }
+  const unscored = jobs.filter(j => !scores.has(j.id)).length;
+  if (unscored) console.warn(`[claude] ${unscored} leads got no score; they will be tried again next search`);
+  return jobs
+    .map(j => ({ ...j, score: scores.get(j.id) }))
+    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+}
 
-  const client = getClient();
+async function scoreBatch(jobs: Lead[]): Promise<Map<string, number>> {
   const input = jobs.map(j => ({
     id: j.id,
     source: j.source,
@@ -36,15 +59,21 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
     hasPhone: !!j.contactPhone,
   }));
 
-  const msg = await client.messages.create({
+  const msg = await getClient().messages.create({
     model: MODEL,
     max_tokens: 4096,
     messages: [{
       role: 'user',
-      content: `You are ranking website leads for this freelancer:
+      content: `You are ranking leads for this freelancer:
 ${SAMUEL}
 
-Score each lead 0-100 for how likely it is to turn into a paid website project. Use the full range.
+Score each lead 0-100 for how good a fit it is for Samuel: how likely it is to turn into paid work he is well suited to and would win.
+
+Be strict. Samuel only wants his best-fit leads, and only leads scoring ${MIN_FIT} or more are kept.
+- ${MIN_FIT}-100: clearly a strong fit. You could name the specific reason in one sentence (the exact niche skill the role asks for, or the clear website or system problem this business has and can afford to fix).
+- 50-${MIN_FIT - 1}: plausible but generic, unclear, or missing something important. These are dropped.
+- Below 50: a poor fit, a long shot, or not really his kind of work.
+Most leads in a batch should score below ${MIN_FIT}. When unsure, score lower.
 
 For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
@@ -67,25 +96,11 @@ ${JSON.stringify(input)}`,
     }],
   });
 
-  let scored: { id: string; score: number }[] = [];
-  try {
-    const c = msg.content[0];
-    if (c.type === 'text') {
-      const match = c.text.match(/\[[\s\S]*\]/);
-      if (match) scored = JSON.parse(match[0]);
-    }
-  } catch {
-    // Parsing failed — pass everything at score 50 so the human can review
-    return jobs.map(j => ({ ...j, score: 50 })).slice(0, 50);
-  }
-
-  // If Claude returned no scores, same fallback
-  if (!scored.length) return jobs.map(j => ({ ...j, score: 50 })).slice(0, 50);
-
-  const map = new Map(scored.map(s => [s.id, s.score]));
-  return jobs
-    .map(j => ({ ...j, score: map.get(j.id) ?? 50 }))
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const c = msg.content[0];
+  const match = c?.type === 'text' ? c.text.match(/\[[\s\S]*\]/) : null;
+  if (!match) throw new Error('no JSON in the answer');
+  const scored = JSON.parse(match[0]) as { id: string; score: number }[];
+  return new Map(scored.filter(s => typeof s.score === 'number').map(s => [s.id, Math.max(0, Math.min(100, Math.round(s.score)))]));
 }
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
