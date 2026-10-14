@@ -22,7 +22,7 @@ function getClient() {
 // ─── Job lead scoring ────────────────────────────────────────────────────────
 
 // Leads below this score are not saved, and saved ones still in To contact move to Skipped.
-export const MIN_FIT = Number(process.env.MIN_FIT_SCORE ?? 70);
+export const MIN_FIT = Number(process.env.MIN_FIT_SCORE ?? 65);
 const SCORE_BATCH = 40;
 
 // Scores every lead 0-100. Done in batches so a long list never cuts the answer short. A lead
