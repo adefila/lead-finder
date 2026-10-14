@@ -1,7 +1,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/types/lead';
-import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, shortDate, statusOf, type SortKey } from '@/lib/leadview';
+import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, shortDate, statusOf, type SortKey, jobTag } from '@/lib/leadview';
 import { Checkbox, Icon } from '@/components/ui';
 import { EmptyState, type EmptyKind } from '@/components/EmptyState';
 
@@ -84,7 +84,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                 <td className="col-lead">
                   <div className="cell-title" title={l.title}>{displayName(l)}</div>
                   <div className="cell-sub">
-                    {(l.source === 'job' || l.source === 'remote') && <span className="remote-tag" title="Remote role, open to anyone anywhere">Remote</span>}
+                    {(l.source === 'job' || l.source === 'remote') && <span className="remote-tag" title={jobTag(l) === 'Remote' ? 'Remote role, open to you' : 'On-site role abroad with visa sponsorship or relocation support'}>{jobTag(l)}</span>}
                     {l.contactLinks?.siteVisitedAt && l.source !== 'visitor' && <span className="opened-tag" title={`They visited adefilasamuel.com${(l.contactLinks.siteVisits ?? 0) > 1 ? ` ${l.contactLinks.siteVisits} times` : ''}`}>Visited site</span>}
                     {l.noteOpenedAt ? <span className="opened-tag" title="They opened your one-page note">Opened note</span>
                       : isActive(l) && <span className="active-tag" title="Still open: checked when we found them">Active</span>}

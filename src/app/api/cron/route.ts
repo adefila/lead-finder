@@ -3,7 +3,7 @@ import { isAllowed } from '@/lib/session';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
-import { fetchJobBoards, isNicheRole, savedJobOpenToAll } from '@/lib/remote';
+import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus } from '@/lib/supabase';
@@ -39,10 +39,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const knownLeads = new Set([...sentIds, ...existingLeadIds]);
     // The same business can come from Google, OpenStreetMap and Companies House: match on website and email.
     const existing = await getLeads();
-    // Jobs already saved that are outside your niche, or not open to anyone anywhere, move to
-    // Skipped (you can bring them back).
+    // Jobs already saved that are outside your niche, not full-time, remote but not open to you,
+    // or abroad without relocation support move to Skipped (you can bring them back).
     const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new'
-      && (!isNicheRole(l.title, l.description) || !savedJobOpenToAll(l)));
+      && (!isNicheRole(l.title, l.description) || !savedJobStillWanted(l)));
     for (const l of offNiche) await updateLeadStatus(l.id, 'skipped');
     const seenHosts = new Set(existing.map(l => hostOf(l.contactLinks?.website)).filter(Boolean) as string[]);
     const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
