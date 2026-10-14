@@ -92,8 +92,18 @@ function last24h(now = new Date()): string {
   return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
 
-function last7d(now = new Date()): string {
-  return new Date(now.getTime() - 7 * 24 * 3600_000).toISOString();
+// The week runs Monday to Sunday (UTC). Emails only go out on weekdays, so in practice Monday
+// to Friday; the weekly count goes back to 0 every Monday at 00:00 UTC.
+export function startOfWeek(now = new Date()): Date {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d;
+}
+
+function nextMonday(now = new Date()): Date {
+  const d = startOfWeek(now);
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d;
 }
 
 export interface OutboxResult {
@@ -112,7 +122,7 @@ export interface OutboxResult {
 }
 
 export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
-  const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(last7d()), getLeads(), lastSentAt()]);
+  const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(startOfWeek().toISOString()), getLeads(), lastSentAt()]);
   return {
     configured: !!mailConfig(),
     sentToday,
@@ -135,7 +145,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     configured: !!cfg,
     sentToday: await countFirstSentSince(last24h()),
     limit: DAILY_LIMIT,
-    sentWeek: await countFirstSentSince(last7d()),
+    sentWeek: await countFirstSentSince(startOfWeek().toISOString()),
     weekLimit: WEEKLY_LIMIT,
     queued: queued.length,
     replies: 0,
@@ -174,10 +184,13 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // 2. Limits on first emails: rolling 24 hours and rolling 7 days, so neither can be doubled
-  // around a reset. Follow-ups are not limited here.
-  const capReason = result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
-    : result.sentWeek >= WEEKLY_LIMIT ? `Limit of ${WEEKLY_LIMIT} new emails in 7 days reached`
+  // 2. Limits. Daily: new emails in a rolling 24 hours (follow-ups still go out). Weekly: once
+  // WEEKLY_LIMIT new emails have gone out this week, nothing at all is sent (follow-ups
+  // included) until the count resets on Monday.
+  const weekFull = result.sentWeek >= WEEKLY_LIMIT;
+  const weekReason = `Weekly limit of ${WEEKLY_LIMIT} reached. Sending resumes Monday ${nextMonday().toISOString().slice(0, 10)}`;
+  const capReason = weekFull ? weekReason
+    : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
     : null;
 
   if (TEST_MODE) {
@@ -197,6 +210,8 @@ export async function runOutbox(): Promise<OutboxResult> {
     console.log(`[outbox] test email for ${next.title} (would go to ${next.contactEmail})`);
     return { ...result, sent: { id: next.id, title: next.title, kind: 'test' } };
   }
+
+  if (weekFull) return { ...result, skipped: weekReason };
 
   // Gmail asked us to slow down recently: send nothing for an hour.
   const backoff = backoffState(leads);

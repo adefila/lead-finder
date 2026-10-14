@@ -272,7 +272,8 @@ export default function Home() {
   useEffect(() => {
     if (!outbox?.configured) return;
     const today = new Date().toLocaleDateString('en-CA');
-    const week = `${new Date().getFullYear()}-w${Math.floor((Date.now() / 86400000 + 4) / 7)}`;
+    // Weeks start on Monday (UTC), like the outbox's weekly count.
+    const week = `w${Math.floor((Date.now() / 86400000 + 3) / 7)}`;
     const warnOnce = (key: string, text: string) => {
       let seen = limitWarned.current.has(key);
       try { seen ||= localStorage.getItem(`limit-warned:${key}`) === '1'; } catch { /* storage blocked */ }
@@ -284,11 +285,11 @@ export default function Home() {
     const check = (sent: number, limit: number, period: string, key: string, later: string) => {
       if (!limit) return;
       const left = limit - sent;
-      if (left <= 0) warnOnce(`${key}:full`, `You have reached ${period} limit: ${sent} of ${limit} new emails sent. Scheduled emails wait until ${later}. Follow-ups still go out.`);
+      if (left <= 0) warnOnce(`${key}:full`, `You have reached ${period} limit: ${sent} of ${limit} new emails sent. Scheduled emails wait until ${later}.`);
       else if (left <= Math.max(2, Math.ceil(limit * 0.2))) warnOnce(`${key}:near`, `Nearly at ${period} limit: ${sent} of ${limit} new emails sent, ${left} left. After that, scheduled emails wait until ${later}.`);
     };
-    check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow');
-    check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'the count drops in the coming days');
+    check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow. Follow-ups still go out');
+    check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'Monday, when the weekly count resets. Follow-ups pause too');
   }, [outbox, toast]);
 
   async function logOut() {
