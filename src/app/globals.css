@@ -662,6 +662,7 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .dsec-sub { font-size: 12px; font-weight: 600; color: var(--fg-3); margin-top: 4px; }
 
 /* "Opened your note": the warmest signal, shown in green */
+.remote-tag { display: inline-flex; align-items: center; padding: 0 6px; border-radius: 4px; background: #f2f0ff; color: #5b3fd6; font-size: 11px; font-weight: 600; line-height: 18px; margin-right: 6px; }
 .opened-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--green-ink); font-weight: 600; }
 .opened-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-tint); }
 .opened-tag + .cell-flag::before, .opened-tag + .ellipsis::before { content: '·'; color: #c9c9c9; margin-right: 6px; }

@@ -46,7 +46,7 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
   // Not pipeline stages: shortcuts to open leads you have not finished with.
   { id: 'inbound', label: 'From your site', hint: 'People who filled in the form on adefilasamuel.com, and companies identified visiting it. Reply to form enquiries first.' },
-  { id: 'jobs', label: 'Jobs', hint: 'Remote roles in your niche that are open to anyone, anywhere. Apply on the job post, or email the pitch when we found the hiring inbox or founder.' },
+  { id: 'jobs', label: 'Jobs', hint: 'Remote roles in your niche, open to anyone anywhere, that you have not applied for yet. Click Applied when done and it moves to Waiting for reply.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
@@ -78,7 +78,8 @@ export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'inbound') return (l.source === 'website' || l.source === 'visitor') && !['won', 'lost', 'skipped'].includes(s);
-  if (view === 'jobs') return isJobLead(l) && !['won', 'lost', 'skipped'].includes(s);
+  // Only jobs you still need to apply for. Once applied (or the pitch is scheduled) they move on.
+  if (view === 'jobs') return isJobLead(l) && s === 'new';
   if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
   if (view === 'approved' && sub === 'visited') return s === 'approved' && !!l.contactLinks?.siteVisitedAt;
