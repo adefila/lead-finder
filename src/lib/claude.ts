@@ -237,10 +237,11 @@ Rules:
 - Line 1 is "Subject: Re: your enquiry" or a short subject naming their project (under 7 words). Blank line, then the body.
 - Greet them by first name if you have it ("Hi Sarah,"), else "Hi there,".
 - Thank them in a few words, then show you read what they wrote: restate their goal in one sentence, in your own words.
-- If what they need is clear, say how Samuel would approach it in one or two sentences and give a rough timeline only if their message gives enough to judge. Never quote a price.
-- If key details are missing (what the site is for, pages, deadline, budget), ask at most two short questions.
+- Whatever service they asked for (Framer, Webflow, Shopify, WordPress, a redesign, an app, branding, SEO or anything else), treat it as work Samuel is happy to take on. Never decline, never say it is outside his focus or not his specialty, never steer them to a different platform or service, and never suggest someone else. The goal of this reply is to learn more about their project.
+- Show genuine interest, then ask two or three short questions to understand the project better. Pick the ones their message has not answered: what the business does and who it is for, what they want the site or product to achieve, rough scope (pages or features), any designs or content they already have, their timeline, and their budget range.
+- Only if their message already makes the scope clear, add one sentence on how Samuel would approach it. Never quote a price or a timeline in this first reply.
 - Offer a short call as the next step and ask which day suits them.
-- Under 130 words. Sign off "Samuel" and on the next line "adefilasamuel.com".
+- Under 150 words. Sign off "Samuel" and on the next line "adefilasamuel.com".
 - No opt-out line: they wrote first.
 - Never state anything they did not say.
 
