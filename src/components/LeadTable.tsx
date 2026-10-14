@@ -84,6 +84,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                 <td className="col-lead">
                   <div className="cell-title" title={l.title}>{displayName(l)}</div>
                   <div className="cell-sub">
+                    {l.contactLinks?.siteVisitedAt && l.source !== 'visitor' && <span className="opened-tag" title={`They visited adefilasamuel.com${(l.contactLinks.siteVisits ?? 0) > 1 ? ` ${l.contactLinks.siteVisits} times` : ''}`}>Visited site</span>}
                     {l.noteOpenedAt ? <span className="opened-tag" title="They opened your one-page note">Opened note</span>
                       : isActive(l) && <span className="active-tag" title="Still open: checked when we found them">Active</span>}
                     {headline && <span className="cell-flag">{headline}</span>}

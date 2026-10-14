@@ -9,6 +9,9 @@ import type { Lead } from '@/types/lead';
 const UA = 'Mozilla/5.0 (compatible; LeadFinder/1.0; +https://adefilasamuel.com)';
 const MAX_AGE_DAYS = 14;
 const WEB_ROLE = /\b(web|front[- ]?end|framer|webflow|wordpress|shopify|landing|ui|ux|product designer|web designer|digital designer)\b/i;
+// Samuel's niche: the listing has to be about Framer, Webflow, no-code, landing pages or marketing
+// websites. A generic React engineer or app UI designer role is not.
+const NICHE = /\b(framer|webflow|no-?code|landing[- ]pages?|marketing (site|website|pages?)s?|websites? (design|redesign|build|builds|development)|web ?design(er|ers)?)\b/i;
 const NOT_A_FIT = /\b(intern|internship|werkstudent|praktik|student|director|vp|head of|chief|principal|manager|linguist|translator|interpreter)\b|\(m\/w\/d\)/i;
 // "South Africa" alone is not us; Africa as a whole, EMEA, Nigeria or worldwide is.
 const OPEN_TO_US = /worldwide|anywhere|global|\bremote\b|emea|nigeria|(?<!south\s)\bafrica\b/i;
@@ -74,7 +77,7 @@ async function himalayas(): Promise<Role[]> {
     locationRestrictions?: string[]; timezoneRestrictions?: number[]; pubDate: number; applicationLink: string; guid: string;
     minSalary?: number | null; maxSalary?: number | null; currency?: string | null;
   };
-  const queries = ['webflow', 'framer', 'web designer', 'frontend developer', 'shopify developer', 'wordpress developer', 'ui designer'];
+  const queries = ['framer', 'webflow', 'web designer', 'landing page', 'no-code', 'marketing website'];
   const results = await Promise.all(queries.map(q => getJson<{ jobs?: J[] }>(`https://himalayas.app/jobs/api/search?q=${encodeURIComponent(q)}&limit=50`)));
   return results.flatMap(r => r?.jobs ?? []).map(j => {
     const places = j.locationRestrictions ?? [];
@@ -168,6 +171,10 @@ async function theMuse(): Promise<Role[]> {
   });
 }
 
+export function isNicheRole(title: string, text: string): boolean {
+  return WEB_ROLE.test(title) && !NOT_A_FIT.test(title) && NICHE.test(`${title} ${text}`);
+}
+
 const openToYou = (r: Role) =>
   (!r.places.length || r.places.some(p => OPEN_TO_US.test(p)))
   && (!r.zones?.length || r.zones.some(z => Math.abs(z - NIGERIA_UTC) <= 1));
@@ -180,7 +187,7 @@ export async function fetchJobBoards(): Promise<{ remote: Lead[]; jobs: Lead[] }
     const dupe = `${r.title}|${r.company}`.toLowerCase();
     if (seen.has(dupe)) return false;
     seen.add(dupe);
-    return WEB_ROLE.test(r.title) && !NOT_A_FIT.test(r.title) && r.posted.getTime() >= cutoff && looksEnglish(r.text);
+    return isNicheRole(r.title, r.text) && r.posted.getTime() >= cutoff && looksEnglish(r.text);
   });
 
   const remote: Lead[] = [];

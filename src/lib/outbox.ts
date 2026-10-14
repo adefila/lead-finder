@@ -4,7 +4,7 @@ import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck } from '@/lib/leadview';
-import { noteLink } from '@/lib/tracking';
+import { noteLink, siteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
@@ -235,7 +235,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       const text = await draftFollowUp(lead);
       if (!text) throw new Error('Could not draft the follow-up');
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text), html: toHtml(withSignature(text)), inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text), html: toHtml(withSignature(text), siteLink(lead)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -255,7 +255,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       }
       const finalSubject = subject || `${lead.title} website`;
       const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead)) : body);
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text) });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       const now = new Date().toISOString();
       const sentPatch = {
         status: 'approved',

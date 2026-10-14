@@ -3,7 +3,8 @@ import { SESSION_COOKIE, hasSession, hasTimerSecret } from '@/lib/session';
 
 // Reachable without logging in: the login itself, the digest's email logo, the signed
 // links inside digest emails, and the signed website-check pages sent to leads.
-const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go', '/check', '/n'];
+// Also public: the tracked portfolio link (/v), and the form, visit beacon and script your website uses.
+const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go', '/check', '/n', '/v', '/api/capture', '/api/visit', '/t.js'];
 // Called by timers with "Authorization: Bearer CRON_SECRET". Only the exact secret gets through.
 const TIMER_ROUTES = ['/api/cron', '/api/outbox', '/api/find-emails'];
 
@@ -12,7 +13,7 @@ export async function middleware(req: NextRequest) {
 
   // The notes address is for prospects: it only serves their one-page notes. Anything
   // else there (including the dashboard login) goes to the portfolio instead.
-  if (req.headers.get('host')?.startsWith('notes.') && !/^\/(n|check)\//.test(pathname) && !pathname.startsWith('/_next/')) {
+  if (req.headers.get('host')?.startsWith('notes.') && !/^\/(n|check|v)\//.test(pathname) && !pathname.startsWith('/_next/')) {
     return NextResponse.redirect('https://adefilasamuel.com');
   }
   const password = process.env.DASHBOARD_PASSWORD?.trim();

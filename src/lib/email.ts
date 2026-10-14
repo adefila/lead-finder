@@ -188,3 +188,21 @@ export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<v
   console.log('[email] Email sent, id:', data?.id);
 }
 
+
+// Sent the moment someone fills in your website form, or a lead you emailed first visits your site.
+export async function sendInboundAlert(lead: Lead, kind: 'enquiry' | 'visited'): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const who = lead.contactName && lead.contactName !== lead.title ? `${lead.contactName} (${lead.title})` : lead.title;
+  const subject = kind === 'enquiry'
+    ? `New enquiry from your website: ${who}`
+    : `${who} just visited your website`;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({
+    from: 'Lead Finder <onboarding@resend.dev>',
+    to: 'adefilasamuel929@gmail.com',
+    subject,
+    html: buildEmailHtml([lead], 0),
+  });
+  if (error) throw new Error(`Alert send failed: ${JSON.stringify(error)}`);
+  console.log(`[email] ${kind} alert sent for ${lead.title}`);
+}

@@ -594,6 +594,7 @@ export default function Home() {
               <p className="view-hint">
                 {mode === 'history' ? 'Leads grouped by the day they were found.'
                   : sub === 'followup' ? 'No reply yet and a follow-up is due. Send it, or close the lead.'
+                  : sub === 'visited' ? 'They clicked through to adefilasamuel.com from your email but have not replied. A good moment for a short, personal follow-up.'
                   : sub === 'opened' ? 'They opened your one-page note but have not replied. Your warmest leads: a personal follow-up works well here.'
                   : sub === 'won' ? 'Projects you closed.'
                   : sub === 'lost' ? 'Leads that said no, or never replied.'

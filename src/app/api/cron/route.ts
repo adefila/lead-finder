@@ -3,10 +3,10 @@ import { isAllowed } from '@/lib/session';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
-import { fetchJobBoards } from '@/lib/remote';
+import { fetchJobBoards, isNicheRole } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
-import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
+import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
 import { sendLeadsEmail } from '@/lib/email';
 import { isJobLead } from '@/lib/leadview';
@@ -40,6 +40,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const knownLeads = new Set([...sentIds, ...existingLeadIds]);
     // The same business can come from Google, OpenStreetMap and Companies House: match on website and email.
     const existing = await getLeads();
+    // Jobs already saved that are outside your niche move to Skipped (you can bring them back).
+    const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new' && !isNicheRole(l.title, l.description));
+    for (const l of offNiche) await updateLeadStatus(l.id, 'skipped');
     const seenHosts = new Set(existing.map(l => hostOf(l.contactLinks?.website)).filter(Boolean) as string[]);
     const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
     const freshJobs = allJobs.filter(j => {
@@ -86,6 +89,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       success: true,
       stats: {
         jobs: countryJobs.length,
+        offNicheJobsSkipped: offNiche.length,
         jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
         existingJobsSearched: backfill.searched,
         existingJobsWithEmail: backfill.emails,

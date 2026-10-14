@@ -5,6 +5,8 @@ import { followUpState, needsAttention, MAX_FOLLOW_UPS } from '@/lib/followup';
 export const SOURCE_LABEL: Record<Lead['source'], string> = {
   job: 'Job',
   remote: 'Remote job',
+  website: 'Your website form',
+  visitor: 'Visited your site',
   places: 'Google Maps',
   osm: 'Local map',
   companies_house: 'Company register',
@@ -31,8 +33,8 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   skipped: 'faded',
 };
 
-export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'jobs' | 'remote';
-export type Sub = 'all' | 'followup' | 'opened' | 'won' | 'lost' | 'skipped';
+export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'inbound' | 'jobs' | 'remote';
+export type Sub = 'all' | 'followup' | 'opened' | 'visited' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
@@ -42,13 +44,14 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'approved', label: 'Waiting for reply', hint: 'You have been in touch. Follow-ups go out on their own until they reply.' },
   { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply quickly, this is where deals are won.' },
   { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
-  // Not pipeline stages: shortcuts to open job posts you have not finished with.
+  // Not pipeline stages: shortcuts to open leads you have not finished with.
+  { id: 'inbound', label: 'From your site', hint: 'People who filled in the form on adefilasamuel.com, and companies identified visiting it. Reply to form enquiries first.' },
   { id: 'jobs', label: 'Jobs', hint: 'Web roles at employers in the United States, Canada, Germany and Ireland, from job boards. Apply on the job post.' },
   { id: 'remote', label: 'Remote roles', hint: 'Remote web roles open to you, from job boards. Apply on the job post.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
-  approved: [{ id: 'all', label: 'All' }, { id: 'opened', label: 'Opened your note' }, { id: 'followup', label: 'Needs a follow-up' }],
+  approved: [{ id: 'all', label: 'All' }, { id: 'opened', label: 'Opened your note' }, { id: 'visited', label: 'Visited your site' }, { id: 'followup', label: 'Needs a follow-up' }],
   done: [{ id: 'all', label: 'All' }, { id: 'won', label: 'Won' }, { id: 'lost', label: 'Lost' }, { id: 'skipped', label: 'Skipped' }],
 };
 
@@ -75,9 +78,11 @@ export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
+  if (view === 'inbound') return (l.source === 'website' || l.source === 'visitor') && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'jobs') return l.source === 'job' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
+  if (view === 'approved' && sub === 'visited') return s === 'approved' && !!l.contactLinks?.siteVisitedAt;
   if (view === 'approved' && sub === 'opened') return s === 'approved' && !!l.noteOpenedAt;
   return s === view;
 }
@@ -182,7 +187,7 @@ export interface LeadStory {
 }
 
 export function leadStory(l: Lead): LeadStory {
-  if (isJobLead(l)) return { headline: null, stillOpen: null, problems: [], ownerProblems: [], fixes: [], other: [l.description] };
+  if (isJobLead(l) || fromSite(l)) return { headline: null, stillOpen: null, problems: [], ownerProblems: [], fixes: [], other: [l.description] };
   const headline = headlineOf(l);
   // Sentences end with ". " then a capital or digit, so "4.8 stars" stays whole.
   const sentences = l.description.replace(/\.$/, '').split(/\.\s+(?=[A-Z0-9])/).map(s => s.trim()).filter(Boolean);
@@ -260,8 +265,11 @@ const DEFAULT_SYSTEMS = [
   'One place that collects enquiries from your website, email and social media, so nothing gets missed.',
 ];
 
+// Leads from your own website: no local-business note, they get a plain reply or introduction.
+const fromSite = (l: Pick<Lead, 'source'>) => l.source === 'website' || l.source === 'visitor';
+
 export function systemsFor(l: Lead): string[] {
-  if (isJobLead(l)) return [];
+  if (isJobLead(l) || fromSite(l)) return [];
   const trade = `${l.company} ${l.title}`;
   return SYSTEMS.find(([re]) => re.test(trade))?.[1] ?? DEFAULT_SYSTEMS;
 }
@@ -370,6 +378,7 @@ export function pct(part: number, whole: number): string {
 export function nextStep(l: Lead): { text: string; urgent: boolean } {
   const s = statusOf(l);
   if (s === 'new') {
+    if (l.source === 'website') return { text: 'Reply to their enquiry', urgent: true };
     if (l.contactEmail) return { text: 'Email them', urgent: false };
     if (isJobLead(l)) return { text: 'Apply', urgent: false };
     if (l.source === 'companies_house') return { text: 'Message on LinkedIn', urgent: false };

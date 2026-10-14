@@ -136,7 +136,7 @@ export async function analyzeWebsite(url: string): Promise<SiteReport> {
     emails.push(...extractEmails(page.html));
     names.push(...structuredNames(page.html));
     const extra = extractLinks(page.html);
-    for (const k of Object.keys(extra) as (keyof ContactLinks)[]) links[k] ??= extra[k];
+    for (const [k, v] of Object.entries(extra)) (links as Record<string, unknown>)[k] ??= v;
     if (page === about) aboutText = visibleText(page.html).slice(0, 1500);
   }
 

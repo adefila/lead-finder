@@ -89,12 +89,14 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'job' | 'places' | 'newco' | 'remote';
+type DraftKind = 'job' | 'places' | 'newco' | 'remote' | 'inbound' | 'visitor';
 
 function draftKind(l: Lead): DraftKind {
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
   if (l.source === 'remote') return 'remote';
+  if (l.source === 'website') return 'inbound';
+  if (l.source === 'visitor') return 'visitor';
   return 'job';
 }
 
@@ -143,6 +145,24 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
   }
   if (kind === 'remote') {
     return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
+  }
+  if (kind === 'inbound') {
+    return [
+      `ENQUIRY ${i + 1} (ID: ${l.id}):`,
+      `From: ${l.contactName ?? 'unknown'} <${l.contactEmail}>`,
+      `Company or name: ${l.title}`,
+      `Details: ${l.company}`,
+      `Their website: ${l.contactLinks?.website ?? 'none given'}`,
+      `What they wrote: ${l.description.slice(0, 1500)}`,
+    ].join('\n');
+  }
+  if (kind === 'visitor') {
+    return [
+      `COMPANY ${i + 1} (ID: ${l.id}):`,
+      `Company: ${l.title}`,
+      `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Site text: ${(l.siteText ?? 'none').slice(0, 1500)}`,
+    ].join('\n');
   }
   return [
     `ROLE ${i + 1} (ID: ${l.id}):`,
@@ -209,6 +229,37 @@ Rules:
 ${VOICE}
 
 Return ONLY valid JSON: {"ID": "note text", ...}`,
+
+  inbound: `Each person below filled in the contact form on Samuel Adefila's website, adefilasamuel.com. Write Samuel's reply to each one. They came to him, so this is a warm reply, not a pitch.
+
+Rules:
+- Line 1 is "Subject: Re: your enquiry" or a short subject naming their project (under 7 words). Blank line, then the body.
+- Greet them by first name if you have it ("Hi Sarah,"), else "Hi there,".
+- Thank them in a few words, then show you read what they wrote: restate their goal in one sentence, in your own words.
+- If what they need is clear, say how Samuel would approach it in one or two sentences and give a rough timeline only if their message gives enough to judge. Never quote a price.
+- If key details are missing (what the site is for, pages, deadline, budget), ask at most two short questions.
+- Offer a short call as the next step and ask which day suits them.
+- Under 130 words. Sign off "Samuel" and on the next line "adefilasamuel.com".
+- No opt-out line: they wrote first.
+- Never state anything they did not say.
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`,
+
+  visitor: `Write a short first email from Samuel Adefila to each company below. Their team has been looking at his portfolio, but NEVER mention or hint at that (no "noticed you visited", "saw you on my site"): write it as an ordinary introduction based on their website.
+
+Rules:
+- Step 1, find the person: look in "Site text" for the founder, CEO, or head of marketing. Only use a name the text clearly ties to that role, else leave name empty.
+- Line 1 "Subject: ..." (under 7 words, about their business), blank line, body under 100 words.
+- Greeting "Hi [FirstName]," or "Hi [Company] team,".
+- Open with one specific thing from their site text, then one concrete idea for their website (a landing page, a faster marketing site in Framer, a redesign of one page). Never invent problems the site text does not show.
+- One easy next step (a short call, or a free one-page idea for their homepage).
+- Close with a short opt-out line, then sign off "Samuel" and "adefilasamuel.com".
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`,
 
   places: `Write outreach from Samuel Adefila to each local business below. He found them on Google Maps and looked at their website. "Findings" lists what's wrong, or that they have no website. "Site text" is text scraped from their site.
 
@@ -292,7 +343,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['job', 'places', 'newco', 'remote'] as DraftKind[]) {
+  for (const kind of ['job', 'places', 'newco', 'remote', 'inbound', 'visitor'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {
