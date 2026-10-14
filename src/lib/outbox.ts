@@ -35,6 +35,7 @@ const TZ_HINTS: [RegExp, string][] = [
   [/Vancouver|British Columbia/i, 'America/Vancouver'],
   [/Toronto|Ottawa|Montreal|Canada/i, 'America/Toronto'],
   [/Dublin|Ireland/i, 'Europe/Dublin'],
+  [/Germany|Berlin|Munich|Hamburg/i, 'Europe/Berlin'],
   [/\bUK\b|London|Manchester|Leeds|Birmingham|United Kingdom/i, 'Europe/London'],
   [/Perth|Western Australia/i, 'Australia/Perth'],
   [/Adelaide|South Australia/i, 'Australia/Adelaide'],

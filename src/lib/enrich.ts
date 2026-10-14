@@ -19,7 +19,7 @@ type Fetched = { kind: 'ok'; html: string; finalUrl: string } | { kind: 'dead' }
 
 const DEAD_CODES = /ENOTFOUND|ECONNREFUSED|EAI_AGAIN|CERT|SSL|TLS|UNABLE_TO_VERIFY|DEPTH_ZERO/i;
 
-async function getHtml(url: string): Promise<Fetched> {
+export async function getHtml(url: string): Promise<Fetched> {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': UA, Accept: 'text/html' },
@@ -46,7 +46,7 @@ function decodeCfEmail(hex: string): string {
   return out;
 }
 
-function extractEmails(html: string): string[] {
+export function extractEmails(html: string): string[] {
   const found = new Set<string>();
   for (const m of html.matchAll(/mailto:([^"'?\s>]+)/gi)) found.add(decodeURIComponent(m[1]));
   for (const m of html.matchAll(/data-cfemail="([0-9a-f]+)"/gi)) found.add(decodeCfEmail(m[1]));
@@ -67,7 +67,7 @@ function extractLinks(html: string): ContactLinks {
   return links;
 }
 
-function findPage(html: string, base: string, pattern: RegExp): string | null {
+export function findPage(html: string, base: string, pattern: RegExp): string | null {
   for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
     if (!pattern.test(m[1])) continue;
     try {
