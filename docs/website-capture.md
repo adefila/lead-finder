@@ -1,5 +1,17 @@
 # Turning adefilasamuel.com visitors into leads
 
+adefilasamuel.com is a Next.js site (repo `adefila/adefila-portfolio`). It is wired up server to
+server, so ad blockers can't stop it:
+
+- `src/app/api/contact/route.ts` forwards every enquiry to Lead Finder's `/api/capture`.
+- `src/app/api/visit/route.ts` plus `src/components/VisitBeacon.tsx` (in `layout.tsx`) forward
+  each page view, with the visitor's IP, to Lead Finder's `/api/visit`.
+- Both send the `x-capture-key` header. Set the same secret as `CAPTURE_SECRET` on the
+  lead-finder Vercel project and `LEAD_FINDER_KEY` on the adefila-portfolio project.
+- `LEAD_FINDER_URL` on the portfolio defaults to `https://leads.adefilasamuel.com`.
+
+The sections below are for other sites (Framer, plain HTML) that can't forward from a server.
+
 Lead Finder (`https://lead-finder-one-self.vercel.app`, or your `APP_URL`) gets leads from your
 website in three ways. They show up in the **From your site** tab.
 
