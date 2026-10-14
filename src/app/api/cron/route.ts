@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAllowed } from '@/lib/session';
-import { fetchAllJobs } from '@/lib/sources';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
-import { fetchRemoteRoles } from '@/lib/remote';
-import { fetchTenders } from '@/lib/tenders';
+import { fetchJobBoards } from '@/lib/remote';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
@@ -23,15 +21,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [boardJobs, placesLeads, osmLeads, companyLeads, remoteRoles, tenders] = await Promise.all([
-      fetchAllJobs(),
+    const [boards, placesLeads, osmLeads, companyLeads] = await Promise.all([
+      fetchJobBoards(),
       fetchPlacesLeads(),
       fetchOsmLeads(),
       fetchCompaniesHouseLeads(),
-      fetchRemoteRoles(),
-      fetchTenders(),
     ]);
-    const allJobs = [...boardJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...remoteRoles, ...tenders];
+    const { remote: remoteRoles, jobs: countryJobs } = boards;
+    const allJobs = [...countryJobs, ...placesLeads, ...osmLeads, ...companyLeads, ...remoteRoles];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -76,12 +73,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       stats: {
-        freelancerProjects: boardJobs.length,
+        jobs: countryJobs.length,
         localBusinesses: placesLeads.length,
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
         remoteRoles: remoteRoles.length,
-        tenders: tenders.length,
         withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
