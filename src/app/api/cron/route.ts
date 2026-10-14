@@ -4,6 +4,7 @@ import { fetchPlacesLeads } from '@/lib/places';
 import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards } from '@/lib/remote';
+import { findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads } from '@/lib/supabase';
 import { needsAttention } from '@/lib/followup';
@@ -55,9 +56,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
-    // 3. Rank (no filtering), then draft for the top 40
+    // 3. Rank (no filtering), find who to pitch at the top jobs, then draft for the top 40
     const ranked = await scoreJobs(freshJobs);
-    const jobsWithEmails = await generateColdEmails(ranked.slice(0, 40));
+    // One pitch per company: a second job at the same company (or one already emailed) keeps only its job post.
+    const top = (await findJobContacts(ranked.slice(0, 40))).map(l => {
+      if (l.source !== 'job' || !l.contactEmail) return l;
+      const email = l.contactEmail.toLowerCase();
+      if (seenEmails.has(email)) return { ...l, contactEmail: undefined };
+      seenEmails.add(email);
+      return l;
+    });
+    const jobsWithEmails = await generateColdEmails(top);
 
     // 4. Save + send digest
     await saveLeads(jobsWithEmails);
@@ -74,6 +83,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       success: true,
       stats: {
         jobs: countryJobs.length,
+        jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
         localBusinesses: placesLeads.length,
         openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,

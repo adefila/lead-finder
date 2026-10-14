@@ -144,7 +144,14 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
   if (kind === 'remote') {
     return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
   }
-  return `ROLE ${i + 1} (ID: ${l.id}):\nRole: ${l.title}\nCompany, country and terms: ${l.company}\nListing: ${l.description.slice(0, 900)}`;
+  return [
+    `ROLE ${i + 1} (ID: ${l.id}):`,
+    `Channel: ${l.contactEmail ? `EMAIL to ${l.contactEmail}` : 'APPLICATION'}`,
+    `Role: ${l.title}`,
+    `Company, country and terms: ${l.company}`,
+    `Listing: ${l.description.slice(0, 900)}`,
+    l.contactEmail ? `Company site text: ${(l.siteText ?? 'none').slice(0, 1500)}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 const VOICE = `Voice (strict, applies to every message):
@@ -159,21 +166,33 @@ const VOICE = `Voice (strict, applies to every message):
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
 const PROMPTS: Record<DraftKind, string> = {
-  job: `Write a short application note from Samuel Adefila for each role below. The employers are based in the United States, Canada, Germany or Ireland. It goes in the job board's application form or cover letter box. Hiring managers skim, so the first line must show he read the listing.
+  job: `Write a message from Samuel Adefila for each role below. The employers are based in the United States, Canada, Germany or Ireland. Hiring managers and founders skim, so the first line must show he read the listing.
 
-Rules:
+If Channel is APPLICATION, it goes in the job board's application form or cover letter box:
 - No subject line. Open with "Hi," (or "Hi [Company] team,")
 - Under 130 words
+- End with one easy next step (a short call, or a small paid test task)
+- Sign off "Samuel"
+- Return an empty name and role.
+
+If Channel is EMAIL, it is a direct pitch to the company, sent to the address shown (a hiring inbox, a named person, or the general inbox):
+- Step 1, find the person. Look in "Company site text" for the founder, co-founder, CEO, or the person who runs hiring (head of people, talent, HR, recruiter). Only use a name the text clearly ties to that role. Never guess. If the address is clearly one person's (e.g. jane@ or jane.doe@) and the text names that person, use them. Otherwise leave name empty.
+- Line 1 is "Subject: ..." (under 7 words, about the role or the work, no clickbait), blank line, then the body.
+- Greeting: "Hi [FirstName]," when you found a person, else "Hi [Company] team,".
+- Open by saying he saw they are hiring for the role, then pitch: he can take on that work now, as a hire or on a contract basis so they can start sooner.
+- Under 120 words. Close with one short opt-out line before the sign-off, e.g. "If the role is already filled, just say so and I won't follow up."
+- Offer one easy next step (a short call, or a small paid test task).
+- Sign off "Samuel" and on the next line "adefilasamuel.com".
+
+For both channels:
 - Name the one thing in the listing that matches Samuel best (Framer, Webflow, WordPress, Shopify, landing pages, front-end, UI design) and give one concrete example of similar work
 - Do not mention where Samuel lives, his work authorisation, visa or relocation. He adds that himself.
 - Point to his portfolio at adefilasamuel.com
-- End with one easy next step (a short call, or a small paid test task)
-- Sign off "Samuel"
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
 
 ${VOICE}
 
-Return ONLY valid JSON: {"ID": "note text", ...}`,
+Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Founder / CEO / Head of Talent etc, or empty string", "message": "..."}, ...}`,
 
   remote: `Write a short application note from Samuel Adefila for each remote role below. It goes in the job board's application form or cover letter box. Hiring managers skim, so the first line must show he read the listing.
 
@@ -307,8 +326,9 @@ export async function draftFollowUp(lead: Lead): Promise<string> {
   const since = lead.contactedAt
     ? Math.max(1, Math.round((Date.now() - new Date(lead.contactedAt).getTime()) / 86400000))
     : null;
-  const channel = lead.source === 'job' || lead.source === 'remote' ? 'a short follow-up to the hiring manager about his application'
-    : lead.contactEmail ? 'an email reply in the same thread' : 'a short DM';
+  const channel = lead.contactEmail ? 'an email reply in the same thread'
+    : lead.source === 'job' || lead.source === 'remote' ? 'a short follow-up to the hiring manager about his application'
+    : 'a short DM';
   const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
   // They opened the one-page note: build this follow-up around one idea from it.
   const ideas = lead.noteOpenedAt && hasCheck(lead) ? systemsFor(lead) : [];

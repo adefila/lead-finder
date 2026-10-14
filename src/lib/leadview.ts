@@ -64,11 +64,11 @@ export const needsEmail = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l) &&
 
 // Has an email now, but the message was written as a DM or LinkedIn note (no subject line),
 // because the address was found later.
-export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(l)) && !isJobLead(l)
+export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(l))
   && !!l.contactEmail && !l.optedOut && !/^\s*Subject:/i.test(l.proposal ?? '');
 
 // Ready to go out on its own: a new business lead with an email and a message written as an email.
-export const readyToSchedule = (l: Lead) => statusOf(l) === 'new' && !isJobLead(l)
+export const readyToSchedule = (l: Lead) => statusOf(l) === 'new'
   && !!l.contactEmail && !l.optedOut && /^\s*Subject:/i.test(l.proposal ?? '');
 
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
@@ -370,8 +370,8 @@ export function pct(part: number, whole: number): string {
 export function nextStep(l: Lead): { text: string; urgent: boolean } {
   const s = statusOf(l);
   if (s === 'new') {
-    if (isJobLead(l)) return { text: 'Apply', urgent: false };
     if (l.contactEmail) return { text: 'Email them', urgent: false };
+    if (isJobLead(l)) return { text: 'Apply', urgent: false };
     if (l.source === 'companies_house') return { text: 'Message on LinkedIn', urgent: false };
     return { text: 'Call or message', urgent: false };
   }

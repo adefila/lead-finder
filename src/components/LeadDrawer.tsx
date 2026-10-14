@@ -132,8 +132,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const showScript = !!lead.contactPhone && !email && (status === 'new' || status === 'approved');
 
   const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
-    : isJob ? 'Your application note'
     : email ? 'Your email'
+    : isJob ? 'Your application note'
     : links.linkedin && lead.source === 'companies_house' ? 'Your LinkedIn message'
     : 'Your message';
 

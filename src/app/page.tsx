@@ -260,7 +260,36 @@ export default function Home() {
     if (s) setOutbox(s);
   }, []);
 
-  useEffect(() => { refreshOutbox(); }, [refreshOutbox]);
+  // Emails go out on their own, so check the counts every few minutes while the dashboard is open.
+  useEffect(() => {
+    refreshOutbox();
+    const timer = setInterval(refreshOutbox, 5 * 60_000);
+    return () => clearInterval(timer);
+  }, [refreshOutbox]);
+
+  // Warn once per day (and once per week) when new emails near or hit the sending limit.
+  const limitWarned = useRef(new Set<string>());
+  useEffect(() => {
+    if (!outbox?.configured) return;
+    const today = new Date().toLocaleDateString('en-CA');
+    const week = `${new Date().getFullYear()}-w${Math.floor((Date.now() / 86400000 + 4) / 7)}`;
+    const warnOnce = (key: string, text: string) => {
+      let seen = limitWarned.current.has(key);
+      try { seen ||= localStorage.getItem(`limit-warned:${key}`) === '1'; } catch { /* storage blocked */ }
+      if (seen) return;
+      limitWarned.current.add(key);
+      try { localStorage.setItem(`limit-warned:${key}`, '1'); } catch { /* storage blocked */ }
+      toast(text, { tone: 'error' });
+    };
+    const check = (sent: number, limit: number, period: string, key: string, later: string) => {
+      if (!limit) return;
+      const left = limit - sent;
+      if (left <= 0) warnOnce(`${key}:full`, `You have reached ${period} limit: ${sent} of ${limit} new emails sent. Scheduled emails wait until ${later}. Follow-ups still go out.`);
+      else if (left <= Math.max(2, Math.ceil(limit * 0.2))) warnOnce(`${key}:near`, `Nearly at ${period} limit: ${sent} of ${limit} new emails sent, ${left} left. After that, scheduled emails wait until ${later}.`);
+    };
+    check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow');
+    check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'the count drops in the coming days');
+  }, [outbox, toast]);
 
   async function logOut() {
     await fetch('/api/login', { method: 'DELETE' }).catch(() => null);
