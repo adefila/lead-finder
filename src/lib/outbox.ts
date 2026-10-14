@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countFirstSentSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
+import { getLeads, countFirstSentSince, countFollowUpsSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -92,8 +92,21 @@ function last24h(now = new Date()): string {
   return new Date(now.getTime() - 24 * 3600_000).toISOString();
 }
 
-function last7d(now = new Date()): string {
-  return new Date(now.getTime() - 7 * 24 * 3600_000).toISOString();
+// The weekly count resets at Sunday 00:00 UTC. Emails only go out Monday to Friday, 9am to 4pm
+// in each lead's own time zone, and no country is in those hours at that moment: the last
+// sends of the week (US west coast, Friday 4pm) end around Saturday 00:00 UTC, and the first
+// (New Zealand, Monday 9am) start around Sunday 20:00 UTC. So every country's Monday to Friday
+// falls inside the same week.
+export function startOfWeek(now = new Date()): Date {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
+
+function nextWeekStart(now = new Date()): Date {
+  const d = startOfWeek(now);
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d;
 }
 
 export interface OutboxResult {
@@ -111,9 +124,10 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
-  const [sentToday, sentWeek, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(last7d()), getLeads(), lastSentAt()]);
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
+  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(last24h()), getLeads(), lastSentAt()]);
   return {
+    followUpsToday,
     configured: !!mailConfig(),
     sentToday,
     limit: DAILY_LIMIT,
@@ -135,7 +149,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     configured: !!cfg,
     sentToday: await countFirstSentSince(last24h()),
     limit: DAILY_LIMIT,
-    sentWeek: await countFirstSentSince(last7d()),
+    sentWeek: await countFirstSentSince(startOfWeek().toISOString()),
     weekLimit: WEEKLY_LIMIT,
     queued: queued.length,
     replies: 0,
@@ -174,10 +188,11 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // 2. Limits on first emails: rolling 24 hours and rolling 7 days, so neither can be doubled
-  // around a reset. Follow-ups are not limited here.
-  const capReason = result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
-    : result.sentWeek >= WEEKLY_LIMIT ? `Limit of ${WEEKLY_LIMIT} new emails in 7 days reached`
+  // 2. Limits count new (first) emails only: a rolling 24 hours, and the week since Sunday
+  // 00:00 UTC. Follow-ups are counted separately, never limited here, and keep going out.
+  const capReason = result.sentWeek >= WEEKLY_LIMIT
+    ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
+    : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
     : null;
 
   if (TEST_MODE) {

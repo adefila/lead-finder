@@ -175,6 +175,13 @@ export async function countFirstSentSince(sinceIso: string): Promise<number> {
   return fallback.count ?? 0;
 }
 
+// Leads whose latest email in the window was a follow-up (counted apart from the limits).
+export async function countFollowUpsSince(sinceIso: string): Promise<number> {
+  const { count } = await db().from('leads').select('id', { count: 'exact', head: true })
+    .gte('last_sent_at', sinceIso).gt('follow_ups', 0);
+  return count ?? 0;
+}
+
 export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {
   const { error } = await db().from('leads').update(patch).eq('id', id);
   return error ? explain(error.message) : null;

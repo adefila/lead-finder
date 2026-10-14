@@ -6,8 +6,8 @@ import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, scoreJobs } from '@/lib/claude';
-import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus } from '@/lib/supabase';
-import { needsAttention } from '@/lib/followup';
+import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads } from '@/lib/supabase';
+import { followUpState, needsAttention } from '@/lib/followup';
 import { sendLeadsEmail } from '@/lib/email';
 import { isJobLead } from '@/lib/leadview';
 
@@ -44,6 +44,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new'
       && (!isNicheRole(l.title, l.description) || !savedJobStillWanted(l)));
     for (const l of offNiche) await updateLeadStatus(l.id, 'skipped');
+    // Followed up twice and still no reply after the last wait: remove them. deleteLeads also
+    // records the ids so they never come back in a later search.
+    const noReply = existing.filter(l => followUpState(l).exhausted);
+    if (noReply.length) {
+      const error = await deleteLeads(noReply.map(l => l.id));
+      if (error) console.error('[cron] could not remove no-reply leads:', error);
+      else console.log(`[cron] removed ${noReply.length} leads with no reply after 2 follow-ups`);
+    }
     const seenHosts = new Set(existing.map(l => hostOf(l.contactLinks?.website)).filter(Boolean) as string[]);
     const seenEmails = new Set(existing.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
     const freshJobs = allJobs.filter(j => {
@@ -91,6 +99,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       stats: {
         jobs: jobs.length,
         offNicheJobsSkipped: offNiche.length,
+        removedNoReply: noReply.length,
         jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
         existingJobsSearched: backfill.searched,
         existingJobsWithEmail: backfill.emails,
