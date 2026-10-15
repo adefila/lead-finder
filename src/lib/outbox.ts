@@ -1,11 +1,11 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countFirstSentSince, countFollowUpsSince, lastFirstSentAt, lastSentAt, updateLead } from '@/lib/supabase';
+import { getLeads, countFirstSentSince, countFollowUpsSince, lastFirstSentAt, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck } from '@/lib/leadview';
 import { noteLink, siteLink } from '@/lib/tracking';
-import { checkReplies, mailConfig, sendMail } from '@/lib/mailer';
+import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 
 // Limits count first emails only. Follow-ups to people already contacted go out on top.
@@ -14,16 +14,25 @@ export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
 // At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
 // so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
 const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 10);
-// New emails are spread across the whole day instead of going out in one burst: with a limit of
-// 20, one new email about every 72 minutes, so each time zone's business hours get some.
-const FIRST_GAP_MIN = Math.max(MIN_GAP_MIN, Math.floor((24 * 60) / Math.max(1, DAILY_LIMIT)));
+const WINDOW_START_H = 9;
+const WINDOW_END_H = 16;
+// New emails are spread out instead of going in one burst. Each lead only gets email in its own
+// 7-hour weekday window (9am to 4pm), so the daily limit is spread over one such window. The
+// timer wakes the outbox every 15 minutes (MAIL_TIMER_MINUTES) and each run sends at most one
+// email, so the gap is rounded down to whole timer ticks, minus a minute for timer drift: 14
+// minutes for 20 a day. Spacing over 24 hours (72 minutes) left most days at 8 to 16 emails,
+// short of the limit. MAIL_FIRST_GAP_MINUTES overrides it.
+const TIMER_MIN = Number(process.env.MAIL_TIMER_MINUTES ?? 15);
+const RAW_FIRST_GAP = ((WINDOW_END_H - WINDOW_START_H) * 60) / Math.max(1, DAILY_LIMIT);
+const FIRST_GAP_MIN = Number(process.env.MAIL_FIRST_GAP_MINUTES)
+  || Math.max(MIN_GAP_MIN, Math.max(1, Math.floor(RAW_FIRST_GAP / TIMER_MIN)) * TIMER_MIN - 1);
 // A first email that keeps failing is retried this many times, then handed back to you.
 const MAX_TRIES = 3;
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
 // and leaves the lead untouched so the real send still happens later.
 const TEST_MODE = process.env.MAIL_TEST_MODE === 'true';
-const WINDOW_START = 9;
-const WINDOW_END = 16;
+const WINDOW_START = WINDOW_START_H;
+const WINDOW_END = WINDOW_END_H;
 
 // City hints from Google Places ("Dentist · Austin, TX") to the lead's timezone.
 const TZ_HINTS: [RegExp, string][] = [
@@ -88,8 +97,21 @@ export function backoffState(leads: Lead[], now = Date.now()): { pausedUntil: Da
   };
 }
 
-function last24h(now = new Date()): string {
-  return new Date(now.getTime() - 24 * 3600_000).toISOString();
+// "Today" is your calendar day, in MAIL_TIMEZONE (default Africa/Lagos): the daily count goes
+// back to 0 at your midnight, so "x of 20 new today" means today on your clock.
+const HOME_TZ = process.env.MAIL_TIMEZONE || 'Africa/Lagos';
+
+export function startOfDay(now = new Date(), timeZone = HOME_TZ): Date {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+  }).formatToParts(now).map(p => [p.type, p.value]));
+  const localAsUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const offset = localAsUtc - Math.floor(now.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day) - offset);
+}
+
+function todayStart(now = new Date()): string {
+  return startOfDay(now).toISOString();
 }
 
 // The weekly count resets at Sunday 00:00 UTC. Emails only go out Monday to Friday, 9am to 4pm
@@ -125,7 +147,7 @@ export interface OutboxResult {
 }
 
 export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
-  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(last24h()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(last24h()), getLeads(), lastSentAt()]);
+  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getLeads(), lastSentAt()]);
   return {
     followUpsToday,
     configured: !!mailConfig(),
@@ -147,7 +169,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut);
   const result: OutboxResult = {
     configured: !!cfg,
-    sentToday: await countFirstSentSince(last24h()),
+    sentToday: await countFirstSentSince(todayStart()),
     limit: DAILY_LIMIT,
     sentWeek: await countFirstSentSince(startOfWeek().toISOString()),
     weekLimit: WEEKLY_LIMIT,
@@ -188,11 +210,11 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // 2. Limits count new (first) emails only: a rolling 24 hours, and the week since Sunday
-  // 00:00 UTC. Follow-ups are counted separately, never limited here, and keep going out.
+  // 2. Limits count new (first) emails only: today on your clock (MAIL_TIMEZONE), and the week
+  // since Sunday 00:00 UTC. Follow-ups are counted separately, never limited, and keep going out.
   const capReason = result.sentWeek >= WEEKLY_LIMIT
     ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
-    : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
+    : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails today reached`
     : null;
 
   if (TEST_MODE) {
@@ -225,6 +247,9 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = new Date(last.getTime() + MIN_GAP_MIN * 60_000);
     return { ...result, skipped: `Next email can go out after ${next.toISOString().slice(11, 16)} UTC (one every ${MIN_GAP_MIN} minutes)` };
   }
+
+  // Only one run may send at a time (the timer and "Send the next email now" can overlap).
+  if (!(await claimOutboxRun())) return { ...result, skipped: 'Another send run started this minute' };
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUp = inboxChecked && leads.find(l =>
@@ -262,6 +287,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         last_message_id: messageId,
         send_error: null,
       });
+      await logSend('followup', lead.id, new Date(now));
       result.sent = { id: lead.id, title: lead.title, kind: 'follow-up' };
     } else {
       const { subject, body } = splitDraft(lead.proposal ?? '');
@@ -286,6 +312,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       };
       // If the first_sent_at column is missing, still mark the lead as sent so it is never emailed twice.
       if (await updateLead(lead.id, { ...sentPatch, first_sent_at: now })) await updateLead(lead.id, sentPatch);
+      await logSend('first', lead.id, new Date(now));
       result.sent = { id: lead.id, title: lead.title, kind: 'first' };
       result.sentToday++;
       result.sentWeek++;
@@ -318,4 +345,40 @@ export async function runOutbox(): Promise<OutboxResult> {
   }
 
   return result;
+}
+
+// ─── Audit: what the app counted today vs what is in the mailbox's Sent folder ─
+
+export interface OutboxAudit {
+  timeZone: string;
+  dayStart: string;
+  counted: { newEmails: number; followUps: number; limit: number };
+  logged: { at: string; kind: 'first' | 'followup'; lead: string }[];
+  sentFolder: { count: number; outreach: number; other: number; messages: { at: string; to: string; subject: string; outreach: boolean }[] } | { error: string };
+}
+
+export async function outboxAudit(): Promise<OutboxAudit> {
+  const dayStart = startOfDay();
+  const since = dayStart.toISOString();
+  const [newEmails, followUps, log, leads] = await Promise.all([countFirstSentSince(since), countFollowUpsSince(since), sendsSince(since), getLeads()]);
+  const titles = new Map(leads.map(l => [l.id, `${l.title}${l.contactEmail ? ` <${l.contactEmail}>` : ''}`]));
+  const leadEmails = new Set(leads.map(l => l.contactEmail?.toLowerCase()).filter(Boolean) as string[]);
+  const cfg = mailConfig();
+  let sentFolder: OutboxAudit['sentFolder'] = { error: 'Mail is not configured' };
+  if (cfg) {
+    try {
+      const messages = (await sentFolderSince(cfg, dayStart)).map(m => ({ ...m, outreach: leadEmails.has(m.to.toLowerCase()) }));
+      const outreach = messages.filter(m => m.outreach).length;
+      sentFolder = { count: messages.length, outreach, other: messages.length - outreach, messages };
+    } catch (e) {
+      sentFolder = { error: (e as Error).message };
+    }
+  }
+  return {
+    timeZone: HOME_TZ,
+    dayStart: since,
+    counted: { newEmails, followUps, limit: DAILY_LIMIT },
+    logged: log.map(e => ({ at: e.at, kind: e.kind, lead: titles.get(e.leadId) ?? `${e.leadId} (deleted)` })),
+    sentFolder,
+  };
 }

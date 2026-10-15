@@ -312,6 +312,35 @@ export default function Home() {
     }
   }
 
+  // Today's count as the app sees it, side by side with the mailbox's Sent folder.
+  async function checkSending() {
+    toast("Checking today's sending against your Sent folder…");
+    type Audit = { timeZone: string; dayStart: string; counted: { newEmails: number; followUps: number; limit: number }; logged: { at: string; kind: string; lead: string }[]; sentFolder: { count: number; outreach: number; other: number } | { error: string } };
+    const a = await fetch('/api/outbox/audit').then(r => (r.ok ? r.json() as Promise<Audit> : null)).catch(() => null);
+    if (!a) { fail('Could not check sending right now'); return; }
+    const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const folder = 'error' in a.sentFolder
+      ? `Sent folder: could not read it (${a.sentFolder.error}).`
+      : `Sent folder since then: ${a.sentFolder.count} emails. ${a.sentFolder.outreach} went to your leads, ${a.sentFolder.other} to other people (your own emails, replies, tests).`;
+    const automatic = a.logged.length;
+    const match = 'error' in a.sentFolder ? '' : a.sentFolder.outreach === automatic
+      ? 'The counts match.'
+      : a.sentFolder.outreach > automatic
+        ? `${a.sentFolder.outreach - automatic} email(s) to leads were sent outside the automatic outbox (for example "Send it myself in Gmail"). Those are not counted towards the limit.`
+        : `${automatic - a.sentFolder.outreach} automatic send(s) are not in the Sent folder yet. Gmail can take a minute to file them.`;
+    await confirm({
+      title: "Today's sending",
+      body: [
+        `Today started at ${time(a.dayStart)} your time (${a.timeZone}).`,
+        `Counted by the app: ${a.counted.newEmails} of ${a.counted.limit} new emails, plus ${a.counted.followUps} follow-up${a.counted.followUps === 1 ? '' : 's'} (follow-ups are not limited).`,
+        `Sent by the automatic outbox today: ${automatic}${automatic ? ` (${a.logged.map(l => `${time(l.at)} ${l.kind === 'first' ? 'new' : 'follow-up'}: ${l.lead}`).join('; ')})` : ''}.`,
+        folder,
+        match,
+      ].filter(Boolean).join('\n\n'),
+      confirmLabel: 'OK',
+    });
+  }
+
   const followedUp = (id: string) => patch(id, { action: 'followed_up' }, l => ({
     ...l,
     followUps: (l.followUps ?? 0) + 1,
@@ -506,6 +535,7 @@ export default function Home() {
               dark
               items={[
                 ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
+                ...(outbox?.configured ? [{ label: "Check today's sending", icon: 'check' as const, hint: 'Compares the count with your Sent folder', onSelect: checkSending }] : []),
                 { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: () => { if (findingEmails) setHuntOpen(true); else findEmails(); } },
                 { label: 'How it works', icon: 'help', onSelect: how.show },
                 'divider',

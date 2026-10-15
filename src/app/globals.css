@@ -515,7 +515,7 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
   padding: 22px 22px 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
 }
 .dialog-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
-.dialog-body { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin-top: 8px; }
+.dialog-body { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin-top: 8px; white-space: pre-line; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .btn-danger-solid { background: #d92d20; border-color: #d92d20; color: #fff; }
 .btn-danger-solid:hover { background: #b42318; border-color: #b42318; }

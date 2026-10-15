@@ -32,7 +32,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
-      getSentIds(30),
+      getSentIds(365),
       getExistingLeadIds(),
     ]);
 
