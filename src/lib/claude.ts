@@ -252,6 +252,7 @@ For both channels:
 - Remote role: you may mention he works remotely from Nigeria on GMT+1. Relocation role: say in one short sentence that he is ready to relocate to the role's city and would need the visa sponsorship the listing offers. Never claim he already has the right to work there.
 - Point to his portfolio at adefilasamuel.com
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
+- Never invent specific projects, clients, dates or results. Only mention work that is in Samuel's profile above
 
 ${VOICE}
 
@@ -268,6 +269,7 @@ Rules:
 - End with one easy next step (a short call, or a small paid test task)
 - Sign off "Samuel"
 - Never claim a skill, tool or years of experience the listing asks for unless Samuel's profile above shows it
+- Never invent specific projects, clients, dates or results. Only mention work that is in Samuel's profile above
 
 ${VOICE}
 
@@ -338,6 +340,7 @@ Language (strict):
   Norwegian: "Er ikke dette noe for deg, er det bare å si fra, så sender jeg ikke mer."
   French: "Si cela ne vous intéresse pas, dites-le-moi simplement et je ne vous relancerai pas."
 - The rules below about banned words and phrasing apply to their equivalents in that language too.
+- Questions must be grammatical and natural for a native speaker. French: "Voulez-vous que je vous envoie…?", "Est-ce que cela vous aiderait…?", never "Aimerais-je…?". Dutch: "Zou het u helpen als…?". Norwegian: "Vil det hjelpe om…?".
 
 ${APPROACH}
 
@@ -467,6 +470,7 @@ ${lead.proposal ?? ''}
 Rules:
 - No subject line. Start with exactly the same greeting line as the first message (same name, same title, e.g. "Hi Dr. Lee," stays "Hi Dr. Lee,").
 - Plain words only: never technical terms such as HTTPS, SSL, certificate, SEO, viewport, load time or automation.
+- Never ask whether they read, saw or had time for the earlier message, in any language (not "did you see my email", "je me demandais si vous aviez eu le temps de lire", "heeft u mijn bericht gezien", "fikk du lest"). Go straight to the new useful point.
 - If you ask a question, end it with a question mark.
 - Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
 - Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
@@ -484,5 +488,18 @@ Return ONLY the message text.`;
     messages: [{ role: 'user', content: prompt }],
   });
   const c = msg.content[0];
-  return c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
+  const text = c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
+  return withFirstGreeting(text, lead.proposal ?? '');
+}
+
+// Follow-ups open with exactly the greeting line of the first message ("Hi Dr. Lee," stays
+// "Hi Dr. Lee,", never "Hi Sam,"), whatever the model wrote.
+function withFirstGreeting(followUp: string, firstMessage: string): string {
+  const body = firstMessage.replace(/^\s*Subject:.*\n+/i, '');
+  const first = body.split('\n')[0]?.trim() ?? '';
+  const isGreeting = (line: string) => /^\S.{0,60},$/.test(line.trim());
+  if (!first || !isGreeting(first)) return followUp;
+  const lines = followUp.split('\n');
+  if (isGreeting(lines[0] ?? '')) lines[0] = first;
+  return lines.join('\n');
 }
