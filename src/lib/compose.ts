@@ -36,7 +36,7 @@ const NOTE_INTRO: Record<Lang, { line: string; linkText: string; before: string 
 
 // Adds one line linking to the lead's one-page note, before the "no worries if not" line
 // and the sign-off. Safe to call twice.
-const OPT_OUT_LINE = /not something you need|just say so|won't follow up|will not follow up|not for you|no worries|not the right time|let me know if not|geen probleem|laat het (me|mij) (gerust )?weten|niet voor u|ikke noe problem|bare si fra|ikke for dere|pas de souci|aucun (souci|problème)|dites-le-moi|n'hésitez pas à me le dire|je ne vous relancerai pas/i;
+const OPT_OUT_LINE = /not something you need|just say so|won't follow up|will not follow up|not for you|no worries|not the right time|let me know if not|geen probleem|laat het (me|mij) (gerust )?weten|niet voor u|ikke noe problem|bare si fra|ikke for dere|pas de souci|aucun (souci|problème)|dites-le-moi|n'hésitez pas à me le dire|je ne vous relancerai pas|niets voor u|niet iets voor u|mail ik u niet meer|noe for (deg|dere)|si fra|ikke å svare|sender jeg ikke mer|ne vous intéresse pas|pas utile pour vous|pas besoin de répondre/i;
 
 export function withCheckLink(body: string, link?: string, lang: Lang = 'en'): string {
   if (!link || body.includes(link) || /\/(check|n)\/[\w-]/.test(body)) return body;
@@ -57,15 +57,17 @@ const TAGLINE: Record<Lang, string> = {
   no: 'Nettsider og enkle systemer for små bedrifter',
   fr: 'Sites web et systèmes simples pour les petites entreprises',
 };
-const signatureFor = (lang: Lang) => `Samuel Adefila\n${TAGLINE[lang]}\nadefilasamuel.com`;
+// Job applications and emails to hiring managers are signed with a job title instead.
+const JOB_TAGLINE = 'Web Developer & Framer Designer';
+const signatureFor = (lang: Lang, forJob = false) => `Samuel Adefila\n${forJob ? JOB_TAGLINE : TAGLINE[lang]}\nadefilasamuel.com`;
 export const SIGNATURE = signatureFor('en');
 
 // Swaps the draft's short sign-off ("Samuel", maybe followed by the website) for the full
 // signature, or adds it if the draft has none. Safe to call twice.
-export function withSignature(body: string, lang: Lang = 'en'): string {
-  const SIGNATURE = signatureFor(lang);
+export function withSignature(body: string, lang: Lang = 'en', forJob = false): string {
+  const SIGNATURE = signatureFor(lang, forJob);
   const text = body.trimEnd();
-  if (Object.values(TAGLINE).some(t => text.endsWith(`Samuel Adefila\n${t}\nadefilasamuel.com`))) return text;
+  if ([...Object.values(TAGLINE), JOB_TAGLINE].some(t => text.endsWith(`Samuel Adefila\n${t}\nadefilasamuel.com`))) return text;
   const lines = text.split('\n');
   const at = lines.map(l => l.trim()).lastIndexOf('Samuel');
   const tail = at >= 0 ? lines.slice(at + 1).map(l => l.trim()).filter(Boolean) : [];

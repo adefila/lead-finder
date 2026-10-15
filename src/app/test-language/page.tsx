@@ -1,7 +1,7 @@
 import type { Lead } from '@/types/lead';
 import { draftFollowUp, generateColdEmails } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
-import { hasCheck, LANGUAGE_NAME, leadLanguage } from '@/lib/leadview';
+import { hasCheck, isJobLead, LANGUAGE_NAME, leadLanguage } from '@/lib/leadview';
 import { noteCopy } from '@/lib/notecopy';
 
 // Private test page (behind the dashboard login): runs sample leads through the real drafting,
@@ -62,11 +62,11 @@ async function runAll() {
     const lang = leadLanguage(lead);
     const { subject, body } = splitDraft(lead.proposal ?? '');
     const isBusiness = hasCheck(lead);
-    const text = body ? withSignature(isBusiness ? withCheckLink(body, SAMPLE_NOTE, lang) : body, lang) : '';
+    const text = body ? withSignature(isBusiness ? withCheckLink(body, SAMPLE_NOTE, lang) : body, lang, isJobLead(lead)) : '';
     const [followUp, note] = await Promise.all([
       body && lead.contactEmail
         ? draftFollowUp({ ...lead, status: 'approved', contactedAt: new Date(Date.now() - 4 * 86400000).toISOString(), followUps: 0 })
-          .then(t => withSignature(t, lang)).catch(e => `Follow-up failed: ${(e as Error).message}`)
+          .then(t => withSignature(t, lang, isJobLead(lead))).catch(e => `Follow-up failed: ${(e as Error).message}`)
         : Promise.resolve(''),
       isBusiness ? noteCopy(lead) : Promise.resolve(null),
     ]);

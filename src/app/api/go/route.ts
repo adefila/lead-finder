@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLeadById, updateLeadStatus } from '@/lib/supabase';
 import { gmailComposeUrl, mailtoUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
-import { hasCheck, leadLanguage } from '@/lib/leadview';
+import { hasCheck, isJobLead, leadLanguage } from '@/lib/leadview';
 import { noteLink, verifySig, type SendVia } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const { subject, body: draft } = splitDraft(lead.proposal ?? '');
   const lang = leadLanguage(lead);
-  const body = withSignature(hasCheck(lead) ? withCheckLink(draft, noteLink(lead), lang) : draft, lang);
+  const body = withSignature(hasCheck(lead) ? withCheckLink(draft, noteLink(lead), lang) : draft, lang, isJobLead(lead));
   if (via === 'bid') return NextResponse.redirect(lead.url || home);
   if (!lead.contactEmail) return NextResponse.redirect(home);
   const target = via === 'gmail'

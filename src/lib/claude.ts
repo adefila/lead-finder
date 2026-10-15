@@ -322,7 +322,8 @@ Step 2, write the message.
 - The idea in the message is the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
 - Then, only if it fits naturally, mention ONE website issue from the findings in plain words (e.g. "on a phone the text is tiny"). Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
 - No website: you may add that people who find them on Google have nowhere to click through to, but keep the idea as the main point.
-- Offer ONE easy next step and vary it between messages: a short one-page note of ideas for their business, a quick demo of how it would work for them, or a ten-minute call. Don't reuse "no strings attached" in every message.
+- Offer ONE easy next step and vary it between messages: a quick demo of how it would work for them, a short example for their business, or a ten-minute call. Don't reuse "no strings attached" in every message.
+- A link to a one-page note of ideas for them is added under your message automatically. Never offer to send a note and never mention it yourself.
 - Vary length (some messages 60 words, some closer to 100) and sentence rhythm. Write it the way Samuel would type it himself, not as a sales script.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 - Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
@@ -331,7 +332,11 @@ Step 2, write the message.
 Language (strict):
 - Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
 - Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
-- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", use "u". Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," or "Bonjour Madame/Monsieur [LastName],", use "vous". With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,").
+- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,").
+- The opt-out line must mean "if this isn't for you, just say so and I won't email again". Natural examples (vary the wording, keep the meaning):
+  Dutch: "Is dit niets voor u, laat het me dan gerust weten, dan mail ik u niet meer."
+  Norwegian: "Er ikke dette noe for deg, er det bare å si fra, så sender jeg ikke mer."
+  French: "Si cela ne vous intéresse pas, dites-le-moi simplement et je ne vous relancerai pas."
 - The rules below about banned words and phrasing apply to their equivalents in that language too.
 
 ${APPROACH}
@@ -460,12 +465,14 @@ ${lead.proposal ?? ''}
 """${noteBlock}
 
 Rules:
-- No subject line. Start with the same greeting style as the first message.
+- No subject line. Start with exactly the same greeting line as the first message (same name, same title, e.g. "Hi Dr. Lee," stays "Hi Dr. Lee,").
+- Plain words only: never technical terms such as HTTPS, SSL, certificate, SEO, viewport, load time or automation.
+- If you ask a question, end it with a question mark.
 - Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
 - Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
 - Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
 - Sign off "Samuel".${leadLanguage(lead) !== 'en' ? `
-- Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, the same language and form of address as his first message, as a native speaker would.` : ''}
+- Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, as a native speaker would, with the same form of address as his first message${leadLanguage(lead) === 'nl' ? ' ("u", never "je" or "jij")' : leadLanguage(lead) === 'fr' ? ' ("vous", never "tu")' : ''}.` : ''}
 
 ${VOICE}
 

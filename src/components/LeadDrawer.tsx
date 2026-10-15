@@ -74,7 +74,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const email = lead.contactEmail;
   const person = personOf(lead);
   // First emails carry the link to their website check; follow-ups do not repeat it.
-  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)), leadLanguage(lead));
+  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)), leadLanguage(lead), isJobLead(lead));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
   const isJob = isJobLead(lead);
 

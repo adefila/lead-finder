@@ -3,7 +3,7 @@ import { getLeads, countFirstSentSince, countFollowUpsSince, lastFirstSentAt, la
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
-import { hasCheck, leadLanguage } from '@/lib/leadview';
+import { hasCheck, isJobLead, leadLanguage } from '@/lib/leadview';
 import { noteCopy } from '@/lib/notecopy';
 import { noteLink, siteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/mailer';
@@ -226,7 +226,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
-    const testText = withSignature(hasCheck(next) ? withCheckLink(body, noteLink(next), leadLanguage(next)) : body, leadLanguage(next));
+    const testText = withSignature(hasCheck(next) ? withCheckLink(body, noteLink(next), leadLanguage(next)) : body, leadLanguage(next), isJobLead(next));
     // Exactly the email the business would get (link and signature included), so you can see
     // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
@@ -282,7 +282,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       const text = await draftFollowUp(lead);
       if (!text) throw new Error('Could not draft the follow-up');
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead)), html: toHtml(withSignature(text, leadLanguage(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -302,7 +302,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead), leadLanguage(lead)) : body, leadLanguage(lead));
+      const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead), leadLanguage(lead)) : body, leadLanguage(lead), isJobLead(lead));
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
