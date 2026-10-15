@@ -86,12 +86,26 @@ function listFromEnv(name: string, fallback: string[]): string[] {
   return items.length ? items : fallback;
 }
 
-function pickSearches(): { category: string; city: string }[] {
+// `only` limits a run to the given cities (used by the live test page); otherwise cities come
+// from PLACES_CITIES or the defaults above.
+export interface PlacesOptions { cities: string[]; searches: number }
+
+function pickSearches(only?: PlacesOptions): { category: string; city: string }[] {
   const categories = listFromEnv('PLACES_CATEGORIES', DEFAULT_CATEGORIES);
-  const cities = listFromEnv('PLACES_CITIES', DEFAULT_CITIES);
+  const cities = only?.cities ?? listFromEnv('PLACES_CITIES', DEFAULT_CITIES);
+  const count = only?.searches ?? SEARCHES_PER_RUN;
   const picks = new Map<string, { category: string; city: string }>();
   let guard = 0;
-  while (picks.size < SEARCHES_PER_RUN && guard++ < 50) {
+  // With a city list, spread the searches evenly across the cities.
+  if (only) {
+    for (let i = 0; picks.size < count && guard++ < 50; i++) {
+      const city = cities[i % cities.length];
+      const category = categories[Math.floor(Math.random() * categories.length)];
+      picks.set(`${category}|${city}`, { category, city });
+    }
+    return [...picks.values()];
+  }
+  while (picks.size < count && guard++ < 50) {
     const category = categories[Math.floor(Math.random() * categories.length)];
     const city = cities[Math.floor(Math.random() * cities.length)];
     picks.set(`${category}|${city}`, { category, city });
@@ -175,7 +189,7 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
   };
 }
 
-export async function fetchPlacesLeads(): Promise<Lead[]> {
+export async function fetchPlacesLeads(only?: PlacesOptions): Promise<Lead[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
     console.log('[places] No GOOGLE_PLACES_API_KEY, skipping');
@@ -183,7 +197,7 @@ export async function fetchPlacesLeads(): Promise<Lead[]> {
   }
 
   const started = Date.now();
-  const searches = pickSearches();
+  const searches = pickSearches(only);
   const results = await Promise.all(
     searches.map(async s => ({ ...s, places: await textSearch(`${s.category} in ${s.city}`, apiKey) })),
   );
