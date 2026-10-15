@@ -401,6 +401,26 @@ async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, D
   return result;
 }
 
+const INFORMAL_DUTCH = /\b(je|jij|jou|jouw|jullie|jezelf)\b/i;
+
+// Rewrites a Dutch email so it addresses the reader with "u" everywhere, fixing spelling on the
+// way, and changes nothing else.
+async function politeDutch(message: string): Promise<string> {
+  const msg = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: 1200,
+    messages: [{
+      role: 'user',
+      content: `Herschrijf deze zakelijke e-mail zodat de lezer overal met "u" en "uw" wordt aangesproken (nooit "je", "jij", "jouw", "jou" of "jullie"). Pas de werkwoorden daarop aan en verbeter spelfouten. Verander verder niets: dezelfde inhoud, dezelfde regels, dezelfde "Subject:" regel en dezelfde afsluiting. Geef alleen de e-mail terug.
+
+${message}`,
+    }],
+  });
+  const block = msg.content[0];
+  const text = block.type === 'text' ? humanize(block.text.trim()) : '';
+  return text && !INFORMAL_DUTCH.test(text) ? text : message;
+}
+
 export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
   if (!leads.length) return [];
   console.log(`[claude] Drafting outreach for ${leads.length} leads...`);
@@ -416,6 +436,14 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
       } catch (e) {
         console.error(`[claude] ${kind} batch failed:`, e);
       }
+    }
+  }
+
+  // Dutch drafts must use "u" throughout; the model sometimes slips into "je".
+  for (const l of leads) {
+    const d = drafts.get(l.id);
+    if (d && leadLanguage(l) === 'nl' && INFORMAL_DUTCH.test(d.message)) {
+      d.message = await politeDutch(d.message).catch(() => d.message);
     }
   }
 
@@ -489,7 +517,8 @@ Return ONLY the message text.`;
   });
   const c = msg.content[0];
   const text = c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
-  return withFirstGreeting(text, lead.proposal ?? '');
+  const polite = leadLanguage(lead) === 'nl' && INFORMAL_DUTCH.test(text) ? await politeDutch(text).catch(() => text) : text;
+  return withFirstGreeting(polite, lead.proposal ?? '');
 }
 
 // Follow-ups open with exactly the greeting line of the first message ("Hi Dr. Lee," stays
