@@ -123,8 +123,8 @@ export async function analyzeWebsite(url: string): Promise<SiteReport> {
   const issues = detectIssues(home.html, home.finalUrl);
   const names = structuredNames(home.html);
 
-  const aboutUrl = findPage(home.html, home.finalUrl, /about|team|our-story|meet|staff|doctor|bio/i);
-  const contactUrl = emails.length ? null : findPage(home.html, home.finalUrl, /contact/i);
+  const aboutUrl = findPage(home.html, home.finalUrl, /about|team|our-story|meet|staff|doctor|bio|over-ons|om-oss|a-propos|qui-sommes/i);
+  const contactUrl = emails.length ? null : findPage(home.html, home.finalUrl, /contact|kontakt/i);
   const [about, contact] = await Promise.all([
     aboutUrl ? getHtml(aboutUrl) : null,
     contactUrl && contactUrl !== aboutUrl ? getHtml(contactUrl) : null,
@@ -191,7 +191,7 @@ export async function findSiteEmails(url: string): Promise<{ reachable: boolean 
   if (report.emails.length || !report.reachable) return { ...report, emails: ownDomainFirst(report.emails, url) };
   let origin: string;
   try { origin = new URL(url).origin; } catch { return report; }
-  for (const path of ['/contact', '/contact-us', '/contact/', '/kontakt', '/about']) {
+  for (const path of ['/contact', '/contact-us', '/contact/', '/kontakt', '/kontakt-oss', '/nous-contacter', '/about']) {
     const page = await getHtml(origin + path);
     if (page.kind !== 'ok') continue;
     const found = extractEmails(page.html);

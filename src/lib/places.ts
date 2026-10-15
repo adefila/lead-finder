@@ -10,9 +10,14 @@ const DEFAULT_CATEGORIES = [
 
 // Australia and Singapore: English-speaking, and both allow a relevant email to an address a
 // business publishes on its own website. Germany is left out on purpose (strict cold-email law).
+// The Netherlands, Norway and Luxembourg are written to in Dutch, Norwegian and French
+// (see leadLanguage in leadview.ts).
 const DEFAULT_CITIES = [
   'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
   'Adelaide, Australia', 'Gold Coast, Australia', 'Canberra, Australia', 'Singapore',
+  'Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'Utrecht, Netherlands', 'The Hague, Netherlands', 'Eindhoven, Netherlands',
+  'Oslo, Norway', 'Bergen, Norway', 'Trondheim, Norway', 'Stavanger, Norway',
+  'Luxembourg City, Luxembourg',
 ];
 
 // Each search is one billed Text Search (Enterprise) call. 6 per run x 2 runs/day (about 370 a

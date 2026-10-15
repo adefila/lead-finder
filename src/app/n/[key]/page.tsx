@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getLeads } from '@/lib/supabase';
-import { displayName, hasCheck } from '@/lib/leadview';
+import { displayName, hasCheck, leadLanguage } from '@/lib/leadview';
 import { noteKeyMatches } from '@/lib/tracking';
 import { NotePage } from '@/components/NotePage';
 import { recordNoteView } from '@/lib/noteviews';
@@ -22,7 +22,9 @@ async function load({ params }: Props) {
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const lead = await load(props);
-  return { title: lead ? `A few ideas for ${displayName(lead)}` : 'A few ideas', robots: { index: false, follow: false } };
+  // The tab title in the reader's language, like the note itself.
+  const forName = { en: 'A few ideas for', nl: 'Een paar ideeën voor', no: 'Noen ideer for', fr: 'Quelques idées pour' };
+  return { title: lead ? `${forName[leadLanguage(lead)]} ${displayName(lead)}` : 'A few ideas', robots: { index: false, follow: false } };
 }
 
 export default async function ShortNotePage(props: Props) {

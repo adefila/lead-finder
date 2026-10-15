@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { systemsFor, hasCheck } from '@/lib/leadview';
+import { systemsFor, hasCheck, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -138,6 +138,7 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
     return [
       `BUSINESS ${i + 1} (ID: ${l.id}):`,
       `Channel: ${channel}`,
+      `Language: ${LANGUAGE_NAME[leadLanguage(l)]}`,
       `Angle: ${angleFor(l, angleBase + i)}`,
       `Business name: ${l.title}`,
       `Type and city: ${l.company}`,
@@ -327,6 +328,12 @@ Step 2, write the message.
 - Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
 - Never state anything that isn't in the findings or site text.
 
+Language (strict):
+- Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
+- Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
+- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", use "u". Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," or "Bonjour Madame/Monsieur [LastName],", use "vous". With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,").
+- The rules below about banned words and phrasing apply to their equivalents in that language too.
+
 ${APPROACH}
 
 ${VOICE}
@@ -457,7 +464,8 @@ Rules:
 - Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
 - Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
 - Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
-- Sign off "Samuel".
+- Sign off "Samuel".${leadLanguage(lead) !== 'en' ? `
+- Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, the same language and form of address as his first message, as a native speaker would.` : ''}
 
 ${VOICE}
 

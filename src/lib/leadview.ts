@@ -79,6 +79,21 @@ export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(
 export const readyToSchedule = (l: Lead) => statusOf(l) === 'new'
   && !!l.contactEmail && !l.optedOut && /^\s*Subject:/i.test(l.proposal ?? '');
 
+// Businesses in the Netherlands, Norway and Luxembourg are written to in their own language
+// (emails, follow-ups and the one-page note). Everyone else, and every job lead, in English.
+export type LeadLang = 'en' | 'nl' | 'no' | 'fr';
+export const LANGUAGE_NAME: Record<LeadLang, string> = {
+  en: 'English', nl: 'Dutch', no: 'Norwegian (Bokmål)', fr: 'French',
+};
+export function leadLanguage(l: Lead): LeadLang {
+  if (isJobLead(l)) return 'en';
+  const where = `${l.company} ${l.description.slice(0, 300)}`;
+  if (/\b(Netherlands|Nederland|Amsterdam|Rotterdam|Utrecht|The Hague|Den Haag|Eindhoven)\b/i.test(where)) return 'nl';
+  if (/\b(Norway|Norge|Oslo|Bergen|Trondheim|Stavanger)\b/i.test(where)) return 'no';
+  if (/\b(Luxembourg|Luxemburg)\b/i.test(where)) return 'fr';
+  return 'en';
+}
+
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
   if (view === 'all') return true;

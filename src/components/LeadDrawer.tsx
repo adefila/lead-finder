@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isJobLead, leadStory, personOf, shortDate, statusOf, systemsFor,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isJobLead, leadLanguage, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -74,7 +74,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const email = lead.contactEmail;
   const person = personOf(lead);
   // First emails carry the link to their website check; follow-ups do not repeat it.
-  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl));
+  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)), leadLanguage(lead));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
   const isJob = isJobLead(lead);
 
@@ -128,7 +128,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const sent = () => (isFollowUp ? onFollowedUp() : markContacted());
   const isLinkedIn = !email && !!links.linkedin && lead.source === 'companies_house';
   // LinkedIn notes are capped at about 300 characters, so they go without the link.
-  const copyBody = () => navigator.clipboard.writeText(isLinkedIn || isFollowUp ? body : withCheckLink(body, lead.checkUrl));
+  const copyBody = () => navigator.clipboard.writeText(isLinkedIn || isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)));
   const showScript = !!lead.contactPhone && !email && (status === 'new' || status === 'approved');
 
   const messageTitle = isFollowUp ? `Follow-up ${fu.sent + 1} of ${MAX_FOLLOW_UPS}`
