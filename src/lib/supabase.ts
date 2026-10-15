@@ -19,8 +19,48 @@ function explain(message: string): string {
 
 export async function getSentIds(days = 30): Promise<string[]> {
   const since = new Date(Date.now() - days * 86400000).toISOString();
-  const { data } = await db().from('sent_jobs').select('id').gte('sent_at', since);
-  return (data ?? []).map((r: { id: string }) => r.id);
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await db().from('sent_jobs').select('id').gte('sent_at', since).range(from, from + PAGE - 1);
+    ids.push(...(data ?? []).map((r: { id: string }) => r.id).filter(id => !/^(send|lock):/.test(id)));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
+}
+
+// ─── Send log ────────────────────────────────────────────────────────────────
+// Every email the outbox sends is also written to sent_jobs as "send:<kind>:<lead id>:<ms>".
+// Counting from this log stays right when a lead is later deleted or moved back to To contact,
+// which counting from the leads table does not.
+
+export type SendKind = 'first' | 'followup';
+
+export async function logSend(kind: SendKind, leadId: string, at = new Date()): Promise<void> {
+  const { error } = await db().from('sent_jobs').insert({ id: `send:${kind}:${leadId}:${at.getTime()}`.slice(0, 250), sent_at: at.toISOString() });
+  if (error) console.error('[supabase] logSend:', error.message);
+}
+
+async function countLogged(kind: SendKind, sinceIso: string): Promise<number | null> {
+  const { count, error } = await db().from('sent_jobs').select('id', { count: 'exact', head: true })
+    .like('id', `send:${kind}:%`).gte('sent_at', sinceIso);
+  return error ? null : count ?? 0;
+}
+
+export async function sendsSince(sinceIso: string): Promise<{ kind: SendKind; leadId: string; at: string }[]> {
+  const { data } = await db().from('sent_jobs').select('id, sent_at').like('id', 'send:%').gte('sent_at', sinceIso).order('sent_at');
+  return (data ?? []).map((r: { id: string; sent_at: string }) => {
+    const [, kind, ...rest] = r.id.split(':');
+    return { kind: kind as SendKind, leadId: rest.slice(0, -1).join(':'), at: r.sent_at };
+  });
+}
+
+// Only one outbox run per minute may send: the timer and "Send the next email now" can land
+// together. The insert fails for the second one, so it backs off.
+export async function claimOutboxRun(at = new Date()): Promise<boolean> {
+  const { error } = await db().from('sent_jobs').insert({ id: `lock:outbox:${Math.floor(at.getTime() / 60_000)}`, sent_at: at.toISOString() });
+  // Old locks are no use: keep only the last day of them.
+  if (!error) await db().from('sent_jobs').delete().like('id', 'lock:%').lt('sent_at', new Date(at.getTime() - 86_400_000).toISOString());
+  return !error;
 }
 
 export async function markSent(ids: string[]): Promise<void> {
@@ -166,20 +206,27 @@ export async function lastSentAt(): Promise<Date | null> {
 }
 
 // First emails only: follow-ups do not count towards the sending limits.
+// Counted from the send log and from the leads table, taking the larger: the log survives
+// deleted leads, and the leads table still holds sends made before the log existed.
 export async function countFirstSentSince(sinceIso: string): Promise<number> {
+  const logged = await countLogged('first', sinceIso);
   const { count, error } = await db().from('leads').select('id', { count: 'exact', head: true }).gte('first_sent_at', sinceIso);
-  if (!error) return count ?? 0;
-  // Until the first_sent_at column exists: leads whose latest email was the first one.
-  const fallback = await db().from('leads').select('id', { count: 'exact', head: true })
-    .gte('last_sent_at', sinceIso).eq('follow_ups', 0);
-  return fallback.count ?? 0;
+  let fromLeads = count ?? 0;
+  if (error) {
+    // Until the first_sent_at column exists: leads whose latest email was the first one.
+    const fallback = await db().from('leads').select('id', { count: 'exact', head: true })
+      .gte('last_sent_at', sinceIso).eq('follow_ups', 0);
+    fromLeads = fallback.count ?? 0;
+  }
+  return Math.max(logged ?? 0, fromLeads);
 }
 
-// Leads whose latest email in the window was a follow-up (counted apart from the limits).
+// Follow-ups, counted apart from the limits. Same log-or-table rule as above.
 export async function countFollowUpsSince(sinceIso: string): Promise<number> {
+  const logged = await countLogged('followup', sinceIso);
   const { count } = await db().from('leads').select('id', { count: 'exact', head: true })
     .gte('last_sent_at', sinceIso).gt('follow_ups', 0);
-  return count ?? 0;
+  return Math.max(logged ?? 0, count ?? 0);
 }
 
 export async function updateLead(id: string, patch: Record<string, unknown>): Promise<string | null> {

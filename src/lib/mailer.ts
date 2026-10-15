@@ -121,3 +121,35 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   return { replies: found, bounced };
 }
 
+
+// Every message in the Sent folder since a moment, with who it went to (for the outbox audit).
+export async function sentFolderSince(cfg: MailConfig, since: Date): Promise<{ at: string; to: string; subject: string }[]> {
+  const client = new ImapFlow({
+    host: cfg.imapHost, port: 993, secure: true, auth: { user: cfg.user, pass: cfg.pass }, logger: false,
+    connectionTimeout: 10_000, greetingTimeout: 8_000, socketTimeout: 20_000,
+  });
+  await client.connect();
+  try {
+    const folders = await client.list();
+    const sent = folders.find(f => f.specialUse === '\\Sent') ?? folders.find(f => /sent/i.test(f.path));
+    if (!sent) throw new Error('No Sent folder found');
+    const lock = await client.getMailboxLock(sent.path);
+    try {
+      // IMAP SINCE is by date only, so fetch from the day before and filter by the exact time.
+      const uids = await client.search({ since: new Date(since.getTime() - 86_400_000) }, { uid: true });
+      const out: { at: string; to: string; subject: string }[] = [];
+      if (uids && uids.length) {
+        for await (const msg of client.fetch(uids, { envelope: true, internalDate: true }, { uid: true })) {
+          const at = new Date(msg.internalDate ?? msg.envelope?.date ?? 0);
+          if (at < since) continue;
+          out.push({ at: at.toISOString(), to: msg.envelope?.to?.[0]?.address ?? '', subject: msg.envelope?.subject ?? '' });
+        }
+      }
+      return out.sort((a, b) => a.at.localeCompare(b.at));
+    } finally {
+      lock.release();
+    }
+  } finally {
+    await client.logout().catch(() => {});
+  }
+}
