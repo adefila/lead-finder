@@ -227,7 +227,7 @@ const APPROACH = `Approach (a pitch, short and direct, applies to every cold mes
   2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "Right now bookings are by phone only."). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
   3. The offer: what he would set up for them, in one or two sentences, with "fixed price" and "live in two weeks" where they fit. Who he is can come here as a short clause at most (e.g. "I set these up for small clinics").
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. One direct question as the call to action (e.g. "Shall I show you how it would look for Bright Smile?").
+  5. The close, as the last paragraph of the body: one yes-or-no question asking for something small and specific (seeing a short demo or an example made for their business), then in the same paragraph a line that makes a "no" just as easy and says he won't follow up. E.g. "Shall I show you a short demo of how it would work for Bright Smile? A yes or no is fine, and if it's no, I won't follow up." Never an open question ("What do you think?", "When are you free?").
 - Confident and friendly, never apologetic or salesy. Never explain at length why something matters, never lecture, no statistics, no "a lot of people...", no "did you know".
 - Never sound like a template: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
@@ -242,7 +242,7 @@ Right now bookings are by phone only. I set up online booking for small clinics,
 
 I also designed BookedEZ, a booking app that paid out over $10K in its first month.
 
-Shall I show you how it would look for Bright Smile?"`;
+Shall I show you a short demo of how it would work for Bright Smile? A yes or no is fine, and if it's no, I won't follow up."`;
 
 const PROMPTS: Record<DraftKind, string> = {
   job: `Write a message from Samuel Adefila for each role below. Each is full-time: either remote and open to someone in Nigeria (the listing starts "Open to:"), or on-site abroad with visa sponsorship or relocation support (the listing starts "Relocation:"). Hiring managers and founders skim, so the first line must show he read the listing.
@@ -340,21 +340,21 @@ Step 2, write the message.
 - Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
 - The idea in the message is the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
 - Never use words like HTTPS, SEO, viewport, load time, optimisation or automation. A website issue from the findings can be the "why them" fact, in plain words, but only if the angle points there.
-- Vary the closing question between messages: showing a quick demo for their business, sending a short example, or a ten-minute call.
+- Vary what the closing question offers between messages: a short demo for their business, a short example made for them, or a ten-minute call. It is always a yes-or-no question.
 - A link to a one-page note of ideas for them is added under your message automatically. Never offer to send a note and never mention it yourself.
 - Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
-- Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
+- End the body with the yes-or-no close from the Approach (question plus "if it's no, I won't follow up" in one paragraph), right before the sign-off.
 - Never state anything that isn't in the findings or site text.
 
 Language (strict):
 - Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
 - Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
 - Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,").
-- The opt-out line must mean "if this isn't for you, just say so and I won't email again". Natural examples (vary the wording, keep the meaning):
-  Dutch: "Is dit niets voor u, laat het me dan gerust weten, dan mail ik u niet meer."
-  Norwegian: "Er ikke dette noe for deg, er det bare å si fra, så sender jeg ikke mer."
-  French: "Si cela ne vous intéresse pas, dites-le-moi simplement et je ne vous relancerai pas."
+- The close must mean "yes or no is fine, and if it's no I won't email again". Natural examples (vary the wording, keep the meaning and the yes-or-no question):
+  Dutch: "Zal ik u een korte demo laten zien van hoe het voor X zou werken? Ja of nee is prima. Is het nee, dan mail ik u niet meer."
+  Norwegian: "Skal jeg vise deg en kort demo av hvordan det kan fungere for X? Ja eller nei holder. Er det nei, sender jeg ikke mer."
+  French: "Voulez-vous que je vous montre une courte démo de ce que cela donnerait pour X ? Un oui ou un non suffit, et si c'est non, je ne vous relancerai pas."
 - The rules below about banned words and phrasing apply to their equivalents in that language too.
 - Questions must be grammatical and natural for a native speaker. French: "Voulez-vous que je vous envoie…?", "Est-ce que cela vous aiderait…?", never "Aimerais-je…?". Dutch: "Zou het u helpen als…?". Norwegian: "Vil det hjelpe om…?".
 
