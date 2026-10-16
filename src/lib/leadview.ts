@@ -61,6 +61,10 @@ export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
 // Job posts (jobs in the US, Canada, Germany and Ireland, and remote roles): you apply on the post rather than email.
 export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'job' || l.source === 'remote';
 
+// Local businesses and new companies we pitch systems to. Their emails and notes send them to
+// adefilasamuel.com/local-business instead of the founder homepage.
+export const isBusinessPitch = (l: Pick<Lead, 'source'>) => l.source === 'places' || l.source === 'osm' || l.source === 'companies_house';
+
 // "Relocation · Ireland" or "Remote", for the tag on a job row.
 export function jobTag(l: Pick<Lead, 'description'>): string {
   const market = l.description.match(/^Relocation: (.*?) \(/)?.[1];

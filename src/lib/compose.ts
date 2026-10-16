@@ -59,15 +59,26 @@ const TAGLINE: Record<Lang, string> = {
 };
 // Job applications and emails to hiring managers are signed with a job title instead.
 const JOB_TAGLINE = 'Web Developer & Framer Designer';
-const signatureFor = (lang: Lang, forJob = false) => `Samuel Adefila\n${forJob ? JOB_TAGLINE : TAGLINE[lang]}\nadefilasamuel.com`;
+// Business pitches sign with the page written for them; everything else with the homepage.
+export const BUSINESS_PATH = '/local-business';
+const SITE_LINES = ['adefilasamuel.com', `adefilasamuel.com${BUSINESS_PATH}`];
+const signatureFor = (lang: Lang, forJob = false, forBusiness = false) =>
+  `Samuel Adefila\n${forJob ? JOB_TAGLINE : TAGLINE[lang]}\nadefilasamuel.com${forBusiness && !forJob ? BUSINESS_PATH : ''}`;
 export const SIGNATURE = signatureFor('en');
 
 // Swaps the draft's short sign-off ("Samuel", maybe followed by the website) for the full
 // signature, or adds it if the draft has none. Safe to call twice.
-export function withSignature(body: string, lang: Lang = 'en', forJob = false): string {
-  const SIGNATURE = signatureFor(lang, forJob);
+export function withSignature(body: string, lang: Lang = 'en', forJob = false, forBusiness = false): string {
+  const SIGNATURE = signatureFor(lang, forJob, forBusiness);
   const text = body.trimEnd();
-  if ([...Object.values(TAGLINE), JOB_TAGLINE].some(t => text.endsWith(`Samuel Adefila\n${t}\nadefilasamuel.com`))) return text;
+  if (text.endsWith(SIGNATURE)) return text;
+  // A draft that already carries a full signature (either address) gets the right address
+  for (const t of [...Object.values(TAGLINE), JOB_TAGLINE]) {
+    for (const site of SITE_LINES) {
+      const old = `Samuel Adefila\n${t}\n${site}`;
+      if (text.endsWith(old)) return `${text.slice(0, -old.length).trimEnd()}\n\n${SIGNATURE}`;
+    }
+  }
   const lines = text.split('\n');
   const at = lines.map(l => l.trim()).lastIndexOf('Samuel');
   const tail = at >= 0 ? lines.slice(at + 1).map(l => l.trim()).filter(Boolean) : [];
@@ -91,7 +102,7 @@ export function toHtml(text: string, siteUrl = 'https://adefilasamuel.com'): str
     }
     return esc(p)
       .replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}">${u.replace(/^https?:\/\//, '')}</a>`)
-      .replace(/(^|\n|\s)(adefilasamuel\.com)(?=\s|$)/g, `$1<a href="${esc(siteUrl)}">$2</a>`)
+      .replace(/(^|\n|\s)(adefilasamuel\.com(?:\/local-business)?)(?=\s|$)/g, `$1<a href="${esc(siteUrl)}">$2</a>`)
       .replace(/\n/g, '<br>');
   });
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222">${paras.map(p => `<p style="margin:0 0 14px">${p}</p>`).join('')}</div>`;

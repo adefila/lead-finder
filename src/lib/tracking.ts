@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { displayName } from '@/lib/leadview';
+import { displayName, isBusinessPitch } from '@/lib/leadview';
 
 export const APP_URL = process.env.APP_URL ?? 'https://lead-finder-one-self.vercel.app';
 
@@ -49,6 +49,11 @@ export function noteLink(lead: { id: string; title: string; source: string }): s
 // Tracked link to your portfolio for one lead's emails: /v/green-dental-4f9a2c1b07aa records the
 // visit, then forwards to adefilasamuel.com.
 export const SITE_URL = 'https://adefilasamuel.com';
+
+// Local businesses and new companies land on the page written for them; jobs and everyone else on the homepage.
+export function siteDestination(lead: Pick<Lead, 'source'>): string {
+  return isBusinessPitch(lead) ? `${SITE_URL}/local-business` : SITE_URL;
+}
 
 function visitCode(id: string): string {
   return sign(id, 'visit').slice(0, 12);

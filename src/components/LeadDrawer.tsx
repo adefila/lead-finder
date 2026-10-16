@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isJobLead, leadLanguage, leadStory, personOf, shortDate, statusOf, systemsFor,
+  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isBusinessPitch, isJobLead, leadLanguage, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -74,7 +74,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
   const email = lead.contactEmail;
   const person = personOf(lead);
   // First emails carry the link to their website check; follow-ups do not repeat it.
-  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)), leadLanguage(lead), isJobLead(lead));
+  const outgoing = withSignature(isFollowUp ? body : withCheckLink(body, lead.checkUrl, leadLanguage(lead)), leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
   const gmail = email ? gmailComposeUrl(email, subject, outgoing) : '';
   const isJob = isJobLead(lead);
 
