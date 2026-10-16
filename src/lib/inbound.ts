@@ -5,6 +5,7 @@ import { analyzeWebsite, findSiteEmails, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
 import { generateColdEmails } from '@/lib/claude';
 import { sendInboundAlert } from '@/lib/email';
+import { logVisitAndCheckBurst } from '@/lib/visitlog';
 
 // Leads that come from adefilasamuel.com itself:
 // - website: someone filled in the contact form (Framer form webhook or the embed snippet).
@@ -93,6 +94,8 @@ export async function recordLeadVisit(lead: Lead, ua: string, page = '/'): Promi
     if (!ua || NOT_A_PERSON.test(ua)) return;
     // Scanners open every link the moment an email lands.
     if (lead.lastSentAt && Date.now() - new Date(lead.lastSentAt).getTime() < 3 * 60_000) return;
+    // A run of different leads clicking within minutes is a scanner, not interest.
+    if (await logVisitAndCheckBurst(lead, 'site')) return;
     const links = lead.contactLinks ?? {};
     const first = !links.siteVisitedAt;
     await updateLead(lead.id, {

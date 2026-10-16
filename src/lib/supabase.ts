@@ -243,3 +243,20 @@ export async function markFollowedUp(id: string): Promise<string | null> {
     .eq('id', id);
   return error ? explain(error.message) : null;
 }
+
+// ─── Visit log (clicks on tracked links) ─────────────────────────────────────
+// Stored in sent_jobs as "visit|<ms>|<kind>|<lead id>|<network hash>|<where>|<browser>". Used to
+// spot scanners (see visitlog.ts) and to show recent clicks. Rows older than 30 days are removed.
+
+export async function logVisitEvent(id: string, at: Date): Promise<void> {
+  const { error } = await db().from('sent_jobs').insert({ id, sent_at: at.toISOString() });
+  if (error) console.error('[supabase] logVisitEvent:', error.message);
+  else if (Math.random() < 0.05) {
+    await db().from('sent_jobs').delete().like('id', 'visit|%').lt('sent_at', new Date(at.getTime() - 30 * 86_400_000).toISOString());
+  }
+}
+
+export async function recentVisitEvents(sinceIso: string): Promise<string[]> {
+  const { data } = await db().from('sent_jobs').select('id').like('id', 'visit|%').gte('sent_at', sinceIso).order('sent_at');
+  return (data ?? []).map((r: { id: string }) => r.id);
+}

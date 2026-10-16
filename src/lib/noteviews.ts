@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import type { Lead } from '@/types/lead';
 import { updateLead } from '@/lib/supabase';
+import { logVisitAndCheckBurst } from '@/lib/visitlog';
 
 // Email security tools (Outlook Safe Links, Proofpoint, Mimecast and the like) open every link
 // as soon as an email arrives. Those are not people, so they must not count as "opened".
@@ -15,6 +16,8 @@ export async function recordNoteView(lead: Lead, isPreview: boolean): Promise<vo
     const ua = (await headers()).get('user-agent') ?? '';
     if (!ua || SCANNER.test(ua)) return;
     if (lead.lastSentAt && Date.now() - new Date(lead.lastSentAt).getTime() < SCANNER_WINDOW_MS) return;
+
+    if (await logVisitAndCheckBurst(lead, 'note')) return;
 
     const now = new Date().toISOString();
     const error = await updateLead(lead.id, {
