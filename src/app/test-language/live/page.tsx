@@ -1,6 +1,6 @@
 import type { Lead } from '@/types/lead';
 import { fetchPlacesLeads } from '@/lib/places';
-import { generateColdEmails, MIN_FIT, scoreJobs } from '@/lib/claude';
+import { generateColdEmails, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
 import { getLeads, saveLeads } from '@/lib/supabase';
 import { splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck, LANGUAGE_NAME, leadLanguage } from '@/lib/leadview';
@@ -22,7 +22,7 @@ async function runLive() {
   const known = new Set((await getLeads()).map(l => l.id));
   const fresh = found.filter(l => !known.has(l.id));
   const scored = fresh.length ? await scoreJobs(fresh) : [];
-  const keep = scored.filter(l => (l.score ?? 0) >= MIN_FIT);
+  const keep = scored.filter(l => (l.score ?? 0) >= minFitFor(l));
   const drafted = keep.length ? await generateColdEmails(keep) : [];
   await saveLeads(drafted);
   // Prepare each translated note now, so opening it below is instant.
@@ -65,7 +65,7 @@ export default async function LiveTestPage({ searchParams }: Props) {
       {result && (
         <p style={{ color: '#4b5159', marginBottom: 24 }} data-summary>
           {result.found} businesses with a weak website and an email found, {result.fresh} new to Lead Finder,
-          {' '}{result.belowFit} below the fit score ({MIN_FIT}), {result.drafted.length} drafted and saved to To contact.
+          {' '}{result.belowFit} below the fit score ({MIN_FIT_BUSINESS}), {result.drafted.length} drafted and saved to To contact.
           Took {Math.round((Date.now() - started) / 1000)}s.
         </p>
       )}

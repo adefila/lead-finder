@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { systemsFor, hasCheck, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
+import { systemsFor, hasCheck, isJobLead, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -21,8 +21,12 @@ function getClient() {
 
 // ─── Job lead scoring ────────────────────────────────────────────────────────
 
-// Leads below this score are not saved, and saved ones still in To contact move to Skipped.
+// Leads below their bar are not saved, and saved ones still in To contact move to Skipped.
+// Jobs need a clear niche match. Local businesses are pitched simple systems most of them can
+// use, so a plausible fit is worth an email: at 65 most of them were being skipped.
 export const MIN_FIT = Number(process.env.MIN_FIT_SCORE ?? 65);
+export const MIN_FIT_BUSINESS = Number(process.env.MIN_FIT_BUSINESS_SCORE ?? 50);
+export const minFitFor = (l: Pick<Lead, 'source'>) => isJobLead(l) ? MIN_FIT : MIN_FIT_BUSINESS;
 const SCORE_BATCH = 40;
 
 // Scores every lead 0-100. Done in batches so a long list never cuts the answer short. A lead
@@ -57,6 +61,7 @@ async function scoreBatch(jobs: Lead[]): Promise<Map<string, number>> {
     description: j.description.slice(0, 500),
     hasEmail: !!j.contactEmail,
     hasPhone: !!j.contactPhone,
+    ...(isJobLead(j) ? {} : { siteText: (j.siteText ?? '').slice(0, 300) }),
   }));
 
   const msg = await getClient().messages.create({
@@ -69,11 +74,10 @@ ${SAMUEL}
 
 Score each lead 0-100 for how good a fit it is for Samuel: how likely it is to turn into paid work he is well suited to and would win.
 
-Be strict. Samuel only wants his best-fit leads, and only leads scoring ${MIN_FIT} or more are kept.
-- ${MIN_FIT}-100: clearly a strong fit. You could name the specific reason in one sentence (the exact niche skill the role asks for, or the clear website or system problem this business has and can afford to fix).
-- 50-${MIN_FIT - 1}: plausible but generic, unclear, or missing something important. These are dropped.
+Be honest and use the whole range. Roles (sources "job" and "remote") are kept at ${MIN_FIT} or more; local businesses (every other source) at ${MIN_FIT_BUSINESS} or more.
+- 80-100: a strong fit. You could name the specific reason in one sentence (the exact niche skill the role asks for, or the clear website or system problem this business has and can afford to fix).
+- 50-79: a plausible fit: a real, active business he could help, or a role close to his niche.
 - Below 50: a poor fit, a long shot, or not really his kind of work.
-Most leads in a batch should score below ${MIN_FIT}. When unsure, score lower.
 
 For source "remote" (a remote job or contract from a job board, open to someone based in Nigeria): hands-on Framer, Webflow, landing page, marketing website, product design, UI/UX or product engineering roles score high (70-90). Generic senior software engineering or roles needing deep backend skills score lower. A listing that names the UK, Germany or Australia adds points.
 
@@ -83,7 +87,8 @@ For source "places" (a local business found on Google with no website or a weak 
 - Established business (many Google reviews, good rating) with no website or a clearly outdated/broken one scores high.
 - Higher-ticket industries (dental, legal, med spa, real estate, architecture, contractors) score higher than low-margin ones.
 - hasEmail adds points (easy to reach). No email but a phone number is still workable.
-- Minor issues only (e.g. just an old copyright year) score lower.
+- A business that takes bookings, quotes or enquiries only by phone or email (clinics, salons, trades, studios) is a good fit for his booking, quote and review systems even when its website looks fine. siteText, when present, shows how they take bookings.
+- Minor website issues only, with nothing else to offer them, score lower.
 
 For source "osm" (a local business from OpenStreetMap whose website is online but weak): score like "places"; they have no review data, so judge on trade value and how clear the website problems are.
 

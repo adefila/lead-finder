@@ -5,8 +5,11 @@ import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
-import { generateColdEmails, MIN_FIT, scoreJobs } from '@/lib/claude';
+import { generateColdEmails, MIN_FIT, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads } from '@/lib/supabase';
+
+// Marker (in sent_jobs) for the one-time return of businesses the old 65 bar had skipped.
+const RESTORE_MARK = 'restore:business-fit-50';
 import { followUpState, needsAttention } from '@/lib/followup';
 import { sendLeadsEmail } from '@/lib/email';
 import { isJobLead } from '@/lib/leadview';
@@ -44,11 +47,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const offNiche = existing.filter(l => isJobLead(l) && (l.status ?? 'new') === 'new'
       && (!isNicheRole(l.title, l.description) || !savedJobStillWanted(l)));
     for (const l of offNiche) await updateLeadStatus(l.id, 'skipped');
-    // Only best fits stay in To contact. Website enquiries and site visitors are kept: they came to you.
+    // Only good fits stay in To contact (see minFitFor). Website enquiries and site visitors are kept: they came to you.
     const weakFit = existing.filter(l => (l.status ?? 'new') === 'new' && l.source !== 'website' && l.source !== 'visitor'
-      && (l.score ?? 0) < MIN_FIT && !offNiche.includes(l));
+      && (l.score ?? 0) < minFitFor(l) && !offNiche.includes(l));
     for (const l of weakFit) await updateLeadStatus(l.id, 'skipped');
-    if (weakFit.length) console.log(`[cron] moved ${weakFit.length} leads scoring under ${MIN_FIT} to Skipped`);
+    if (weakFit.length) console.log(`[cron] moved ${weakFit.length} leads under their fit score to Skipped`);
+    // Once: businesses the old bar (65 for everyone) moved to Skipped come back if they now pass.
+    // Only ones never emailed, with an address, that didn't opt out.
+    let restored = 0;
+    if (!knownLeads.has(RESTORE_MARK)) {
+      const back = existing.filter(l => l.status === 'skipped' && !isJobLead(l) && l.contactEmail && !l.optedOut && !l.contactedAt
+        && (l.score ?? 0) >= MIN_FIT_BUSINESS && (l.score ?? 0) < MIN_FIT);
+      for (const l of back) { await updateLeadStatus(l.id, 'new'); l.status = 'new'; }
+      await markSent([RESTORE_MARK]);
+      restored = back.length;
+      console.log(`[cron] brought back ${restored} businesses scoring ${MIN_FIT_BUSINESS} to ${MIN_FIT - 1} from Skipped`);
+    }
     // Followed up twice and still no reply after the last wait: remove them. deleteLeads also
     // records the ids so they never come back in a later search.
     const noReply = existing.filter(l => followUpState(l).exhausted);
@@ -73,11 +87,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     console.log(`[cron] ${allJobs.length} total, ${freshJobs.length} fresh`);
 
-    // 3. Score, keep only best fits (MIN_FIT and up), find who to pitch at the top jobs, then
+    // 3. Score, keep only good fits (each lead's bar, see minFitFor), find who to pitch at the top jobs, then
     // draft for the top 40
     const scoredAll = await scoreJobs(freshJobs);
-    const ranked = scoredAll.filter(l => (l.score ?? -1) >= MIN_FIT);
-    console.log(`[cron] ${ranked.length} of ${scoredAll.length} scored ${MIN_FIT}+ and are kept`);
+    const ranked = scoredAll.filter(l => (l.score ?? -1) >= minFitFor(l));
+    console.log(`[cron] ${ranked.length} of ${scoredAll.length} passed their fit score and are kept`);
     // One pitch per company: a second job at the same company (or one already emailed) keeps only its job post.
     const top = (await findJobContacts(ranked.slice(0, 40))).map(l => {
       if (l.source !== 'job' || !l.contactEmail) return l;
@@ -108,6 +122,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         jobs: jobs.length,
         offNicheJobsSkipped: offNiche.length,
         removedNoReply: noReply.length,
+        restoredFromSkipped: restored,
         weakFitSkipped: weakFit.length,
         bestFits: ranked.length,
         jobContacts: top.filter(l => l.source === 'job' && l.contactEmail).length,
