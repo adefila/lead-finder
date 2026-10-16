@@ -288,7 +288,7 @@ export default function Home() {
       if (left <= 0) warnOnce(`${key}:full`, `You have reached ${period} limit: ${sent} of ${limit} new emails sent. Scheduled emails wait until ${later}.`);
       else if (left <= Math.max(2, Math.ceil(limit * 0.2))) warnOnce(`${key}:near`, `Nearly at ${period} limit: ${sent} of ${limit} new emails sent, ${left} left. After that, scheduled emails wait until ${later}.`);
     };
-    check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow. Follow-ups still go out');
+    check(outbox.sentToday, outbox.limit, "the 24-hour", `day:${today}`, 'earlier emails are 24 hours old. Follow-ups still go out');
     check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'the week resets over the weekend (Sunday 00:00 UTC), ready for Monday. Follow-ups still go out');
   }, [outbox, toast]);
 
@@ -524,7 +524,7 @@ export default function Home() {
                   : 'Automatic sending is off until your email login is added in Vercel.'}>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new in 24h${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>

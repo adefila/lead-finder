@@ -213,7 +213,7 @@ const APPROACH = `Approach (a pitch, short and direct, applies to every cold mes
 - This is Samuel introducing himself and making one clear offer. It is not an essay about their business and not free advice.
 - Body under 80 words (DMs under 50). Three or four very short paragraphs.
 - Build it in this order:
-  1. First line after the greeting: who Samuel is and what he sets up for businesses like theirs, in one sentence, in plain words (e.g. "I'm Samuel, a web developer. I set up online booking with reminder texts for small clinics.").
+  1. First line after the greeting: what Samuel does for businesses like theirs, in one sentence, in plain words (e.g. "I'm a web developer and I set up online booking with reminder texts for small clinics."). Never write his name in the body: it is already on the email address and the sign-off.
   2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "I saw bookings at Bright Smile are by phone only."). Never criticise their site or whoever built it.
   3. The offer: what he would set up for them and what it means on an ordinary day, in one or two sentences. Where it fits, add that it's a fixed price and live in two weeks.
   4. One proof point from the list below, in one short sentence.
@@ -226,7 +226,7 @@ ${PROOF}
 Example of the shape (for a dentist with no online booking). Do not copy its wording or topic:
 "Hi Dr. Okafor,
 
-I'm Samuel, a web developer. I set up online booking for small clinics, so patients can book a check-up at 10pm and get a reminder the day before.
+I'm a web developer and I set up online booking for small clinics, so patients can book a check-up at 10pm and get a reminder the day before.
 
 I saw Bright Smile takes bookings by phone only, so it would fit you well. Fixed price, and live in two weeks.
 
