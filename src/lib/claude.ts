@@ -116,14 +116,13 @@ function draftKind(l: Lead): DraftKind {
   return 'job';
 }
 
-// Each local-business message gets a different way in. Reviews are only one option among many.
+// Each local-business message uses a different fact as the one-line "why I'm writing to you".
 const PLACES_ANGLES = [
-  'SITE DETAIL: open with something specific from their site text (a service they offer, how long they have been running, who they help, their story). If the site text has nothing usable, use their trade and city instead.',
-  'CUSTOMER VIEW: open by describing, in one or two sentences, what a customer experiences when they look them up on a phone today.',
-  'LOCAL: open with their town or neighbourhood and the people there searching for their kind of business.',
-  'STRAIGHT TO IT: no warm-up. First sentence states who Samuel is in a few words and why he is writing to them specifically.',
-  'THEIR GOAL: open with what a business like theirs usually wants more of (bookings, calls, enquiries, walk-ins) and connect it to what you noticed.',
-  'REPUTATION: open with how customers talk about them (review count or rating). Only use this if the findings mention reviews.',
+  'SITE DETAIL: something specific from their site text (a service they offer, how they take bookings or enquiries, how long they have been running).',
+  'CUSTOMER VIEW: what a customer can or can\'t do when they find them on a phone today (book, ask for a quote, see prices).',
+  'LOCAL: their town or neighbourhood and the people there looking for their kind of business.',
+  'THEIR GOAL: what a business like theirs wants more of (bookings, calls, enquiries, walk-ins), tied to one thing you noticed.',
+  'REPUTATION: how customers talk about them (review count or rating). Only use this if the findings mention reviews.',
 ];
 
 function angleFor(l: Lead, slot: number): string {
@@ -202,30 +201,38 @@ const VOICE = `Voice (strict, applies to every message):
 - No flattery formulas ("says a lot about", "clearly passionate", "impressive work"). If you compliment, make it concrete and brief, and skip it entirely when there's nothing real to say.
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
-// How every cold message is built: help first, pitch last. Most freelancers open with
-// themselves and a list of services; these messages open with the reader's business.
-const APPROACH = `Approach (help first, applies to every cold message):
-- Write as someone who noticed something useful about their business and is passing it on, not as a seller. Even if they never reply, they should finish the message knowing one useful thing they didn't before.
+// How every cold message is built: a short, confident introduction of Samuel with one
+// offer and one proof point. The long "observation, why it matters, free advice" shape read
+// like every other cold email and every blog template, so it is gone.
+const PROOF = `Proof points (true, use at most ONE per message and vary which):
+- Top Rated on Upwork, 100% Job Success, 50+ projects delivered.
+- He designed BookedEZ, a booking app that paid out over $10K to artists and event organisers in its first month.
+- He built the landing page for The Initial, a consultancy, and its founder got 5+ new clients from it.`;
+
+const APPROACH = `Approach (a pitch, short and direct, applies to every cold message):
+- This is Samuel introducing himself and making one clear offer. It is not an essay about their business and not free advice.
+- Body under 80 words (DMs under 50). Three or four very short paragraphs.
 - Build it in this order:
-  1. One specific observation about their business, in their terms: what a customer sees or goes through today. Use only what the findings or site text show.
-  2. Why it matters to them, in one sentence, in their world (enquiries that arrive after hours and wait until morning, a booking that needs three messages, a quote that goes quiet). Frame it as common for businesses like theirs, never as their failure.
-  3. One small, concrete idea that would fix it, described as what changes on an ordinary day. Give the idea away freely, as if they could do it themselves.
-  4. A low-pressure offer to help with it, then one question they can answer in a line (yes or no, or a choice between two things).
-- Talk about them and their customers far more than about Samuel. At most one short sentence about him, and only to show why he is a sensible person to help (what he builds and for whom).
-- Assume they are busy and good at what they do. No lecturing, no scare tactics ("you are losing customers"), no criticism of their current site or whoever built it.
-- Never sound like a pitch: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of what Samuel offers.
-- It should read like a thoughtful professional typed it for this one person: plain words, natural rhythm, a contraction or two, warm but not chummy.
+  1. First line after the greeting: who Samuel is and what he sets up for businesses like theirs, in one sentence, in plain words (e.g. "I'm Samuel, a web developer. I set up online booking with reminder texts for small clinics.").
+  2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "I saw bookings at Bright Smile are by phone only."). Never criticise their site or whoever built it.
+  3. The offer: what he would set up for them and what it means on an ordinary day, in one or two sentences. Where it fits, add that it's a fixed price and live in two weeks.
+  4. One proof point from the list below, in one short sentence.
+  5. One direct question as the call to action (e.g. "Shall I show you how it would look for Bright Smile?").
+- Confident and friendly, never apologetic or salesy. Never explain at length why something matters, never lecture, no statistics, no "a lot of people...", no "did you know".
+- Never sound like a template: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
+
+${PROOF}
 
 Example of the shape (for a dentist with no online booking). Do not copy its wording or topic:
 "Hi Dr. Okafor,
 
-I was looking at Bright Smile's site and noticed the only way to book is to call during opening hours.
+I'm Samuel, a web developer. I set up online booking for small clinics, so patients can book a check-up at 10pm and get a reminder the day before.
 
-A lot of people decide to book a check-up in the evening, after work. When they can't do it there and then, many forget or book somewhere that lets them.
+I saw Bright Smile takes bookings by phone only, so it would fit you well. Fixed price, and live in two weeks.
 
-A simple fix is an online booking page that shows your free slots and sends a reminder the day before. Patients book at 10pm, and your front desk starts the day with the diary already filled in.
+I also designed BookedEZ, a booking app that paid out over $10K in its first month.
 
-I set these up for small clinics. Would it help if I sent a short example of how it would look for Bright Smile?"`;
+Shall I show you how it would look for Bright Smile?"`;
 
 const PROMPTS: Record<DraftKind, string> = {
   job: `Write a message from Samuel Adefila for each role below. Each is full-time: either remote and open to someone in Nigeria (the listing starts "Open to:"), or on-site abroad with visa sponsorship or relocation support (the listing starts "Relocation:"). Hiring managers and founders skim, so the first line must show he read the listing.
@@ -299,7 +306,7 @@ Rules:
 - Step 1, find the person: look in "Site text" for the founder, CEO, or head of marketing. Only use a name the text clearly ties to that role, else leave name empty.
 - Line 1 "Subject: ..." (under 7 words, about their business), blank line, body under 100 words.
 - Greeting "Hi [FirstName]," or "Hi [Company] team,".
-- Follow the Approach below: one specific thing from their site text, why it matters to their customers, then one concrete idea for their website (a landing page for one offer, a faster marketing site, one page made clearer). Never invent problems the site text does not show.
+- Follow the Approach below. The offer is one concrete thing for their website (a landing page for one offer, a faster marketing site, one page made clearer). Never invent problems the site text does not show.
 - One easy next step (a short call, or a free one-page sketch of the idea for their homepage).
 - Close with a short opt-out line, then sign off "Samuel" and "adefilasamuel.com".
 
@@ -317,16 +324,15 @@ Step 1, find the person. Look in the business name and site text for the owner, 
 
 Step 2, write the message.
 - Greeting: "Hi [FirstName]," when you found a person (use "Hi Dr. [LastName]," for doctors and dentists). If no person but it's clearly a team, "Hi [Business name] team,". Otherwise "Hi there,".
-- If Channel is EMAIL: line 1 is "Subject: ..." (under 7 words, about their business, no clickbait), blank line, then body under 110 words.
-- If Channel is DM: no subject line, under 65 words. It goes out as an Instagram, Facebook or LinkedIn message.
-- Follow the Approach below. Use the "Angle" line for how the first observation is framed. Every business gets a different angle on purpose, so the batch never reads like one template.
+- If Channel is EMAIL: line 1 is "Subject: ..." (under 6 words, naming what he would set up for them, e.g. "Online booking for Bright Smile", no clickbait), blank line, then body under 80 words.
+- If Channel is DM: no subject line, under 50 words. It goes out as an Instagram, Facebook or LinkedIn message.
+- Follow the Approach below. The "Angle" line picks the one fact used for "why them". Every business gets a different angle on purpose, so the batch never reads like one template.
 - Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
 - The idea in the message is the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
-- Then, only if it fits naturally, mention ONE website issue from the findings in plain words (e.g. "on a phone the text is tiny"). Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
-- No website: you may add that people who find them on Google have nowhere to click through to, but keep the idea as the main point.
-- Offer ONE easy next step and vary it between messages: a quick demo of how it would work for them, a short example for their business, or a ten-minute call. Don't reuse "no strings attached" in every message.
+- Never use words like HTTPS, SEO, viewport, load time, optimisation or automation. A website issue from the findings can be the "why them" fact, in plain words, but only if the angle points there.
+- Vary the closing question between messages: showing a quick demo for their business, sending a short example, or a ten-minute call.
 - A link to a one-page note of ideas for them is added under your message automatically. Never offer to send a note and never mention it yourself.
-- Vary length (some messages 60 words, some closer to 100) and sentence rhythm. Write it the way Samuel would type it himself, not as a sales script.
+- Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 - Close the body with one short opt-out line before the sign-off, phrased naturally, e.g. "If it's not something you need, just say so and I won't follow up."
 - Never state anything that isn't in the findings or site text.
@@ -353,7 +359,7 @@ Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "O
 Rules:
 - Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
 - Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
-- Then follow the Approach below, with the "Idea to offer" as the idea: what setting it up from day one saves them as they start taking customers. Mention that a simple site helps them look established only as a second point, if at all.
+- Then follow the Approach below, with the "Idea to offer" as the offer: what setting it up from day one saves them as they start taking customers.
 - If they have a website with issues: mention ONE issue from the findings in plain words.
 - Offer one easy next step: a short note of ideas for their business, or a short call.
 - If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
