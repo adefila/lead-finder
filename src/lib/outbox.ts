@@ -24,6 +24,9 @@ const MAX_TRIES = 3;
 // MAIL_TEST_MODE=true: every run sends the next queued email to your own inbox, any day or hour,
 // and leaves the lead untouched so the real send still happens later.
 const TEST_MODE = process.env.MAIL_TEST_MODE === 'true';
+// MAIL_PAUSED=true: no new emails and no follow-ups go out. Replies are still checked, lead
+// searches keep running, and scheduled leads wait in the queue until it is switched off.
+const PAUSED = process.env.MAIL_PAUSED === 'true';
 const WINDOW_START = WINDOW_START_H;
 const WINDOW_END = WINDOW_END_H;
 
@@ -182,10 +185,11 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean }> {
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
   const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(dayAgo()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getLeads(), lastSentAt()]);
   return {
     followUpsToday,
+    paused: PAUSED,
     configured: !!mailConfig(),
     sentToday,
     limit: DAILY_LIMIT,
@@ -245,6 +249,8 @@ export async function runOutbox(): Promise<OutboxResult> {
     result.replies++;
     if (hit.optedOut) result.optOuts++;
   }
+
+  if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
 
   // 2. Limits count new (first) emails only: the last 24 hours, and the week since Sunday
   // 00:00 UTC. Follow-ups are counted separately, never limited, and keep going out.
