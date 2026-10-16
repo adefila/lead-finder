@@ -77,12 +77,29 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   await client.connect();
   const lock = await client.getMailboxLock('INBOX');
   try {
-    // One pass over the inbox since our earliest email (sender and date only), instead of one
-    // search per lead, which got too slow once dozens of leads were waiting for a reply.
+    // Only messages from the leads we're watching. On Gmail the server finds them with its own
+    // search (a few "from:" queries), which stays fast however full the inbox gets. Reading the
+    // sender of every inbox message since the oldest lead took longer than the 12 seconds the
+    // run allows once the inbox grew, so most runs skipped the check. Other servers fall back
+    // to that one pass over the inbox.
     const earliest = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
     const sinceFor = new Map(checks.map(ch => [ch.email.toLowerCase(), ch.since.getTime()]));
     const latestFrom = new Map<string, number>();
-    for await (const m of client.fetch({ since: earliest }, { uid: true, envelope: true, internalDate: true }, { uid: true })) {
+    let range: { since: Date } | number[] = { since: earliest };
+    if (/gmail\.com$/i.test(cfg.imapHost)) {
+      // A day early: Gmail reads "after:" in its own time zone. Exact times are checked below.
+      const from = new Date(earliest.getTime() - 86_400_000);
+      const after = `${from.getUTCFullYear()}/${from.getUTCMonth() + 1}/${from.getUTCDate()}`;
+      const addresses = [...sinceFor.keys()];
+      const uids = new Set<number>();
+      for (let i = 0; i < addresses.length; i += 40) {
+        const query = `from:(${addresses.slice(i, i + 40).join(' OR ')}) after:${after}`;
+        for (const uid of (await client.search({ gmraw: query }, { uid: true })) || []) uids.add(uid);
+      }
+      range = [...uids];
+    }
+    const messages = Array.isArray(range) && !range.length ? [] : client.fetch(range, { uid: true, envelope: true, internalDate: true }, { uid: true });
+    for await (const m of messages) {
       const from = m.envelope?.from?.[0]?.address?.toLowerCase();
       if (!from || !sinceFor.has(from)) continue;
       const at = m.internalDate ? new Date(m.internalDate).getTime() : Date.now();
