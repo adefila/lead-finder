@@ -125,19 +125,29 @@ const PLACES_ANGLES = [
   'REPUTATION: how customers talk about them (review count or rating). Only use this if the findings mention reviews.',
 ];
 
+// How the first line grabs them. Rotated separately from the angle, so pairs never repeat.
+// None of them opens with "I'm a web developer": the reader cares about their business first.
+const HOOKS = [
+  'OUTCOME: open with what would change for their customers, using the business name. A statement, not a question. E.g. "Bright Smile\'s patients could book a check-up at 10pm and get a reminder text the day before."',
+  'PROOF: open with the proof point most relevant to them, then connect it to them in the next sentence. E.g. "The last booking app I designed paid out over $10K to its users in its first month. I\'d like to set up something simpler for Bright Smile." Do not repeat a proof point later in the message.',
+  'OFFER: open with the offer itself in one plain line. E.g. "I\'d like to set up online booking for Bright Smile, at a fixed price and live in two weeks."',
+  'CUSTOMER MOMENT: open with one short, concrete moment from a customer\'s day, in two short sentences at most. E.g. "It\'s 10pm and someone nearby wants a check-up next week. Right now they have to wait until morning to call Bright Smile."',
+];
+
 function angleFor(l: Lead, slot: number): string {
   const hasReviews = /review/i.test(l.description);
   const pool = hasReviews ? PLACES_ANGLES : PLACES_ANGLES.slice(0, -1);
   return pool[slot % pool.length];
 }
 
-function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0): string {
+function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0, hookBase = 0): string {
   if (kind === 'places') {
     const channel = l.contactEmail ? 'EMAIL' : 'DM';
     return [
       `BUSINESS ${i + 1} (ID: ${l.id}):`,
       `Channel: ${channel}`,
       `Language: ${LANGUAGE_NAME[leadLanguage(l)]}`,
+      `Hook: ${HOOKS[(hookBase + i) % HOOKS.length]}`,
       `Angle: ${angleFor(l, angleBase + i)}`,
       `Business name: ${l.title}`,
       `Type and city: ${l.company}`,
@@ -213,10 +223,10 @@ const APPROACH = `Approach (a pitch, short and direct, applies to every cold mes
 - This is Samuel introducing himself and making one clear offer. It is not an essay about their business and not free advice.
 - Body under 80 words (DMs under 50). Three or four very short paragraphs.
 - Build it in this order:
-  1. First line after the greeting: what Samuel does for businesses like theirs, in one sentence, in plain words (e.g. "I'm a web developer and I set up online booking with reminder texts for small clinics."). Never write his name in the body: it is already on the email address and the sign-off.
-  2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "I saw bookings at Bright Smile are by phone only."). Never criticise their site or whoever built it.
-  3. The offer: what he would set up for them and what it means on an ordinary day, in one or two sentences. Where it fits, add that it's a fixed price and live in two weeks.
-  4. One proof point from the list below, in one short sentence.
+  1. The hook: the first line after the greeting, written in the style on the "Hook" line (OUTCOME when there is no Hook line). Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
+  2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "Right now bookings are by phone only."). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
+  3. The offer: what he would set up for them, in one or two sentences, with "fixed price" and "live in two weeks" where they fit. Who he is can come here as a short clause at most (e.g. "I set these up for small clinics").
+  4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
   5. One direct question as the call to action (e.g. "Shall I show you how it would look for Bright Smile?").
 - Confident and friendly, never apologetic or salesy. Never explain at length why something matters, never lecture, no statistics, no "a lot of people...", no "did you know".
 - Never sound like a template: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
@@ -226,9 +236,9 @@ ${PROOF}
 Example of the shape (for a dentist with no online booking). Do not copy its wording or topic:
 "Hi Dr. Okafor,
 
-I'm a web developer and I set up online booking for small clinics, so patients can book a check-up at 10pm and get a reminder the day before.
+Bright Smile's patients could book a check-up at 10pm and get a reminder text the day before.
 
-I saw Bright Smile takes bookings by phone only, so it would fit you well. Fixed price, and live in two weeks.
+Right now bookings are by phone only. I set up online booking for small clinics, at a fixed price and live in two weeks.
 
 I also designed BookedEZ, a booking app that paid out over $10K in its first month.
 
@@ -379,7 +389,8 @@ type Draft = { message: string; name?: string; role?: string };
 async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, Draft>> {
   // Random start per batch: neighbours differ, and a rewrite gets a fresh angle.
   const angleBase = Math.floor(Math.random() * PLACES_ANGLES.length);
-  const block = batch.map((l, i) => describe(l, i, kind, angleBase)).join('\n\n---\n\n');
+  const hookBase = Math.floor(Math.random() * HOOKS.length);
+  const block = batch.map((l, i) => describe(l, i, kind, angleBase, hookBase)).join('\n\n---\n\n');
   const prompt = `${PROMPTS[kind]}\n\nAbout Samuel: ${SAMUEL}\n\n${block}`;
 
   const msg = await getClient().messages.create({
