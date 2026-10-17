@@ -129,6 +129,10 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
       const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
       if (!msg || !msg.source) continue;
       const text = msg.source.toString('utf8').toLowerCase();
+      // Only a dead address counts. Sender-side failures (5.7.x authentication or policy blocks, full
+      // mailbox, temporary errors) say nothing about the lead, so the lead stays as it was.
+      const deadAddress = /\b5\.1\.[0-6]\b|address not found|couldn'?t be found|does not exist|no such user|user unknown|unknown user/.test(text);
+      if (!deadAddress || /\b5\.7\.\d+\b/.test(text)) continue;
       for (const email of watched) if (text.includes(email)) bounced.add(email);
     }
   } finally {
