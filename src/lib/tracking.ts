@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { displayName, isBusinessPitch } from '@/lib/leadview';
+import { displayName, isBusinessPitch, leadLanguage } from '@/lib/leadview';
 
 export const APP_URL = process.env.APP_URL ?? 'https://lead-finder-one-self.vercel.app';
 
@@ -51,8 +51,12 @@ export function noteLink(lead: { id: string; title: string; source: string }): s
 export const SITE_URL = 'https://adefilasamuel.com';
 
 // Local businesses and new companies land on the page written for them; jobs and everyone else on the homepage.
-export function siteDestination(lead: Pick<Lead, 'source'>): string {
-  return isBusinessPitch(lead) ? `${SITE_URL}/local-business` : SITE_URL;
+// The page is translated, so a Dutch, Norwegian or French lead gets ?lang= and sees it in the same language as the
+// email, whatever country their IP says. English leads get the plain address.
+export function siteDestination(lead: Lead): string {
+  if (!isBusinessPitch(lead)) return SITE_URL;
+  const lang = leadLanguage(lead);
+  return `${SITE_URL}/local-business${lang === 'en' ? '' : `?lang=${lang}`}`;
 }
 
 function visitCode(id: string): string {
