@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { mailConfig, sendMail } from '@/lib/mailer';
 import type { Lead } from '@/types/lead';
 import { splitDraft } from '@/lib/compose';
 import { APP_URL, sendLink } from '@/lib/tracking';
@@ -163,6 +164,28 @@ function buildEmailHtml(leads: Lead[], followUpsDue: number): string {
 </body></html>`;
 }
 
+// Everything Lead Finder tells you goes to one inbox. Change it with NOTIFY_EMAIL.
+export const NOTIFY_TO = () => process.env.NOTIFY_EMAIL?.trim() || 'samuel@adefilasamuel.com';
+
+// Sent through the Workspace mailbox first: Resend's test sender can only reach the Resend
+// account's own address, so it is the fallback, not the first choice.
+async function deliverNotification(subject: string, html: string): Promise<string> {
+  const to = NOTIFY_TO();
+  const cfg = mailConfig();
+  if (cfg) {
+    try {
+      return await sendMail(cfg, { to, subject, text: subject, html });
+    } catch (err) {
+      console.error('[email] Workspace send failed, trying Resend:', err);
+    }
+  }
+  if (!process.env.RESEND_API_KEY) throw new Error('No mail provider is set up for notifications');
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { data, error } = await resend.emails.send({ from: 'Lead Finder <onboarding@resend.dev>', to, subject, html });
+  if (error) throw new Error(`Notification send failed: ${JSON.stringify(error)}`);
+  return data?.id ?? '';
+}
+
 export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<void> {
   const sorted = [...leads].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const ready = leads.filter(l => l.contactEmail).length;
@@ -173,36 +196,18 @@ export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<v
   const subject = parts.join(' · ');
 
   console.log(`[email] Sending digest with ${leads.length} leads...`);
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const { data, error } = await resend.emails.send({
-    from: 'Lead Finder <onboarding@resend.dev>',
-    to: 'adefilasamuel929@gmail.com',
-    subject,
-    html: buildEmailHtml(sorted, followUpsDue),
-  });
-
-  if (error) {
-    console.error('[email] Resend error:', error);
-    throw new Error(`Email send failed: ${JSON.stringify(error)}`);
-  }
-  console.log('[email] Email sent, id:', data?.id);
+  const id = await deliverNotification(subject, buildEmailHtml(sorted, followUpsDue));
+  console.log('[email] Email sent, id:', id);
 }
 
 
 // Sent the moment someone fills in your website form, or a lead you emailed first visits your site.
 export async function sendInboundAlert(lead: Lead, kind: 'enquiry' | 'visited'): Promise<void> {
-  if (!process.env.RESEND_API_KEY) return;
+  if (!process.env.RESEND_API_KEY && !mailConfig()) return;
   const who = lead.contactName && lead.contactName !== lead.title ? `${lead.contactName} (${lead.title})` : lead.title;
   const subject = kind === 'enquiry'
     ? `New enquiry from your website: ${who}`
     : `${who} just visited your website`;
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const { error } = await resend.emails.send({
-    from: 'Lead Finder <onboarding@resend.dev>',
-    to: 'adefilasamuel929@gmail.com',
-    subject,
-    html: buildEmailHtml([lead], 0),
-  });
-  if (error) throw new Error(`Alert send failed: ${JSON.stringify(error)}`);
+  await deliverNotification(subject, buildEmailHtml([lead], 0));
   console.log(`[email] ${kind} alert sent for ${lead.title}`);
 }
