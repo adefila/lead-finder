@@ -135,9 +135,10 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
     const since = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
     const failures = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
     const watched = checks.map(ch => ch.email.toLowerCase());
-    for (const uid of (failures || []).slice(-30)) {
-      const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
-      if (!msg || !msg.source) continue;
+    // One pass over the newest messages (a fetch per message took long enough to time out the whole check)
+    const recent = (failures || []).slice(-40);
+    for await (const msg of recent.length ? client.fetch(recent, { uid: true, source: true }, { uid: true }) : []) {
+      if (!msg.source) continue;
       const text = msg.source.toString('utf8').toLowerCase();
       // Only a dead address counts: sender-side failures say nothing about the lead (see classifyBounce)
       if (classifyBounce(text) !== 'dead') continue;
@@ -165,9 +166,9 @@ export async function bounceKinds(cfg: MailConfig, emails: string[], since: Date
   try {
     const uids = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
     const watched = emails.map(e => e.toLowerCase());
-    for (const uid of (uids || []).slice(-400)) {
-      const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
-      if (!msg || !msg.source) continue;
+    const recent = (uids || []).slice(-400);
+    for await (const msg of recent.length ? client.fetch(recent, { uid: true, source: true }, { uid: true }) : []) {
+      if (!msg.source) continue;
       const text = msg.source.toString('utf8');
       const kind = classifyBounce(text);
       const lower = text.toLowerCase();

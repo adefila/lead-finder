@@ -255,6 +255,19 @@ export default function Home() {
     });
   };
 
+  // More options > Send me a test email: proves the real sending path (login, DKIM) without touching a lead
+  const sendTestMail = useCallback(async () => {
+    notify('Sending a test email…');
+    try {
+      const res = await fetch('/api/outbox/selftest', { method: 'POST' });
+      const data = await res.json() as { ok?: boolean; error?: string; to?: string; from?: string; ms?: number };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'The test email failed');
+      notify(`Test email sent from ${data.from} to ${data.to} in ${((data.ms ?? 0) / 1000).toFixed(1)}s. Open it in Gmail, then Show original: DKIM, SPF and DMARC should say PASS.`);
+    } catch (e) {
+      fail(`Test email failed: ${(e as Error).message}`);
+    }
+  }, [notify, fail]);
+
   // Done > Lost: leads wrongly marked as bounced (e.g. mail sent while the domain was down) come back
   const [recovering, setRecovering] = useState(false);
   const recoverBounced = useCallback(async () => {
@@ -557,6 +570,7 @@ export default function Home() {
                 ...(outbox?.configured ? [{ label: sendingNow ? 'Sending…' : 'Send the next email now', icon: 'send' as const, hint: 'Still only sends on weekdays, 9am to 4pm their time', onSelect: sendNextNow }] : []),
                 ...(outbox?.configured ? [{ label: "Check today's sending", icon: 'check' as const, hint: 'Compares the count with your Sent folder', onSelect: checkSending }] : []),
                 { label: findingEmails ? 'Finding emails…' : 'Find missing emails', icon: 'mail', hint: 'Leads with no email move to Skipped', onSelect: () => { if (findingEmails) setHuntOpen(true); else findEmails(); } },
+                ...(outbox?.configured ? [{ label: 'Send me a test email', icon: 'send' as const, hint: 'One email to your test address, to prove sending and DKIM work', onSelect: sendTestMail }] : []),
                 { label: 'How it works', icon: 'help', onSelect: how.show },
                 'divider',
                 { label: 'Log out', icon: 'logout', onSelect: logOut },

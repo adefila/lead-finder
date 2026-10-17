@@ -221,7 +221,8 @@ export async function runOutbox(): Promise<OutboxResult> {
   if (!cfg) return { ...result, skipped: 'Mail is not configured' };
 
   // 1. Replies stop everything for that lead.
-  // The timer gives up after 30s, so the inbox check gets 12s at most. If Gmail is slow we skip
+  // The timer is answered straight away and the work runs after (see /api/outbox), so the inbox check can have
+  // 25s of the 60s a run is allowed. If Gmail is slow we skip
   // it this time (the next run, 15 minutes later, checks again) and hold back follow-ups,
   // so nobody who already replied gets chased.
   const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut);
@@ -232,7 +233,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   }))).then(r => ({ ...r, checked: true })).catch(e => { console.error('[outbox] inbox check failed:', (e as Error).message); return noInbox; });
   const { replies, bounced, checked: inboxChecked } = await Promise.race([
     inboxCheck,
-    new Promise<typeof noInbox>(resolve => setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 12_000)),
+    new Promise<typeof noInbox>(resolve => setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 25_000)),
   ]);
   for (const lead of watching) {
     const address = lead.contactEmail!.toLowerCase();
