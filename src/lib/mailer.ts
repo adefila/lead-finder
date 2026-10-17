@@ -58,6 +58,16 @@ export interface ReplyFound { replied: boolean; optedOut: boolean }
 export interface InboxCheck { replies: Map<string, ReplyFound>; bounced: Set<string> }
 
 // One IMAP session for all leads: look for any message from each address since we first wrote.
+// What a bounce message means for the lead. Only a dead address ("dead") says anything about the lead.
+// Sender-side failures (5.7.x authentication or policy blocks, full mailbox, temporary errors) are "other".
+export type BounceKind = 'dead' | 'other';
+export function classifyBounce(message: string): BounceKind {
+  const text = message.toLowerCase();
+  // 5.4.1 "Recipient address rejected" is how Microsoft 365 answers for a mailbox that does not exist.
+  const deadAddress = /\b5\.1\.[0-6]\b|\b5\.4\.1\b|recipient address rejected|address not found|couldn'?t be found|does not exist|no such user|user unknown|unknown user/.test(text);
+  return deadAddress && !/\b5\.7\.\d+\b/.test(text) ? 'dead' : 'other';
+}
+
 export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promise<InboxCheck> {
   const found = new Map<string, ReplyFound>();
   const bounced = new Set<string>();
@@ -129,11 +139,8 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
       const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
       if (!msg || !msg.source) continue;
       const text = msg.source.toString('utf8').toLowerCase();
-      // Only a dead address counts. Sender-side failures (5.7.x authentication or policy blocks, full
-      // mailbox, temporary errors) say nothing about the lead, so the lead stays as it was.
-      // 5.4.1 "Recipient address rejected" is how Microsoft 365 answers for a mailbox that does not exist.
-      const deadAddress = /\b5\.1\.[0-6]\b|\b5\.4\.1\b|recipient address rejected|address not found|couldn'?t be found|does not exist|no such user|user unknown|unknown user/.test(text);
-      if (!deadAddress || /\b5\.7\.\d+\b/.test(text)) continue;
+      // Only a dead address counts: sender-side failures say nothing about the lead (see classifyBounce)
+      if (classifyBounce(text) !== 'dead') continue;
       for (const email of watched) if (text.includes(email)) bounced.add(email);
     }
   } finally {
@@ -143,6 +150,38 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   return { replies: found, bounced };
 }
 
+
+// For leads marked as bounced: what did their bounce messages actually say? An address with any dead-address
+// bounce is "dead"; one that only ever had other failures (e.g. your domain was down) is "other".
+export async function bounceKinds(cfg: MailConfig, emails: string[], since: Date): Promise<Map<string, BounceKind>> {
+  const out = new Map<string, BounceKind>();
+  if (!emails.length) return out;
+  const client = new ImapFlow({
+    host: cfg.imapHost, port: 993, secure: true, auth: { user: cfg.user, pass: cfg.pass }, logger: false,
+    connectionTimeout: 15_000, greetingTimeout: 10_000, socketTimeout: 40_000,
+  });
+  await client.connect();
+  const lock = await client.getMailboxLock('INBOX');
+  try {
+    const uids = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
+    const watched = emails.map(e => e.toLowerCase());
+    for (const uid of (uids || []).slice(-400)) {
+      const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
+      if (!msg || !msg.source) continue;
+      const text = msg.source.toString('utf8');
+      const kind = classifyBounce(text);
+      const lower = text.toLowerCase();
+      for (const email of watched) {
+        if (!lower.includes(email)) continue;
+        out.set(email, out.get(email) === 'dead' || kind === 'dead' ? 'dead' : 'other');
+      }
+    }
+  } finally {
+    lock.release();
+    await client.logout().catch(() => undefined);
+  }
+  return out;
+}
 
 // Every message in the Sent folder since a moment, with who it went to (for the outbox audit).
 export async function sentFolderSince(cfg: MailConfig, since: Date): Promise<{ at: string; to: string; subject: string }[]> {

@@ -255,6 +255,26 @@ export default function Home() {
     });
   };
 
+  // Done > Lost: leads wrongly marked as bounced (e.g. mail sent while the domain was down) come back
+  const [recovering, setRecovering] = useState(false);
+  const recoverBounced = useCallback(async () => {
+    setRecovering(true);
+    try {
+      const res = await fetch('/api/recover-bounced', { method: 'POST' });
+      const data = await res.json() as { error?: string; checked?: number; restored?: string[]; dead?: number; unverified?: number };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Could not check the bounces');
+      const n = data.restored?.length ?? 0;
+      notify(n
+        ? `${n} lead${n === 1 ? '' : 's'} brought back to To contact. ${data.dead} real bounce${data.dead === 1 ? '' : 's'} left as lost${data.unverified ? `, ${data.unverified} could not be checked` : ''}.`
+        : `Nothing to restore. ${data.checked ?? 0} bounced lead${data.checked === 1 ? '' : 's'} checked, ${data.dead} real bounce${data.dead === 1 ? '' : 's'}${data.unverified ? `, ${data.unverified} could not be checked` : ''}.`);
+      await loadData();
+    } catch (e) {
+      fail((e as Error).message);
+    } finally {
+      setRecovering(false);
+    }
+  }, [notify, fail, loadData]);
+
   const refreshOutbox = useCallback(async () => {
     const s = await fetch('/api/outbox/status').then(r => (r.ok ? r.json() as Promise<OutboxStatus> : null)).catch(() => null);
     if (s) setOutbox(s);
@@ -612,6 +632,12 @@ export default function Home() {
               ))}
             </div>
             <div className="view-head">
+              {mode === 'table' && view === 'done' && sub === 'lost' && (
+                <Btn className="btn btn-sm view-action" onClick={recoverBounced} disabled={recovering}
+                  title="Reads the bounce messages in your inbox and brings back leads whose email failed for a reason other than a wrong address">
+                  <Icon name="undo" />{recovering ? 'Checking your inbox…' : 'Restore wrongly bounced'}
+                </Btn>
+              )}
               {mode === 'table' && view === 'new' && sub === 'all' && readyAll.length > 0 && (
                 <Btn className="btn btn-sm btn-primary view-action" onClick={scheduleAll}
                   title="Schedule every lead here that has an email and an email message">
