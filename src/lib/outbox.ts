@@ -67,9 +67,13 @@ export function timezoneFor(lead: Lead): string {
 // US in your afternoon. With one shared count, the zones that open first used all 20 before Europe
 // or the US started their day. So every time zone with emails waiting gets its own share of the
 // limit, counted over the last 24 hours and spread evenly over its own window.
-export function zoneShares(queued: Lead[], limit = DAILY_LIMIT): Map<string, number> {
+// `already` is what each zone sent in the last 24 hours. It is added to the zone's queue so a share does not shrink
+// as the zone sends: the queue gets shorter with every email, which used to cut the share mid-day, block the zone
+// early, and leave slots unused because the other zones' windows were closed.
+export function zoneShares(queued: Lead[], limit = DAILY_LIMIT, already: Map<string, number> = new Map()): Map<string, number> {
   const waiting = new Map<string, number>();
   for (const l of queued) waiting.set(timezoneFor(l), (waiting.get(timezoneFor(l)) ?? 0) + 1);
+  for (const [z, n] of waiting) waiting.set(z, n + (already.get(z) ?? 0));
   const zones = [...waiting.entries()].sort((a, b) => b[1] - a[1]);
   const shares = new Map(zones.map(([z]) => [z, 0]));
   let left = limit;
@@ -308,7 +312,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       recent.set(zone, { count: r.count + 1, last: Math.max(r.last, Date.parse(s.at)) });
     }
   }
-  const shares = zoneShares(queued);
+  const shares = zoneShares(queued, DAILY_LIMIT, new Map([...recent].map(([z, r]) => [z, r.count])));
   // When each zone may send its next new email (Infinity once its share is used).
   // For a day after Gmail pushed back, new emails go out half as often.
   const nextAt = (zone: string) => {

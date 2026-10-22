@@ -551,10 +551,17 @@ export default function Home() {
           <div className="brand">Lead Finder</div>
           <div className="topbar-actions">
             {outbox && (
-              <span className={`send-status${outbox.configured ? '' : ' off'}`}
-                title={outbox.configured
-                  ? 'Scheduled emails go out from your inbox on weekdays between 9am and 4pm their time: spaced out through the day, up to 20 new emails a day and 100 a week. Follow-ups go out on top of that.'
-                  : 'Automatic sending is off until your email login is added in Vercel.'}>
+              <span className={`send-status${outbox.configured ? '' : ' off'}`} tabIndex={0}>
+                <span className="send-tip" role="tooltip">
+                  {outbox.configured ? (
+                    <>
+                      <b>New emails</b><span>{outbox.sentToday} of {outbox.limit} in the last 24 hours</span>
+                      {!!outbox.weekLimit && <><b>This week</b><span>{outbox.sentWeek ?? 0} of {outbox.weekLimit}, resets Sunday</span></>}
+                      <b>Follow-ups</b><span>{outbox.followUpsToday ?? 0} today, no limit</span>
+                      <em>Sent on weekdays, 9am to 4pm in each business's own time, spread through the day.</em>
+                    </>
+                  ) : <em>Automatic sending is off until your email login is added in Vercel.</em>}
+                </span>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
                   : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new in 24h${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.paused ? 'sending paused, replies still checked' : outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
