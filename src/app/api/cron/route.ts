@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAllowed } from '@/lib/session';
 import { fetchPlacesLeads } from '@/lib/places';
-import { fetchOsmLeads } from '@/lib/osm';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
@@ -25,13 +24,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Fetch client project leads in parallel
-    const [jobs, placesLeads, osmLeads, companyLeads] = await Promise.all([
+    // OpenStreetMap is left out: both public servers time out on every run and it has yielded about 0 a day.
+    const [jobs, placesLeads, companyLeads] = await Promise.all([
       fetchJobBoards(),
       fetchPlacesLeads(),
-      fetchOsmLeads(),
       fetchCompaniesHouseLeads(),
     ]);
-    const allJobs = [...jobs, ...placesLeads, ...osmLeads, ...companyLeads];
+    const allJobs = [...jobs, ...placesLeads, ...companyLeads];
 
     // 2. Dedup against Supabase
     const [sentIds, existingLeadIds] = await Promise.all([
@@ -130,9 +129,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         existingJobsWithEmail: backfill.emails,
         existingJobsLeft: backfill.left,
         localBusinesses: placesLeads.length,
-        openStreetMap: osmLeads.length,
         newUkCompanies: companyLeads.length,
-        withEmail: [...placesLeads, ...osmLeads, ...companyLeads].filter(l => l.contactEmail).length,
+        withEmail: [...placesLeads, ...companyLeads].filter(l => l.contactEmail).length,
         fresh: freshJobs.length,
         drafted: jobsWithEmails.length,
         followUpsDue,

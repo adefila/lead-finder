@@ -6,6 +6,8 @@ const DEFAULT_CATEGORIES = [
   'dentist', 'law firm', 'real estate agency', 'med spa', 'roofing contractor', 'interior designer',
   'accounting firm', 'physiotherapy clinic', 'wedding photographer', 'boutique gym', 'hair salon',
   'landscaping company', 'chiropractor', 'boutique hotel', 'architecture firm', 'veterinary clinic',
+  // Service businesses that live on quotes, bookings and reviews
+  'plumber', 'electrician', 'cleaning service', 'driving school', 'mortgage broker', 'pet groomer', 'auto repair shop', 'tutoring centre',
 ];
 
 // Australia and Singapore: English-speaking, and both allow a relevant email to an address a
@@ -18,6 +20,9 @@ const DEFAULT_CITIES = [
   'Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'Utrecht, Netherlands', 'The Hague, Netherlands', 'Eindhoven, Netherlands',
   'Oslo, Norway', 'Bergen, Norway', 'Trondheim, Norway', 'Stavanger, Norway',
   'Luxembourg City, Luxembourg',
+  // English-speaking, business email to a published address is allowed with an opt-out
+  'Auckland, New Zealand', 'Wellington, New Zealand', 'Christchurch, New Zealand',
+  'Dublin, Ireland', 'Cork, Ireland', 'Galway, Ireland', 'Limerick, Ireland',
 ];
 
 // Each search is one billed Text Search (Enterprise) call. 6 per run x 2 runs/day (about 370 a
