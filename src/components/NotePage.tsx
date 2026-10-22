@@ -53,7 +53,7 @@ export async function NotePage({ lead }: { lead: Lead }) {
           <p>{copy.aboutText}</p>
           <div className="check-actions">
             {mailto && <a className="btn btn-primary" href={mailto}>{copy.emailMe}</a>}
-            <a className="btn" href={siteDestination(lead)} target="_blank" rel="noreferrer">{copy.seeWork}</a>
+            <a className="btn" href={siteDestination(lead, 'note')} target="_blank" rel="noreferrer">{copy.seeWork}</a>
           </div>
           <p className="check-note">{copy.closing}</p>
         </section>

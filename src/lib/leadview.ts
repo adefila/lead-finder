@@ -293,6 +293,16 @@ const DEFAULT_SYSTEMS = [
 // Leads from your own website: no local-business note, they get a plain reply or introduction.
 const fromSite = (l: Pick<Lead, 'source'>) => l.source === 'website' || l.source === 'visitor';
 
+// Short, anonymous label for the kind of business, in the same order as SYSTEMS above. It goes into the analytics tag on
+// the links in your emails so you can see which kinds of business visit and book. Never a name or an address.
+const NICHE_NAMES = ['legal', 'finance', 'property', 'health-beauty', 'food', 'retail', 'trades'];
+export function nicheOf(l: Lead): string {
+  if (isJobLead(l) || fromSite(l)) return 'none';
+  const trade = `${l.company} ${l.title}`;
+  const i = SYSTEMS.findIndex(([re]) => re.test(trade));
+  return i >= 0 ? (NICHE_NAMES[i] ?? 'other') : 'other';
+}
+
 export function systemsFor(l: Lead): string[] {
   if (isJobLead(l) || fromSite(l)) return [];
   const trade = `${l.company} ${l.title}`;

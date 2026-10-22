@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { displayName, isBusinessPitch, leadLanguage } from '@/lib/leadview';
+import { displayName, isBusinessPitch, leadLanguage, nicheOf, isJobLead } from '@/lib/leadview';
 
 export const APP_URL = process.env.APP_URL ?? 'https://lead-finder-one-self.vercel.app';
 
@@ -53,10 +53,21 @@ export const SITE_URL = 'https://adefilasamuel.com';
 // Local businesses and new companies land on the page written for them; jobs and everyone else on the homepage.
 // The page is translated, so a Dutch, Norwegian or French lead gets ?lang= and sees it in the same language as the
 // email, whatever country their IP says. English leads get the plain address.
-export function siteDestination(lead: Lead): string {
-  if (!isBusinessPitch(lead)) return SITE_URL;
+//
+// Every link also carries utm_ tags, so Google Analytics can tell your emails apart from "direct" visits and show
+// which kind of business and which letter brought them: source = outreach_email (the link in the email) or
+// outreach_note (the button on the one-page note), medium = email, campaign = local-business / job-application /
+// general, content = the kind of business (see nicheOf). No names, emails or addresses ever go into a link.
+export function siteDestination(lead: Lead, via: 'email' | 'note' = 'email'): string {
+  const business = isBusinessPitch(lead);
+  const params = new URLSearchParams();
   const lang = leadLanguage(lead);
-  return `${SITE_URL}/local-business${lang === 'en' ? '' : `?lang=${lang}`}`;
+  if (business && lang !== 'en') params.set('lang', lang);
+  params.set('utm_source', via === 'note' ? 'outreach_note' : 'outreach_email');
+  params.set('utm_medium', 'email');
+  params.set('utm_campaign', business ? 'local-business' : isJobLead(lead) ? 'job-application' : 'general');
+  params.set('utm_content', nicheOf(lead));
+  return `${business ? `${SITE_URL}/local-business` : SITE_URL}?${params.toString()}`;
 }
 
 function visitCode(id: string): string {
