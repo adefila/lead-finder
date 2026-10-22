@@ -82,8 +82,14 @@ export function withSignature(body: string, lang: Lang = 'en', forJob = false, f
   const lines = text.split('\n');
   const at = lines.map(l => l.trim()).lastIndexOf('Samuel');
   const tail = at >= 0 ? lines.slice(at + 1).map(l => l.trim()).filter(Boolean) : [];
-  const isSignOff = at >= 0 && tail.length <= 2 && tail.every(l => /adefilasamuel\.com/i.test(l));
-  const main = isSignOff ? lines.slice(0, at).join('\n').trimEnd() : text;
+  // The draft's own sign-off ("Samuel" then adefilasamuel.com) is dropped so the signature is not doubled. The model
+  // sometimes puts the opt-out line AFTER that sign-off ("Not interested? Just let me know..."): keep that line,
+  // moved above the signature, instead of leaving the old sign-off in the middle of the email.
+  const siteLines = tail.filter(l => /adefilasamuel\.com/i.test(l));
+  const otherLines = tail.filter(l => !/adefilasamuel\.com/i.test(l));
+  const isSignOff = at >= 0 && tail.length <= 4 && otherLines.length <= 2 && otherLines.every(l => l.length <= 200)
+    && (siteLines.length > 0 || otherLines.length === 0);
+  const main = isSignOff ? [lines.slice(0, at).join('\n').trimEnd(), ...otherLines].filter(Boolean).join('\n\n') : text;
   return `${main}\n\n${SIGNATURE}`;
 }
 

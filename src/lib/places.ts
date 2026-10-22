@@ -22,8 +22,9 @@ const DEFAULT_CITIES = [
   'Oslo, Norway', 'Bergen, Norway', 'Trondheim, Norway', 'Stavanger, Norway',
   'Luxembourg City, Luxembourg',
   // English-speaking, business email to a published address is allowed with an opt-out
-  'Auckland, New Zealand', 'Wellington, New Zealand', 'Christchurch, New Zealand',
-  'Dublin, Ireland', 'Cork, Ireland', 'Galway, Ireland', 'Limerick, Ireland',
+  'Auckland, New Zealand', 'Wellington, New Zealand', 'Dublin, Ireland',
+  // More dense Australian cities (the small Irish and Kiwi cities had too few reviewed businesses)
+  'Newcastle, Australia', 'Geelong, Australia', 'Wollongong, Australia',
 ];
 
 // Each page of results is one billed Text Search (Enterprise) call. 8 searches x 2 pages x 2 runs a day
@@ -37,7 +38,8 @@ const PAGES_PER_SEARCH = Math.min(3, Math.max(1, Number(process.env.PLACES_PAGES
 const REQUIRE_EMAIL = true;
 // Checking websites is slow; stop starting new ones after this so the twice-daily run finishes.
 const BUDGET_MS = 110_000;
-const MIN_REVIEWS = 10;
+// Small businesses with a dated website are exactly who you pitch, and many have only a handful of reviews.
+const MIN_REVIEWS = 5;
 // A business is only a lead if customers are still reviewing it.
 const MAX_REVIEW_AGE_DAYS = 365;
 const MAX_REVIEW_AGE_DAYS_BROKEN_SITE = 180;
