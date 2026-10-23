@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, countFirstSentSince, countFollowUpsSince, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
+import { getLeads, getLeadById, countFirstSentSince, countFollowUpsSince, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -342,10 +342,22 @@ export async function runOutbox(): Promise<OutboxResult> {
     return { ...result, skipped: why };
   }
 
+  // The lead list was read at the start of this run, which can take a while. If you moved this lead out in the
+  // meantime (lost, skipped, replied, back to To contact), nothing is sent to them.
+  const fresh = await getLeadById(lead.id);
+  if (!fresh || fresh.status !== lead.status || fresh.optedOut || (lead === followUp && !fresh.autoSequence)) {
+    return { ...result, skipped: `${lead.title} was changed just now, so nothing was sent to them` };
+  }
+
   try {
     if (lead === followUp) {
       const text = await draftFollowUp(lead);
       if (!text) throw new Error('Could not draft the follow-up');
+      // Writing the follow-up takes a few seconds: look once more, right before it is sent.
+      const again = await getLeadById(lead.id);
+      if (!again || again.status !== 'approved' || again.optedOut || !again.autoSequence) {
+        return { ...result, skipped: `${lead.title} was changed just now, so nothing was sent to them` };
+      }
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
