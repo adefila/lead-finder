@@ -321,7 +321,7 @@ export default function Home() {
       if (left <= 0) warnOnce(`${key}:full`, `You have reached ${period} limit: ${sent} of ${limit} new emails sent. Scheduled emails wait until ${later}.`);
       else if (left <= Math.max(2, Math.ceil(limit * 0.2))) warnOnce(`${key}:near`, `Nearly at ${period} limit: ${sent} of ${limit} new emails sent, ${left} left. After that, scheduled emails wait until ${later}.`);
     };
-    check(outbox.sentToday, outbox.limit, "the 24-hour", `day:${today}`, 'earlier emails are 24 hours old. Follow-ups still go out');
+    check(outbox.sentToday, outbox.limit, "today's", `day:${today}`, 'tomorrow, when the count restarts at midnight. Follow-ups still go out');
     check(outbox.sentWeek ?? 0, outbox.weekLimit ?? 0, "this week's", `week:${week}`, 'the week resets over the weekend (Sunday 00:00 UTC), ready for Monday. Follow-ups still go out');
   }, [outbox, toast]);
 
@@ -555,7 +555,7 @@ export default function Home() {
                 <span className="send-tip" role="tooltip">
                   {outbox.configured ? (
                     <>
-                      <b>New emails</b><span>{outbox.sentToday} of {outbox.limit} in the last 24 hours</span>
+                      <b>New emails</b><span>{outbox.sentToday} of {outbox.limit} today, restarts at midnight</span>
                       {!!outbox.weekLimit && <><b>This week</b><span>{outbox.sentWeek ?? 0} of {outbox.weekLimit}, resets Sunday</span></>}
                       <b>Follow-ups</b><span>{outbox.followUpsToday ?? 0} today, no limit</span>
                       <em>Sent on weekdays, 9am to 4pm in each business's own time, spread through the day.</em>
@@ -564,7 +564,7 @@ export default function Home() {
                 </span>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new in 24h${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.paused ? 'sending paused, replies still checked' : outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.paused ? 'sending paused, replies still checked' : outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>

@@ -8,6 +8,7 @@ import { noteCopy } from '@/lib/notecopy';
 import { noteLink, siteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
+import { planNewSend } from '@/lib/pacing';
 
 // Limits count first emails only. Follow-ups to people already contacted go out on top.
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
@@ -61,44 +62,6 @@ export function timezoneFor(lead: Lead): string {
   return TZ_HINTS.find(([re]) => re.test(text))?.[1] ?? 'America/New_York';
 }
 
-// ─── A fair share of the daily limit for each time zone ─────────────────────
-// Each lead only gets email 9am to 4pm on weekdays in its own time zone, and those windows open at
-// different times on your clock: Sydney around your midnight, Singapore at 2am, Europe at 8am, the
-// US in your afternoon. With one shared count, the zones that open first used all 20 before Europe
-// or the US started their day. So every time zone with emails waiting gets its own share of the
-// limit, counted over the last 24 hours and spread evenly over its own window.
-// `already` is what each zone sent in the last 24 hours. It is added to the zone's queue so a share does not shrink
-// as the zone sends: the queue gets shorter with every email, which used to cut the share mid-day, block the zone
-// early, and leave slots unused because the other zones' windows were closed.
-export function zoneShares(queued: Lead[], limit = DAILY_LIMIT, already: Map<string, number> = new Map()): Map<string, number> {
-  const waiting = new Map<string, number>();
-  for (const l of queued) waiting.set(timezoneFor(l), (waiting.get(timezoneFor(l)) ?? 0) + 1);
-  for (const [z, n] of waiting) waiting.set(z, n + (already.get(z) ?? 0));
-  const zones = [...waiting.entries()].sort((a, b) => b[1] - a[1]);
-  const shares = new Map(zones.map(([z]) => [z, 0]));
-  let left = limit;
-  // Every zone with someone waiting gets at least one a day (biggest queues first).
-  for (const [z] of zones) { if (left <= 0) break; shares.set(z, 1); left--; }
-  // The rest go one at a time to the zone with the most waiting per email it already has.
-  while (left > 0) {
-    const open = zones.filter(([z, n]) => shares.get(z)! < n);
-    if (!open.length) break;
-    const [z] = open.reduce((best, cur) => cur[1] / (shares.get(cur[0])! + 1) > best[1] / (shares.get(best[0])! + 1) ? cur : best);
-    shares.set(z, shares.get(z)! + 1);
-    left--;
-  }
-  return shares;
-}
-
-// Minutes between new emails in one zone, so its share is spread over its 7-hour window. Rounded
-// down to whole timer ticks, minus a minute for timer drift (a share of 20 gives 14 minutes).
-export function zoneGap(share: number): number {
-  const raw = ((WINDOW_END_H - WINDOW_START_H) * 60) / Math.max(1, share);
-  return Math.max(MIN_GAP_MIN, Math.max(1, Math.floor(raw / TIMER_MIN)) * TIMER_MIN - 1);
-}
-
-const zoneName = (zone: string) => zone.split('/').pop()!.replace(/_/g, ' ');
-
 export function inSendWindow(lead: Lead, now = new Date()): boolean {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezoneFor(lead), weekday: 'short', hour: 'numeric', hour12: false }).formatToParts(now);
   const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
@@ -151,12 +114,6 @@ function todayStart(now = new Date()): string {
   return startOfDay(now).toISOString();
 }
 
-// The daily limit is counted over the last 24 hours, so time zones on either side of your
-// midnight (Australia) can't get a double share across two of your calendar days.
-function dayAgo(now = Date.now()): string {
-  return new Date(now - 86_400_000).toISOString();
-}
-
 // The weekly count resets at Sunday 00:00 UTC. Emails only go out Monday to Friday, 9am to 4pm
 // in each lead's own time zone, and no country is in those hours at that moment: the last
 // sends of the week (US west coast, Friday 4pm) end around Saturday 00:00 UTC, and the first
@@ -190,7 +147,7 @@ export interface OutboxResult {
 }
 
 export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
-  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(dayAgo()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getLeads(), lastSentAt()]);
+  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getLeads(), lastSentAt()]);
   return {
     followUpsToday,
     paused: PAUSED,
@@ -215,7 +172,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut && !l.lastSentAt);
   const result: OutboxResult = {
     configured: !!cfg,
-    sentToday: await countFirstSentSince(dayAgo()),
+    sentToday: await countFirstSentSince(todayStart()),
     limit: DAILY_LIMIT,
     sentWeek: await countFirstSentSince(startOfWeek().toISOString()),
     weekLimit: WEEKLY_LIMIT,
@@ -259,11 +216,11 @@ export async function runOutbox(): Promise<OutboxResult> {
 
   if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
 
-  // 2. Limits count new (first) emails only: the last 24 hours, and the week since Sunday
+  // 2. Limits count new (first) emails only: your calendar day (restarts at midnight in MAIL_TIMEZONE), and the week since Sunday
   // 00:00 UTC. Follow-ups are counted separately, never limited, and keep going out.
   const capReason = result.sentWeek >= WEEKLY_LIMIT
     ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
-    : result.sentToday >= DAILY_LIMIT ? `Limit of ${DAILY_LIMIT} new emails in 24 hours reached`
+    : result.sentToday >= DAILY_LIMIT ? `Today's ${DAILY_LIMIT} new emails are done. The count restarts at midnight`
     : null;
 
   if (TEST_MODE) {
@@ -303,42 +260,34 @@ export async function runOutbox(): Promise<OutboxResult> {
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUp = inboxChecked && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
-  // Each zone: how many new emails it had in the last 24 hours and when the latest went out.
-  const zoneOf = new Map(leads.map(l => [l.id, timezoneFor(l)]));
-  const recent = new Map<string, { count: number; last: number }>();
-  if (!capReason) {
-    for (const s of await sendsSince(dayAgo())) {
-      const zone = s.kind === 'first' ? zoneOf.get(s.leadId) : undefined;
-      if (!zone) continue;
-      const r = recent.get(zone) ?? { count: 0, last: 0 };
-      recent.set(zone, { count: r.count + 1, last: Math.max(r.last, Date.parse(s.at)) });
-    }
-  }
-  const shares = zoneShares(queued, DAILY_LIMIT, new Map([...recent].map(([z, r]) => [z, r.count])));
-  // When each zone may send its next new email (Infinity once its share is used).
-  // For a day after Gmail pushed back, new emails go out half as often.
-  const nextAt = (zone: string) => {
-    const share = shares.get(zone) ?? 0;
-    const r = recent.get(zone) ?? { count: 0, last: 0 };
-    if (r.count >= share) return Infinity;
-    return r.last + zoneGap(share) * (backoff.slowed ? 2 : 1) * 60_000;
-  };
+  // New emails: DAILY_LIMIT on every working day of your calendar, spread over every hour in which someone in the queue is
+  // inside their own business hours, and caught up automatically if the day falls behind (see pacing.ts).
+  const todaysFirsts = capReason ? [] : (await sendsSince(todayStart())).filter(s => s.kind === 'first');
+  const lastFirstToday = todaysFirsts.length ? new Date(Math.max(...todaysFirsts.map(s => Date.parse(s.at)))) : null;
   const openNow = capReason ? [] : queued.filter(l => inSendWindow(l));
-  const first = openNow
-    .filter(l => nextAt(timezoneFor(l)) <= Date.now())
-    .sort((a, b) =>
+  const plan = capReason ? null : planNewSend({
+    now: new Date(),
+    zones: [...new Set(queued.map(timezoneFor))],
+    sentToday: result.sentToday,
+    limit: DAILY_LIMIT,
+    lastFirstSentAt: lastFirstToday,
+    homeTz: HOME_TZ,
+    tickMin: TIMER_MIN,
+    minGapMin: MIN_GAP_MIN,
+    slowed: backoff.slowed,
+  });
+  const first = plan?.send
+    ? [...openNow].sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
       || (b.score ?? 0) - (a.score ?? 0)                     // best fit first
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
-    [0];
-  const lead = followUp || first;
+    [0]
+    : undefined;
+  // Follow-ups normally go first, but when the day is behind every send slot is needed for a new email.
+  const lead = plan?.behind && first ? first : followUp || first;
   if (!lead) {
-    const waits = [...new Set(openNow.map(l => timezoneFor(l)))].map(z => ({ z, at: nextAt(z) }));
-    const soonest = waits.filter(w => w.at < Infinity).sort((a, b) => a.at - b.at)[0];
     const why = capReason ? `${capReason}, no follow-ups due`
-      : soonest ? `Next new email for ${zoneName(soonest.z)} after ${new Date(soonest.at).toISOString().slice(11, 16)} UTC (${shares.get(soonest.z)} a day there, spread over their business hours${backoff.slowed ? ', slowed after Gmail pushed back' : ''})`
-      : waits.length ? `Today's share for ${waits.map(w => zoneName(w.z)).join(', ')} is sent. The rest wait for other countries' business hours`
-      : 'Nothing due inside business hours right now';
+      : `${plan?.reason ?? 'Nothing due inside business hours right now'}${backoff.slowed ? ' (slowed after Gmail pushed back)' : ''}`;
     return { ...result, skipped: why };
   }
 
