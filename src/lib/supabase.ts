@@ -184,6 +184,8 @@ export async function updateLeadStatus(id: string, status: LeadStatus): Promise<
   const patch: Record<string, unknown> = { status };
   if (status === 'approved') Object.assign(patch, { contacted_at: new Date().toISOString(), follow_ups: 0 });
   if (status === 'new') Object.assign(patch, { contacted_at: null, follow_ups: 0, queued_at: null, auto_sequence: false, send_error: null });
+  // Skipped, lost, won or replied: nothing more is sent to them, even if an older scheduled flag was left on.
+  if (['skipped', 'lost', 'won', 'replied'].includes(status)) Object.assign(patch, { auto_sequence: false, queued_at: null });
   // Queued leads are sent by the outbox, which also runs their follow-ups.
   if (status === 'queued') Object.assign(patch, { queued_at: new Date().toISOString(), auto_sequence: true, send_error: null });
   const { error } = await db().from('leads').update(patch).eq('id', id);

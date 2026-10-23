@@ -356,7 +356,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             <span className="field-label" style={{ margin: 0 }}>Move to</span>
             {status === 'approved' && <Btn className="btn btn-sm" onClick={() => onStatus('replied')}>They replied</Btn>}
             {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>Won</Btn>}
-            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('lost')}>Lost</Btn>}
+            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" title="They said no, or are not a fit. Nothing more is sent to them" onClick={() => onStatus('lost')}>Not interested</Btn>}
             {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skip</Btn>}
             {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />Back to To contact</Btn>}
             <span className="spacer" />

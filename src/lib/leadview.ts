@@ -81,7 +81,7 @@ export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(
 
 // Ready to go out on its own: a new business lead with an email and a message written as an email.
 export const readyToSchedule = (l: Lead) => statusOf(l) === 'new'
-  && !!l.contactEmail && !l.optedOut && /^\s*Subject:/i.test(l.proposal ?? '');
+  && !!l.contactEmail && !l.optedOut && !l.lastSentAt && /^\s*Subject:/i.test(l.proposal ?? '');
 
 // Businesses in the Netherlands, Norway and Luxembourg are written to in their own language
 // (emails, follow-ups and the one-page note). Everyone else, and every job lead, in English.

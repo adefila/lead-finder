@@ -210,7 +210,9 @@ export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 
 export async function runOutbox(): Promise<OutboxResult> {
   const cfg = mailConfig();
   const leads = await getLeads();
-  const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut);
+  // A lead that already got an email (lastSentAt) is never sent a "first" email again, even if it was moved back to
+  // To contact and scheduled by mistake.
+  const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut && !l.lastSentAt);
   const result: OutboxResult = {
     configured: !!cfg,
     sentToday: await countFirstSentSince(dayAgo()),
