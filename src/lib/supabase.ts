@@ -174,6 +174,29 @@ export async function getLeads(limit = Infinity): Promise<Lead[]> {
   return rows.filter(r => !RETIRED_SOURCES.has(String(r.source))).map(rowToLead);
 }
 
+// What the outbox acts on each run: leads waiting to be sent (queued), in a follow-up sequence (approved),
+// and any carrying a temporary send error (which drives the Gmail back-off). Far smaller than every lead.
+export async function getOutboxLeads(): Promise<Lead[]> {
+  const read = async (build: (q: ReturnType<ReturnType<typeof db>['from']>) => unknown) => {
+    const rows: Record<string, unknown>[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const q = build(db().from('leads')) as { range: (a: number, b: number) => PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }> };
+      const { data, error } = await q.range(from, from + PAGE - 1);
+      if (error) { console.error('[supabase] getOutboxLeads:', error); break; }
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    return rows;
+  };
+  const [active, failing] = await Promise.all([
+    read(t => t.select('*').in('status', ['queued', 'approved']).order('id', { ascending: true })),
+    read(t => t.select('*').like('send_error', 'Temporary (%').order('id', { ascending: true })),
+  ]);
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const r of [...active, ...failing]) byId.set(String(r.id), r);
+  return [...byId.values()].filter(r => !RETIRED_SOURCES.has(String(r.source))).map(rowToLead);
+}
+
 // Just the ids (not the drafts and descriptions), for turning a tracked-link code back into a lead.
 export async function getLeadIds(): Promise<string[]> {
   const ids: string[] = [];

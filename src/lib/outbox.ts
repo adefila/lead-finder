@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, getLeadById, countFirstSentSince, countFollowUpsSince, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
+import { getLeads, getOutboxLeads, getLeadById, countFirstSentSince, countFollowUpsSince, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -147,7 +147,7 @@ export interface OutboxResult {
 }
 
 export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
-  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getLeads(), lastSentAt()]);
+  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getOutboxLeads(), lastSentAt()]);
   return {
     followUpsToday,
     paused: PAUSED,
@@ -166,7 +166,7 @@ export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 
 // One run = check replies, then send at most one email. Called every ~15 minutes.
 export async function runOutbox(): Promise<OutboxResult> {
   const cfg = mailConfig();
-  const leads = await getLeads();
+  const leads = await getOutboxLeads();
   // A lead that already got an email (lastSentAt) is never sent a "first" email again, even if it was moved back to
   // To contact and scheduled by mistake.
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut && !l.lastSentAt);
