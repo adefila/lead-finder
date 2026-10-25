@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { getLeadById, getLeads, saveLeads, updateLead } from '@/lib/supabase';
+import { getLeadById, getLeadsByDomain, saveLeads, updateLead } from '@/lib/supabase';
 import { analyzeWebsite, findSiteEmails, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
 import { generateColdEmails } from '@/lib/claude';
@@ -159,7 +159,7 @@ export async function recordCompanyVisit(v: Visit): Promise<string | null> {
 
   // A company you already have as a lead: mark the visit on that lead instead.
   if (domain) {
-    const existing = (await getLeads()).find(l => hostOf(l.contactLinks?.website ?? '') === domain || l.contactEmail?.endsWith(`@${domain}`));
+    const existing = (await getLeadsByDomain(domain)).find(l => hostOf(l.contactLinks?.website ?? '') === domain || l.contactEmail?.endsWith(`@${domain}`));
     if (existing) { await recordLeadVisit(existing, v.ua, page); return existing.id; }
   }
 

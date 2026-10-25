@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getLeads } from '@/lib/supabase';
+import { cache } from 'react';
 import { displayName, hasCheck, leadLanguage } from '@/lib/leadview';
-import { noteKeyMatches } from '@/lib/tracking';
+import { findLeadByCode } from '@/lib/leadlookup';
 import { NotePage } from '@/components/NotePage';
 import { recordNoteView } from '@/lib/noteviews';
 
@@ -12,12 +12,16 @@ type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ me?: st
 
 // Short, readable link: /n/green-dental-4f9a2c1b07aa. The last part is a signature, so
 // links cannot be guessed or edited to reach another business's note.
-async function load({ params }: Props) {
-  const { key } = await params;
+// Cached per request: the page and its metadata both need the lead, so look it up once.
+const loadByKey = cache(async (key: string) => {
   const code = key.split('-').pop() ?? '';
   if (!/^[0-9a-f]{12}$/.test(code)) return null;
-  const lead = (await getLeads()).find(l => noteKeyMatches(l.id, code));
+  const lead = await findLeadByCode('note', code);
   return lead && hasCheck(lead) ? lead : null;
+});
+
+async function load({ params }: Props) {
+  return loadByKey((await params).key);
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {

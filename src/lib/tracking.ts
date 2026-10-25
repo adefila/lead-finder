@@ -29,7 +29,7 @@ export function sendLink(id: string, via: SendVia): string {
 // https://notes.adefilasamuel.com) so prospects never see "leads" in the link.
 const NOTES_URL = (process.env.NOTES_URL ?? APP_URL).replace(/\/+$/, '');
 
-function noteCode(id: string): string {
+export function noteCode(id: string): string {
   return sign(id, 'check').slice(0, 12);
 }
 
@@ -70,7 +70,7 @@ export function siteDestination(lead: Lead, via: 'email' | 'note' = 'email'): st
   return `${business ? `${SITE_URL}/local-business` : SITE_URL}?${params.toString()}`;
 }
 
-function visitCode(id: string): string {
+export function visitCode(id: string): string {
   return sign(id, 'visit').slice(0, 12);
 }
 

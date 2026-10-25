@@ -174,6 +174,28 @@ export async function getLeads(limit = Infinity): Promise<Lead[]> {
   return rows.filter(r => !RETIRED_SOURCES.has(String(r.source))).map(rowToLead);
 }
 
+// Just the ids (not the drafts and descriptions), for turning a tracked-link code back into a lead.
+export async function getLeadIds(): Promise<string[]> {
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db().from('leads').select('id, source').order('id', { ascending: true }).range(from, from + PAGE - 1);
+    if (error) { console.error('[supabase] getLeadIds:', error); break; }
+    for (const r of data ?? []) if (!RETIRED_SOURCES.has(String(r.source))) ids.push(String(r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
+}
+
+// Leads whose website or email address belongs to a domain, without reading the whole table.
+export async function getLeadsByDomain(domain: string): Promise<Lead[]> {
+  const safe = domain.replace(/[^a-z0-9.-]/gi, '');
+  if (!safe) return [];
+  const { data, error } = await db().from('leads').select('*')
+    .or(`contact_email.ilike.*@${safe},contact_links->>website.ilike.*${safe}*`).limit(25);
+  if (error) { console.error('[supabase] getLeadsByDomain:', error); return []; }
+  return (data ?? []).filter(r => !RETIRED_SOURCES.has(String(r.source))).map(rowToLead);
+}
+
 export async function getLeadById(id: string): Promise<Lead | null> {
   const { data, error } = await db().from('leads').select('*').eq('id', id).maybeSingle();
   if (error || !data) return null;
