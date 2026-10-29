@@ -181,7 +181,7 @@ async function deliverNotification(subject: string, html: string): Promise<strin
   }
   if (!process.env.RESEND_API_KEY) throw new Error('No mail provider is set up for notifications');
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const { data, error } = await resend.emails.send({ from: 'Lead Finder <onboarding@resend.dev>', to, subject, html });
+  const { data, error } = await resend.emails.send({ from: 'Lead Finder <samuel@adefilasamuel.com>', to, subject, html });
   if (error) throw new Error(`Notification send failed: ${JSON.stringify(error)}`);
   return data?.id ?? '';
 }
