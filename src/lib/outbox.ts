@@ -193,7 +193,12 @@ export async function runOutbox(): Promise<OutboxResult> {
   const inboxCheck = checkReplies(cfg, watching.map(l => ({
     email: l.contactEmail!,
     since: new Date(l.queuedAt ?? l.contactedAt ?? l.createdAt ?? Date.now()),
-  }))).then(r => ({ ...r, checked: true })).catch(e => { console.error('[outbox] inbox check failed:', (e as Error).message); return noInbox; });
+  }))).then(r => ({ ...r, checked: true })).catch(e => {
+    // imapflow puts the server's own words on the error; "Command failed" alone says nothing
+    const x = e as Error & { responseText?: string; responseStatus?: string; serverResponseCode?: string; executedCommand?: string; code?: string };
+    console.error('[outbox] inbox check failed:', x.message, JSON.stringify({ status: x.responseStatus, text: x.responseText, code: x.serverResponseCode ?? x.code, command: x.executedCommand?.slice(0, 60), watching: watching.length }));
+    return noInbox;
+  });
   const { replies, bounced, checked: inboxChecked } = await Promise.race([
     inboxCheck,
     new Promise<typeof noInbox>(resolve => setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 25_000)),
