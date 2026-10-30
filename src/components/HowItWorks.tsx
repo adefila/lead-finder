@@ -134,14 +134,14 @@ const SCENES: Scene[] = [
   },
   {
     name: 'Win', headline: 'You close the deal',
-    body: 'When someone replies, it is your turn: answer quickly, book a call, and win the project. A daily digest email keeps you up to date without opening the app.',
+    body: 'When someone replies, it is your turn: answer quickly, book a call, and win the project. New leads and replies show on the dashboard.',
     facts: ['Mark leads Won or Lost to keep the pipeline honest', 'See every lead by day in the By day view', 'A red banner warns you if anything fails'],
     stage: (
       <div className="ex-card ex-win">
         <div className="ex-note">found → contacted → replied → <b>won</b></div>
         <div className="ex-big">Won</div>
         <div className="ex-sub">You reply, book a call, and close the project</div>
-        <div className="ex-chips"><span className="ex-chip ex-plain">Daily digest email</span><span className="ex-chip ex-plain">Banner if a send fails</span><span className="ex-chip ex-plain">Last sent time</span></div>
+        <div className="ex-chips"><span className="ex-chip ex-plain">Leads on the dashboard</span><span className="ex-chip ex-plain">Banner if a send fails</span><span className="ex-chip ex-plain">Last sent time</span></div>
       </div>
     ),
   },

@@ -10,7 +10,6 @@ import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLe
 // Marker (in sent_jobs) for the one-time return of businesses the old 65 bar had skipped.
 const RESTORE_MARK = 'restore:business-fit-50';
 import { followUpState, needsAttention } from '@/lib/followup';
-import { sendLeadsEmail } from '@/lib/email';
 import { isJobLead } from '@/lib/leadview';
 
 export const maxDuration = 300;
@@ -101,13 +100,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     });
     const jobsWithEmails = await generateColdEmails(top);
 
-    // 4. Save + send digest
+    // 4. Save. New leads show on the dashboard; no morning email is sent (turned off on request).
+    // markSent still records them so the next run does not treat them as fresh again.
     await saveLeads(jobsWithEmails);
     const followUpsDue = (await getLeads()).filter(needsAttention).length;
-    if (jobsWithEmails.length > 0 || followUpsDue > 0) {
-      await sendLeadsEmail(jobsWithEmails, followUpsDue);
-      await markSent(jobsWithEmails.map(j => j.id));
-    }
+    await markSent(jobsWithEmails.map(j => j.id));
 
     // 5. Jobs already in the dashboard get the same contact search, with whatever time is left.
     const backfill = await backfillJobContacts(Math.min(60_000, 250_000 - (Date.now() - start)));
