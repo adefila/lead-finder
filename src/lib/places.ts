@@ -3,28 +3,24 @@ import { analyzeWebsite, platformOf } from '@/lib/enrich';
 import { emailDomainAccepts } from '@/lib/verify';
 import { getSentIds, getExistingLeadIds } from '@/lib/supabase';
 
+// B2B companies: founders and owners of businesses that sell to other businesses. Their sites are the ones
+// worth rebuilding around what they sell. (Local clinics, salons and trades are no longer searched.)
 const DEFAULT_CATEGORIES = [
-  'dentist', 'law firm', 'real estate agency', 'med spa', 'roofing contractor', 'interior designer',
-  'accounting firm', 'physiotherapy clinic', 'wedding photographer', 'boutique gym', 'hair salon',
-  'landscaping company', 'chiropractor', 'boutique hotel', 'architecture firm', 'veterinary clinic',
-  // Service businesses that live on quotes, bookings and reviews
-  'plumber', 'electrician', 'cleaning service', 'driving school', 'mortgage broker', 'pet groomer', 'auto repair shop', 'tutoring centre',
+  'software company', 'SaaS company', 'IT services company', 'managed IT provider', 'cybersecurity company',
+  'digital marketing agency', 'management consultancy', 'recruitment agency', 'HR consultancy', 'fintech company',
+  'logistics company', 'engineering firm', 'training company', 'business services company', 'PR agency', 'accounting firm',
 ];
+const B2B_CATEGORIES = new Set(DEFAULT_CATEGORIES);
 
-// Australia and Singapore: English-speaking, and both allow a relevant email to an address a
-// business publishes on its own website. Germany is left out on purpose (strict cold-email law).
-// The Netherlands, Norway and Luxembourg are written to in Dutch, Norwegian and French
-// (see leadLanguage in leadview.ts).
+// English-speaking markets where emailing a business address published on its own website is allowed with an
+// opt-out line: the UK and Ireland, Australia, New Zealand, Singapore and the US. (Germany and Canada are left
+// out on purpose: stricter cold-email law.)
 const DEFAULT_CITIES = [
-  'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
-  'Adelaide, Australia', 'Gold Coast, Australia', 'Canberra, Australia', 'Singapore',
-  'Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'Utrecht, Netherlands', 'The Hague, Netherlands', 'Eindhoven, Netherlands',
-  'Oslo, Norway', 'Bergen, Norway', 'Trondheim, Norway', 'Stavanger, Norway',
-  'Luxembourg City, Luxembourg',
-  // English-speaking, business email to a published address is allowed with an opt-out
-  'Auckland, New Zealand', 'Wellington, New Zealand', 'Dublin, Ireland',
-  // More dense Australian cities (the small Irish and Kiwi cities had too few reviewed businesses)
-  'Newcastle, Australia', 'Geelong, Australia', 'Wollongong, Australia',
+  'London, UK', 'Manchester, UK', 'Birmingham, UK', 'Leeds, UK', 'Edinburgh, UK', 'Bristol, UK', 'Glasgow, UK',
+  'Dublin, Ireland',
+  'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia', 'Adelaide, Australia',
+  'Auckland, New Zealand', 'Wellington, New Zealand', 'Singapore',
+  'Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Miami, FL', 'Nashville, TN',
 ];
 
 // Each page of results is one billed Text Search (Enterprise) call. 8 searches x 2 pages x 2 runs a day
@@ -159,6 +155,7 @@ async function textSearch(query: string, apiKey: string): Promise<Place[]> {
 }
 
 async function toLead(p: Place, category: string, city: string): Promise<Lead | null> {
+  const b2b = B2B_CATEGORIES.has(category);
   const activity = activityOf(p);
   const name = p.displayName?.text ?? 'Unknown business';
   const reviews = p.userRatingCount ?? 0;
@@ -187,9 +184,9 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     links = { ...links, [platform.kind === 'social' && /instagram/i.test(platform.name) ? 'instagram' : platform.kind === 'social' && /facebook/i.test(platform.name) ? 'facebook' : 'website']: p.websiteUri };
   } else {
     const report = await analyzeWebsite(p.websiteUri);
-    if (report.reachable === null || (report.reachable && report.issues.length === 0)) return null;
-    headline = report.reachable ? 'Outdated website' : 'Website broken';
-    if (!report.reachable && (activity.lastReviewDays === null || activity.lastReviewDays > MAX_REVIEW_AGE_DAYS_BROKEN_SITE)) return null;
+    if (report.reachable === null || (!b2b && report.reachable && report.issues.length === 0)) return null;
+    headline = report.reachable ? (report.issues.length ? 'Outdated website' : 'Has a working website') : 'Website broken';
+    if (!b2b && !report.reachable && (activity.lastReviewDays === null || activity.lastReviewDays > MAX_REVIEW_AGE_DAYS_BROKEN_SITE)) return null;
     issues = report.issues;
     for (const e of report.emails) {
       if (await emailDomainAccepts(e)) { emails = [e]; break; }
@@ -198,12 +195,13 @@ async function toLead(p: Place, category: string, city: string): Promise<Lead | 
     siteText = report.siteText;
   }
   if (REQUIRE_EMAIL && !emails[0]) return null;
+  if (b2b) links = { ...links, segment: 'b2b' };
 
   return {
     id: `places-${p.id}`,
     title: name,
     company: `${type} · ${city}`,
-    description: [headline, activitySentence(activity), ...facts, `Issues found: ${issues.join('; ')}`].filter(Boolean).join('. ') + '.',
+    description: [headline, activitySentence(activity), ...facts, issues.length ? `Issues found: ${issues.join('; ')}` : null].filter(Boolean).join('. ') + '.',
     url: p.websiteUri ?? p.googleMapsUri ?? '',
     source: 'places',
     postedAt: new Date().toISOString(),
@@ -239,11 +237,13 @@ export async function fetchPlacesLeads(only?: PlacesOptions): Promise<Lead[]> {
       seen.add(place.id);
       if (known.has(`places-${place.id}`)) { dropped.known++; continue; }
       if (place.businessStatus !== 'OPERATIONAL') { dropped.closed++; continue; }
-      if ((place.userRatingCount ?? 0) < MIN_REVIEWS) { dropped.fewReviews++; continue; }
-      const a = activityOf(place);
-      const recentlyReviewed = a.lastReviewDays !== null && a.lastReviewDays <= MAX_REVIEW_AGE_DAYS;
-      const noReviewData = a.lastReviewDays === null && a.hasHours && a.hasPhone;
-      if (!recentlyReviewed && !noReviewData) { dropped.inactive++; continue; }
+      if (!B2B_CATEGORIES.has(r.category)) {
+        if ((place.userRatingCount ?? 0) < MIN_REVIEWS) { dropped.fewReviews++; continue; }
+        const a = activityOf(place);
+        const recentlyReviewed = a.lastReviewDays !== null && a.lastReviewDays <= MAX_REVIEW_AGE_DAYS;
+        const noReviewData = a.lastReviewDays === null && a.hasHours && a.hasPhone;
+        if (!recentlyReviewed && !noReviewData) { dropped.inactive++; continue; }
+      }
       candidates.push({ place, category: r.category, city: r.city });
     }
   }

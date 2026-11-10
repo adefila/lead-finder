@@ -6,23 +6,23 @@ import { UK_CITIES } from '@/lib/cities';
 
 const API = 'https://api.company-information.service.gov.uk';
 
-// Customer-facing trades that need a website (UK SIC 2007 codes).
+// B2B trades: new companies whose founders need a credible website from day one (UK SIC 2007 codes).
 const SIC: Record<string, string> = {
-  '86230': 'Dental practice',
-  '86900': 'Health practice',
-  '96020': 'Hair and beauty salon',
-  '96040': 'Spa and wellbeing',
-  '93130': 'Fitness studio',
-  '69102': 'Solicitors',
-  '69201': 'Accountants',
-  '68310': 'Estate agency',
-  '71111': 'Architects',
-  '74201': 'Photography studio',
-  '43910': 'Roofing',
-  '81300': 'Landscaping',
-  '55100': 'Hotel',
-  '56102': 'Cafe or restaurant',
-  '75000': 'Veterinary practice',
+  '62012': 'Software development',
+  '62020': 'IT consultancy',
+  '62090': 'IT services',
+  '63110': 'Data and hosting services',
+  '70229': 'Management consultancy',
+  '70210': 'PR and communications',
+  '73110': 'Advertising agency',
+  '74909': 'Professional services',
+  '82990': 'Business support services',
+  '64999': 'Fintech and finance',
+  '66190': 'Financial services',
+  '71129': 'Engineering services',
+  '78109': 'Recruitment agency',
+  '85590': 'Training services',
+  '52290': 'Logistics services',
 };
 
 const NEW_WITHIN_DAYS = 45;
@@ -105,7 +105,7 @@ async function toLead(c: Company, key: string): Promise<Lead | null> {
   let headline = 'No website yet';
   let issues = ['no website found for this new company'];
   let email: string | undefined;
-  let links: Lead['contactLinks'] = { register };
+  let links: Lead['contactLinks'] = { register, segment: 'b2b' };
   let siteText: string | undefined;
 
   if (site) {

@@ -63,7 +63,9 @@ export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'job' || l.so
 
 // Local businesses and new companies we pitch systems to. Their emails and notes send them to
 // adefilasamuel.com/local-business instead of the founder homepage.
-export const isBusinessPitch = (l: Pick<Lead, 'source'>) => l.source === 'places' || l.source === 'osm' || l.source === 'companies_house';
+export const isB2B = (l: Pick<Lead, 'contactLinks'>) => l.contactLinks?.segment === 'b2b';
+// B2B companies are pitched a website rebuild and sent to the homepage; only local businesses get the systems pitch.
+export const isBusinessPitch = (l: Pick<Lead, 'source' | 'contactLinks'>) => (l.source === 'places' || l.source === 'osm' || l.source === 'companies_house') && !isB2B(l);
 
 // "Relocation · Ireland" or "Remote", for the tag on a job row.
 export function jobTag(l: Pick<Lead, 'description'>): string {
@@ -304,7 +306,7 @@ export function nicheOf(l: Lead): string {
 }
 
 export function systemsFor(l: Lead): string[] {
-  if (isJobLead(l) || fromSite(l)) return [];
+  if (isJobLead(l) || fromSite(l) || isB2B(l)) return [];
   const trade = `${l.company} ${l.title}`;
   return SYSTEMS.find(([re]) => re.test(trade))?.[1] ?? DEFAULT_SYSTEMS;
 }

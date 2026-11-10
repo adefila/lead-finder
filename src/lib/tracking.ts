@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { displayName, isBusinessPitch, leadLanguage, nicheOf, isJobLead } from '@/lib/leadview';
+import { displayName, isBusinessPitch, leadLanguage, nicheOf, isJobLead, isB2B } from '@/lib/leadview';
 
 export const APP_URL = process.env.APP_URL ?? 'https://lead-finder-one-self.vercel.app';
 
@@ -65,7 +65,7 @@ export function siteDestination(lead: Lead, via: 'email' | 'note' = 'email'): st
   if (business && lang !== 'en') params.set('lang', lang);
   params.set('utm_source', via === 'note' ? 'outreach_note' : 'outreach_email');
   params.set('utm_medium', 'email');
-  params.set('utm_campaign', business ? 'local-business' : isJobLead(lead) ? 'job-application' : 'general');
+  params.set('utm_campaign', business ? 'local-business' : isB2B(lead) ? 'b2b' : isJobLead(lead) ? 'job-application' : 'general');
   params.set('utm_content', nicheOf(lead));
   return `${business ? `${SITE_URL}/local-business` : SITE_URL}?${params.toString()}`;
 }

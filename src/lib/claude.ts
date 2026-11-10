@@ -1,18 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { systemsFor, hasCheck, isJobLead, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
+import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
 const SAMUEL = `
-Samuel Adefila is a Top-Rated Framer developer (Upwork, 100% Job Success Score, 50+ sites delivered).
-He specialises in: Figma-to-Framer conversions, landing pages, marketing sites, SaaS websites, portfolio sites, startup homepages, template customisation, Webflow migrations to Framer.
-He also does UI/UX and product design in Figma, and front-end product engineering.
-Typical turnaround: 14 days. Portfolio: adefilasamuel.com.
-He works with startups, SaaS companies, agencies, solo founders, and anyone who needs a polished web presence fast.
-For local businesses he also sets up simple systems that save time: online booking with reminders, quote and enquiry forms that go straight to the owner's phone, automatic review requests, and follow-up on quiet quotes. Many local businesses need one of these more than a new website.
-Good lead signals: needs a website, landing page, or redesign; mentions Framer/Figma/Webflow/no-code; is a founder or early-stage startup; launching a product; needs a designer or front-end developer for web.
+Samuel Adefila is a Top-Rated web developer and designer (Upwork, 100% Job Success Score, 50+ sites delivered), based in Nigeria and working with teams worldwide.
+His focus now is B2B: he redesigns and rebuilds company websites for founders and business owners, in Framer or custom code (Next.js), with a CMS the team can edit, forms that report to their analytics, redirects that protect their search traffic, and a clean handover.
+Typical timelines: a landing page in 5 to 7 days, a full multi-page B2B site in about 4 weeks. Fixed scope and price. Portfolio: adefilasamuel.com.
+He also does Figma design, Webflow migrations to Framer, UI/UX and product engineering, and monthly retainers for ongoing website work.
+For local businesses he can also set up simple systems (online booking with reminders, quote forms, review requests), but local businesses are no longer his focus.
+Good lead signals: a B2B company whose website undersells what it sells or looks dated or generic; a founder or owner; launching a product or entering a new market; needs a designer or front-end developer for the web.
 `.trim();
 
 function getClient() {
@@ -59,6 +58,7 @@ async function scoreBatch(jobs: Lead[]): Promise<Map<string, number>> {
     title: j.title,
     context: j.company,
     description: j.description.slice(0, 500),
+    ...(isB2B(j) ? { segment: 'b2b' } : {}),
     hasEmail: !!j.contactEmail,
     hasPhone: !!j.contactPhone,
     ...(isJobLead(j) ? {} : { siteText: (j.siteText ?? '').slice(0, 300) }),
@@ -90,6 +90,12 @@ For source "places" (a local business found on Google with no website or a weak 
 - A business that takes bookings, quotes or enquiries only by phone or email (clinics, salons, trades, studios) is a good fit for his booking, quote and review systems even when its website looks fine. siteText, when present, shows how they take bookings.
 - Minor website issues only, with nothing else to offer them, score lower.
 
+For any lead with segment "b2b" (a B2B company with its own website, found on Google Maps or newly registered on Companies House; this overrides the "places" and "companies_house" rules above): Samuel's best clients are founders and owners of companies that sell to other businesses and need a clearer, faster, more credible website: software and SaaS, IT and digital services, consultancies, agencies, fintech, logistics, engineering, training and other professional services.
+- 70-100: a real B2B company with a team, a website that undersells what it does or looks dated or generic, and a way to reach the founder or owner (hasEmail, or a named director).
+- 50-69: a plausible B2B company where the site text is thin or the offer is unclear.
+- Below 50: not really B2B (a shop or consumer service), a holding or shell company, a one-person side project, or a company that already has a clearly excellent, modern website.
+- hasEmail adds points. Reviews and ratings do not matter for B2B.
+
 For source "osm" (a local business from OpenStreetMap whose website is online but weak): score like "places"; they have no review data, so judge on trade value and how clear the website problems are.
 
 For source "companies_house" (a UK company registered in the last few weeks): a brand-new customer-facing business with no website is a strong lead (70-90). Higher-ticket trades (dental, legal, estate agency, architects, clinics) score higher. hasEmail adds points; a named director is workable via LinkedIn. Deduct if the "company" looks like a holding or shell company.
@@ -110,9 +116,10 @@ ${JSON.stringify(input)}`,
 
 // ─── Outreach drafts ─────────────────────────────────────────────────────────
 
-type DraftKind = 'job' | 'places' | 'newco' | 'remote' | 'inbound' | 'visitor';
+type DraftKind = 'job' | 'places' | 'b2b' | 'newco' | 'remote' | 'inbound' | 'visitor';
 
 function draftKind(l: Lead): DraftKind {
+  if (l.source === 'places' && isB2B(l)) return 'b2b';
   if (l.source === 'places' || l.source === 'osm') return 'places';
   if (l.source === 'companies_house') return 'newco';
   if (l.source === 'remote') return 'remote';
@@ -139,6 +146,20 @@ const HOOKS = [
   'CUSTOMER MOMENT: open with one short, concrete moment from a customer\'s day, in two short sentences at most. E.g. "It\'s 10pm and someone nearby wants a check-up next week. Right now they have to wait until morning to call Bright Smile."',
 ];
 
+// B2B: the fact used for "why them", and how the first line grabs a founder or owner.
+const B2B_ANGLES = [
+  'SITE DETAIL: something specific from their site text (what they sell, who it is for, a product or service name).',
+  'BUYER VIEW: what a prospective customer sees first on their homepage and can or cannot do there (find pricing, book a demo, understand the product).',
+  'POSITIONING: how clearly the page says what they do and who it is for, stated neutrally.',
+  'GROWTH: where the company seems to be heading (a new product, hiring, a new market), tied to one thing on the site.',
+];
+const B2B_HOOKS = [
+  'OUTCOME: open with what a sharper website would do for THEIR buyers, using the company name. A statement, not a question. E.g. "Northwind\'s homepage could tell a logistics lead in one line what the platform does."',
+  'PROOF: open with the proof point most relevant to them, then connect it to them in the next sentence. E.g. "I rebuilt 12 pages for a telecom company in Ghana in four weeks. I\'d like to do the same for Northwind." Do not repeat a proof point later in the message.',
+  'OFFER: open with the offer itself in one plain line. E.g. "I\'d like to rebuild Northwind\'s website, at a fixed price and live in about four weeks."',
+  'BUYER MOMENT: open with one short, concrete moment from a prospective customer\'s day, in two short sentences at most. E.g. "A buyer lands on Northwind\'s site from a search and has ten seconds to decide whether it is for them."',
+];
+
 function angleFor(l: Lead, slot: number): string {
   const hasReviews = /review/i.test(l.description);
   const pool = hasReviews ? PLACES_ANGLES : PLACES_ANGLES.slice(0, -1);
@@ -159,6 +180,19 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0, hookBase =
       `Website: ${l.contactLinks?.website ?? 'none'}`,
       `Idea to offer: ${systemsFor(l)[0] ?? 'none'}`,
       `Findings: ${l.description.slice(0, 500)}`,
+      `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
+    ].join('\n');
+  }
+  if (kind === 'b2b') {
+    return [
+      `COMPANY ${i + 1} (ID: ${l.id}):`,
+      `Channel: EMAIL`,
+      `Hook: ${B2B_HOOKS[(hookBase + i) % B2B_HOOKS.length]}`,
+      `Angle: ${B2B_ANGLES[(angleBase + i) % B2B_ANGLES.length]}`,
+      `Company: ${l.title}`,
+      `Type and city: ${l.company}`,
+      `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Findings: ${l.description.slice(0, 400)}`,
       `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
     ].join('\n');
   }
@@ -221,8 +255,10 @@ const VOICE = `Voice (strict, applies to every message):
 // like every other cold email and every blog template, so it is gone.
 const PROOF = `Proof points (true, use at most ONE per message and vary which):
 - Top Rated on Upwork, 100% Job Success, 50+ projects delivered.
-- He designed BookedEZ, a booking app that paid out over $10K to artists and event organisers in its first month.
-- He built the landing page for The Initial, a consultancy, and its founder got 5+ new clients from it.`;
+- He redesigned and rebuilt 12 pages of DLP Africa's website, a telecommunications company in Ghana, in four weeks, with a CMS for seven products, tracked forms and a clean handover.
+- He built the landing page for The Initial, a consultancy, and its founder got 5+ new clients from it.
+- He audited and fixed Leadopo's multi-language Framer website, a lead generation SaaS, at the source.
+- He designed BookedEZ, a booking app that paid out over $10K to artists and event organisers in its first month.`;
 
 const APPROACH = `Approach (a pitch, short and direct, applies to every cold message):
 - This is Samuel introducing himself and making one clear offer. It is not an essay about their business and not free advice.
@@ -249,7 +285,55 @@ I also designed BookedEZ, a booking app that paid out over $10K in its first mon
 
 Shall I show you a short demo of how it would work for Bright Smile? If not, no problem, I won't follow up."`;
 
+// How every B2B message is built: a short introduction of Samuel with one offer and one proof point, to a founder or owner.
+const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every message):
+- This is Samuel introducing himself and making one clear offer to a founder or business owner. It is not an essay about their company and not free advice.
+- Body under 80 words. Three or four very short paragraphs.
+- Build it in this order:
+  1. The hook: the first line after the greeting, written in the style on the "Hook" line. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
+  2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
+  3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
+  4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
+  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present what they sell. Then, in the same paragraph, a short line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
+- Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
+- Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
+
+${PROOF}
+
+Example of the shape (for a B2B software company). Do not copy its wording or topic:
+"Hi Maria,
+
+Northwind's homepage could tell a logistics lead in one line what the platform does.
+
+Right now the first screen leads with the company story. I rebuild B2B websites at a fixed price: a landing page in 5 to 7 days, a full site in about 4 weeks.
+
+I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
+
+Shall I send a one-page sketch of how Northwind's homepage could lead with the product? If not, no problem, I won't follow up."`;
+
 const PROMPTS: Record<DraftKind, string> = {
+  b2b: `Write outreach from Samuel Adefila to the founder or owner of each B2B company below. He found them on Google Maps and looked at their website. "Findings" lists what was noticed. "Site text" is text scraped from their site.
+
+Step 1, find the person. Look in the company name and site text for a founder, co-founder, CEO, managing director or owner.
+- Only use a name when the text clearly ties it to that role ("founded by", "CEO", "Managing Director", "Hi, I'm X, founder"). Never guess or pick a random staff member. If unsure, leave name empty.
+
+Step 2, write the message.
+- Greeting: "Hi [FirstName]," when you found a person. If there is no person but it is clearly a small team, "Hi [Company] team,". Otherwise "Hi there,".
+- Line 1 is "Subject: ..." (under 6 words, about their website, e.g. "A clearer homepage for Northwind", no clickbait), blank line, then the body under 80 words.
+- Follow the Approach below. The "Angle" line picks the one fact used for "why them" and the "Hook" line picks how the first line grabs them. They differ between companies on purpose, so the batch never reads like one template.
+- Never mention Google Maps, star ratings or reviews. Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
+- Vary what the closing question offers a little between messages (a one-page sketch of their homepage, a short example for their site), always answerable in one word.
+- Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
+- Sign off "Samuel" and on the next line "adefilasamuel.com".
+- End the body with the close from the Approach (the question plus "if not, I won't follow up" in one paragraph), right before the sign-off.
+- Never state anything that isn't in the findings or site text.
+
+${APPROACH_B2B}
+
+${VOICE}
+
+Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Founder / CEO / Managing Director etc, or empty string", "message": "..."}, ...}`,
+
   job: `Write a message from Samuel Adefila for each role below. Each is full-time: either remote and open to someone in Nigeria (the listing starts "Open to:"), or on-site abroad with visa sponsorship or relocation support (the listing starts "Relocation:"). Hiring managers and founders skim, so the first line must show he read the listing.
 
 If Channel is APPLICATION, it goes in the job board's application form or cover letter box:
@@ -369,12 +453,12 @@ ${VOICE}
 
 Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Owner / Founder / Dentist etc, or empty string", "message": "..."}, ...}`,
 
-  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel builds websites and simple systems that save small businesses time.
+  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel rebuilds and builds websites for B2B companies and gives new ones a credible website from day one.
 
 Rules:
 - Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
 - Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
-- Then follow the Approach below, with the "Idea to offer" as the offer: what setting it up from day one saves them as they start taking customers.
+- Then follow the Approach below. The offer is a launch website (a landing page in 5 to 7 days, or a full site in about 4 weeks) that makes the new company look established to its first buyers.
 - If they have a website with issues: mention ONE issue from the findings in plain words.
 - Offer one easy next step: a short note of ideas for their business, or a short call.
 - If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
@@ -382,7 +466,7 @@ Rules:
 - Close with one short opt-out line when Channel is EMAIL.
 - Never state anything that isn't in the findings.
 
-${APPROACH}
+${APPROACH_B2B}
 
 ${VOICE}
 
@@ -449,7 +533,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
-  for (const kind of ['job', 'places', 'newco', 'remote', 'inbound', 'visitor'] as DraftKind[]) {
+  for (const kind of ['job', 'places', 'b2b', 'newco', 'remote', 'inbound', 'visitor'] as DraftKind[]) {
     const group = leads.filter(l => draftKind(l) === kind);
     for (let i = 0; i < group.length; i += BATCH) {
       try {
