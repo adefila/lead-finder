@@ -199,10 +199,14 @@ export async function runOutbox(): Promise<OutboxResult> {
     console.error('[outbox] inbox check failed:', x.message, JSON.stringify({ status: x.responseStatus, text: x.responseText, code: x.serverResponseCode ?? x.code, command: x.executedCommand?.slice(0, 60), watching: watching.length }));
     return noInbox;
   });
+  // The timer is cleared as soon as the check finishes: left running it printed "slow, skipped" 25 seconds into
+  // every run even when the check had already finished, which looked like replies were not being read.
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
   const { replies, bounced, checked: inboxChecked } = await Promise.race([
     inboxCheck,
-    new Promise<typeof noInbox>(resolve => setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 25_000)),
+    new Promise<typeof noInbox>(resolve => { slowTimer = setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 25_000); }),
   ]);
+  clearTimeout(slowTimer);
   for (const lead of watching) {
     const address = lead.contactEmail!.toLowerCase();
     if (bounced.has(address) && !replies.has(address)) {
