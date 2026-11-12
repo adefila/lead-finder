@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react';
 import {
-  ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleAlert, CircleHelp, Clock, ListChecks, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
+  ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleAlert, CircleHelp, Clock, Compass, ListChecks, Repeat, Rocket, Search, X, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
   Minus, Newspaper, Plus, Puzzle, Quote, Route, Trophy, type LucideIcon,
 } from 'lucide-react';
 import { MOCK_VARIANTS, Mock, mockItems } from '@/components/DemoMock';
@@ -35,6 +35,14 @@ function Brand({ b, full }: { b: DemoContent['brand']; full?: boolean }) {
   return <><span className="mm-logo-mark" aria-hidden>{b.word.charAt(0)}</span>{full ? b.name : b.word}</>;
 }
 const FLAT_PNG = /\.png(\?|$)/i;
+const STEP_ICONS: LucideIcon[] = [Search, Compass, Rocket, Repeat];
+// Faint wireframe waves in the hero, drawn once from plain maths so the server and the browser agree.
+const WAVES = Array.from({ length: 14 }, (_, k) => {
+  const y = 120 + k * 9;
+  let d = '';
+  for (let x = 0; x <= 1600; x += 40) d += `${x ? 'L' : 'M'}${x} ${Math.round(y + Math.sin(x / 190 + k * 0.22) * (46 - k * 1.6))} `;
+  return d;
+});
 const PAIN_ICONS: LucideIcon[] = [Clock, Puzzle, CircleAlert];
 // How many of the six columns each service card takes, so the grid always fills its rows.
 const bentoSpans = (n: number): number[] => (n <= 2 ? [3, 3] : n === 3 ? [3, 3, 6] : n === 4 ? [4, 2, 2, 4] : [3, 3, 2, 2, 2]);
@@ -107,6 +115,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
 
       <section className="mm-hero" id="top" ref={heroRef}>
         <div className="mm-vlines" aria-hidden />
+        <svg className="mm-wave" viewBox="0 0 1600 260" preserveAspectRatio="none" aria-hidden>{WAVES.map((d, i) => <path key={i} d={d} />)}</svg>
         <div className="mm-wrap mm-hero-in">
           {c.trust && <motion.p className="mm-chip" initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: EASE }}>{c.trust}</motion.p>}
           <h1 className="mm-h1">{c.hero.lines.map((l, i) => <Line key={l} text={l} delay={0.2 + i * 0.2} reduce={reduce} />)}</h1>
@@ -146,6 +155,23 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
           </div>
         </motion.div>
       </section>
+
+      {c.process.length >= 3 && (
+        <section className="mm-strip" aria-label={c.names.process}>
+          <div className="mm-wrap mm-strip-in">
+            {c.process.slice(0, 4).map((st, i) => {
+              const Icon = STEP_ICONS[i % STEP_ICONS.length];
+              return (
+                <motion.div key={st.title} className="mm-strip-item" {...reveal(reduce, i * 0.08)}>
+                  <span className="mm-strip-icon"><Icon size={18} aria-hidden /></span>
+                  <h3>{st.title}</h3>
+                  <p>{st.body}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {c.clients.length > 0 && (
         <section className="mm-clients" aria-label="Clients">
@@ -332,6 +358,26 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
                   <div><h3>{w.title}</h3><p>{w.body}</p></div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* The difference: common frustrations on one side, how this business works on the other */}
+      {c.contrast?.other.length > 0 && (
+        <section className="mm-sec mm-soft">
+          <div className="mm-wrap">
+            <div className="mm-center"><Badge icon={Layers}>The difference</Badge></div>
+            <motion.h2 className="mm-h2 mm-center" {...reveal(reduce)}>{c.contrast.title}</motion.h2>
+            <div className="mm-vs">
+              <motion.div className="mm-vs-card mm-vs-other" {...reveal(reduce, 0.05)}>
+                <p className="mm-vs-h">Often</p>
+                <ul>{c.contrast.other.map(t => <li key={t}><span className="mm-vs-x"><X size={12} strokeWidth={3} aria-hidden /></span>{t}</li>)}</ul>
+              </motion.div>
+              <motion.div className="mm-vs-card mm-vs-with" {...reveal(reduce, 0.15)}>
+                <p className="mm-vs-h">With {b.word}</p>
+                <ul>{c.contrast.with.map(t => <li key={t}><span className="mm-tick"><Check size={12} strokeWidth={3} aria-hidden /></span>{t}</li>)}</ul>
+              </motion.div>
             </div>
           </div>
         </section>

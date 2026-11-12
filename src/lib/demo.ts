@@ -30,6 +30,8 @@ export interface DemoContent {
   // sections that only appear when the site gives the material (results, partners, articles, social links)
   clients: string[];
   clientLogos: { name: string; url: string }[];   // the site's own logos for some of those clients
+  // Modern look: common frustrations with providers of this kind, against how this business works
+  contrast: { title: string; other: string[]; with: string[] };
   // Modern look: the problem the customer has, three plain pain points, and one line that leads into the services
   problem: { badge: string; title: string; body: string; points: { title: string; body: string }[]; bridge: string };
   highlight: string;
@@ -128,6 +130,11 @@ export function finishDemo(raw: Record<string, unknown>, images: (string | null)
     trust: str(r.trust, 80), micro: str(r.micro, 80), factsTitle: str(r.factsTitle, 70), factsSub: str(r.factsSub, 180),
     facts: list(r.facts, 3, f => { const o = f as Record<string, unknown>; const v = str(o?.value, 14), l = str(o?.label, 28); return v && l ? { value: v, label: l, note: str(o.note, 150) } : null; }),
     clients: list(r.clients, 8, x => str(x, 40) || null), clientLogos: [], highlight: str(r.highlight, 24),
+    contrast: (() => {
+      const c = (r.contrast ?? {}) as Record<string, unknown>;
+      const other = list(c.other, 4, x => str(x, 80) || null), withUs = list(c.with, 4, x => str(x, 80) || null);
+      return other.length >= 3 && withUs.length >= 3 ? { title: str(c.title, 70, 'The difference'), other, with: withUs } : { title: '', other: [], with: [] };
+    })(),
     problem: (() => {
       const p = (r.problem ?? {}) as Record<string, unknown>;
       const points = list(p.points, 3, x => { const o = x as Record<string, unknown>; const t = str(o?.title, 40), b = str(o?.body, 190); return t && b ? { title: t, body: b } : null; });
@@ -302,6 +309,11 @@ const asModern = (d: DemoContent, extra: Partial<DemoContent>, accent?: string):
   ...d, ...extra, look: 'modern', brand: accent ? { ...d.brand, ...brandColours(accent) } : d.brand,
 });
 const ASCEND_M = asModern(ASCEND, {
+  contrast: {
+    title: 'IT support, done differently.',
+    other: ['Tickets that go to whoever is free', 'Advice that ignores how you work', 'Different suppliers for every tool'],
+    with: ['One team that knows your setup', 'Plain-English answers from people who know your systems', 'IT, cloud and infrastructure looked after together'],
+  },
   problem: {
     badge: 'The problem', title: 'IT keeps pulling you away from the business.',
     body: 'When nobody owns the technology, small problems turn into lost hours and the same questions to a different support line each time.',

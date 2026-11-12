@@ -392,7 +392,7 @@ export async function getDemo(leadId: string): Promise<DemoContent | null> {
   if (error) { console.error('[supabase] getDemo:', error.message); return null; }
   const demo = (data?.skills as DemoContent | null) ?? null;
   // Demos saved before a field existed still open: fill what is missing with empty values.
-  return demo ? { ...demo, clientLogos: demo.clientLogos ?? [], problem: demo.problem ?? { badge: 'The problem', title: '', body: '', points: [], bridge: '' } } : null;
+  return demo ? { ...demo, clientLogos: demo.clientLogos ?? [], contrast: demo.contrast ?? { title: '', other: [], with: [] }, problem: demo.problem ?? { badge: 'The problem', title: '', body: '', points: [], bridge: '' } } : null;
 }
 
 export async function saveDemo(leadId: string, demo: DemoContent): Promise<string | null> {

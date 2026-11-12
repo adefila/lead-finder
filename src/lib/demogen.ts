@@ -36,6 +36,7 @@ const SCHEMA = `{
   "closing": { "title": "a question or invitation in their voice", "body": "one line", "cta": "...", "fields": ["Your name", "Work email", "a third field that fits their service"] },
   "footer": { "blurb": "one sentence", "columns": [ { "title": "...", "links": ["..."] } ], "place": "city, state or country", "site": "their domain" },
   "clients": ["real client or customer names the site mentions, up to 6, or an empty list"],
+  "contrast": { "title": "a calm headline, e.g. The difference, max 6 words", "other": ["3-4 short frustrations people commonly have with providers of this kind, generic, no names, no numbers"], "with": ["3-4 short statements of how THIS business works, each backed by the site material, same order as the frustrations"] },
   "problem": { "badge": "2 words, e.g. The problem", "title": "a calm headline naming the trouble their customers have, max 9 words", "body": "1-2 sentences on why that trouble happens, in plain words", "points": [ { "title": "3-4 words", "body": "one sentence, what the customer experiences" } ], "bridge": "one sentence that leads into what the business does about it" },
   "highlight": "one word from the statement to colour in",
   "results": [ { "value": "a figure the site really states", "label": "what it measures", "client": "who" } ],
@@ -62,6 +63,7 @@ const RULES = `Rules, all strict:
 - 3 to 4 services in levels, 3 to 4 steps in process, 3 things in why, 3 questions in faq. Pins are short phrases already used on the site.
 - tz: the time zone of the business's city, or null if you are unsure.
 - problem: exactly 3 points. Describe the trouble the business's customers have BEFORE they hire it, using the site's own wording where it describes this. No numbers or percentages unless the site states them. Do not mention the business by name in the problem section.
+- contrast: 3 or 4 pairs. "other" lines are common frustrations with providers of this kind (never name or accuse a real company). "with" lines are how this business works, each from the site, no claims the site does not make.
 - levels[].pins: 3 short phrases per service, taken from the site (they become the lines of a small interface card), never invented.
 Return ONLY the JSON object.`;
 
@@ -77,6 +79,7 @@ const GENERIC_RULES = `Rules, all strict. There is NO website to read, only the 
 - accent: pick a calm confident colour that suits the trade, as a hex colour.
 - footer.site: empty string. Use the business name and place given.
 - problem: exactly 3 points describing the trouble a customer of this kind of business has, in plain neutral words, no numbers, no statistics, no promises.
+- contrast: 3 pairs: "other" = common frustrations with providers of this kind, "with" = how the business plainly works, neutral, no claims, no numbers.
 - levels[].pins: 3 short neutral phrases per service (what that service covers), no claims.
 - 3 services, 3 process steps, 3 things in why (each a neutral statement of how the business works, not a boast), 3 questions in faq with careful answers that make no promises.
 Return ONLY the JSON object.`;

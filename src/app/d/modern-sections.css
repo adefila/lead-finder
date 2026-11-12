@@ -232,3 +232,32 @@
 .mm-foot .mm-logo-chip { height: 44px; }
 .mm-client-logo { display: inline-flex; align-items: center; height: 40px; padding: 6px 14px; border-radius: 10px; background: #fff; }
 .mm-client-logo img { height: 100%; width: auto; max-width: 130px; object-fit: contain; }
+
+/* ── from the Converra and Consilio references: serif accent word, pill nav, steps strip, wireframe waves, the difference ── */
+.mm-h1 .dm-line:last-child .dm-mask:last-of-type .dm-word { font-family: var(--font-serif), Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -0.02em; font-size: 1.08em; }
+.mm-nav nav { gap: 2px; padding: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.96); border: 1px solid rgba(14, 24, 34, 0.08); color: #4a5764; }
+.mm-nav nav a { padding: 8px 16px; border-radius: 999px; font-size: 13.5px; }
+.mm-nav nav a:hover { color: #0e1822; background: #eef2f5; }
+.mm-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 46%; z-index: -1; pointer-events: none; animation: mm-drift 18s ease-in-out infinite alternate; }
+.mm-wave path { fill: none; stroke: var(--lit); stroke-width: 1; stroke-opacity: 0.16; vector-effect: non-scaling-stroke; }
+@keyframes mm-drift { from { transform: translateX(-1.5%) scaleY(1); } to { transform: translateX(1.5%) scaleY(1.12); } }
+.mm-strip { background: #fff; border-bottom: 1px solid rgba(14, 24, 34, 0.07); }
+.mm-strip-in { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 36px); padding-block: clamp(28px, 4vw, 44px); }
+.mm-strip-item { display: grid; gap: 6px; align-content: start; }
+.mm-strip-icon { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 6px; border-radius: 11px; background: var(--tint); color: var(--ink); }
+.mm-strip-item h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.mm-strip-item p { font-size: 13.5px; line-height: 1.55; color: var(--muted-d); }
+.mm-vs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); margin-top: clamp(36px, 5vw, 56px); }
+.mm-vs-card { padding: clamp(24px, 3vw, 38px); border-radius: 24px; }
+.mm-vs-other { background: #fff; border: 1px solid rgba(14, 24, 34, 0.1); }
+.mm-vs-with { background-color: var(--deep2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); background-image: var(--p-dots-d); }
+.mm-vs-h { margin-bottom: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+.mm-vs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.mm-vs li { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.55; }
+.mm-vs-other li { color: var(--muted-d); }
+.mm-vs-with li { color: rgba(255, 255, 255, 0.92); }
+.mm-vs-x { display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: #e6ebef; color: #6a7783; flex-shrink: 0; }
+.mm-vs-with .mm-tick { margin-top: 1px; background: var(--lit); color: var(--deep); }
+@media (max-width: 1000px) { .mm-strip-in { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mm-vs { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .mm-nav nav { display: none; } }
+@media (prefers-reduced-motion: reduce) { .mm-wave { animation: none; } }
