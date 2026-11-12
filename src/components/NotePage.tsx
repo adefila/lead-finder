@@ -40,6 +40,7 @@ export async function NotePage({ lead }: { lead: Lead }) {
           </section>
         )}
 
+        {copy.systems.length > 0 && (
         <section className="check-sec">
           <h2>{copy.setupTitle}</h2>
           <p className="check-lead">{copy.setupLead}</p>
@@ -47,6 +48,7 @@ export async function NotePage({ lead }: { lead: Lead }) {
             {copy.systems.map(s => <li key={s}>{s}</li>)}
           </ul>
         </section>
+        )}
 
         {copy.problems.length > 0 && (
           <section className="check-sec">

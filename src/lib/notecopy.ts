@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { unstable_cache } from 'next/cache';
 import type { Lead } from '@/types/lead';
-import { displayName, LANGUAGE_NAME, leadLanguage, leadStory, systemsFor, type LeadLang } from '@/lib/leadview';
+import { displayName, isB2B, LANGUAGE_NAME, leadLanguage, leadStory, systemsFor, type LeadLang } from '@/lib/leadview';
 
 // Every piece of text on a lead's one-page note. Built in English, then translated once for
 // businesses written to in Dutch, Norwegian or French, and saved, so a note is only ever
@@ -41,7 +41,7 @@ export function englishNoteCopy(lead: Lead): NoteCopy {
   const place = lead.company.split(' · ').slice(1).join(' · ') || lead.company;
   const rating = story.other.find(o => /stars from \d+/i.test(o))?.replace(/\.$/, '');
   return {
-    eyebrow: 'A few ideas for your business',
+    eyebrow: isB2B(lead) ? 'A few ideas for your website' : 'A few ideas for your business',
     // The month is added after translation, in the reader's language (see noteCopy).
     sub: `${place} · Prepared by Samuel Adefila`,
     workingTitle: rating ? 'What is already working' : '',
