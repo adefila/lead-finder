@@ -1,6 +1,7 @@
 import { createClient as sb } from '@supabase/supabase-js';
 import type { Lead, LeadStatus } from '@/types/lead';
 import { humanize } from '@/lib/compose';
+import type { Profile } from '@/lib/profile';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -306,4 +307,31 @@ export async function logVisitEvent(id: string, at: Date): Promise<void> {
 export async function recentVisitEvents(sinceIso: string): Promise<string[]> {
   const { data } = await db().from('sent_jobs').select('id').like('id', 'visit|%').gte('sent_at', sinceIso).order('sent_at');
   return (data ?? []).map((r: { id: string }) => r.id);
+}
+
+// ─── Profile (your CV text, for job matching) ─────────────────────────────────
+
+export async function getProfile(): Promise<Profile | null> {
+  const { data, error } = await db().from('profile').select('*').eq('id', 'me').maybeSingle();
+  if (error) { console.error('[supabase] getProfile:', error.message); return null; }
+  if (!data) return null;
+  return {
+    text: String(data.text ?? ''),
+    skills: (data.skills as string[]) ?? [],
+    titles: (data.titles as string[]) ?? [],
+    years: data.years === null || data.years === undefined ? null : Number(data.years),
+    source: String(data.source ?? ''),
+    updatedAt: String(data.updated_at ?? ''),
+  };
+}
+
+export async function saveProfile(p: Profile): Promise<string | null> {
+  const { error } = await db().from('profile').upsert({
+    id: 'me', text: p.text, skills: p.skills, titles: p.titles, years: p.years, source: p.source, updated_at: p.updatedAt,
+  }, { onConflict: 'id' });
+  return error ? (/relation .*profile|schema cache/i.test(error.message) ? 'Your database has no "profile" table yet. Run the setup SQL in Supabase, then try again.' : explain(error.message)) : null;
+}
+
+export async function deleteProfile(): Promise<void> {
+  await db().from('profile').delete().eq('id', 'me');
 }

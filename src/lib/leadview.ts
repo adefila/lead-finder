@@ -442,11 +442,12 @@ export function matchesSearch(l: Lead, q: string): boolean {
   return q.toLowerCase().split(/\s+/).every(t => hay.includes(t));
 }
 
-export type SortKey = 'score' | 'name' | 'added' | 'next';
+export type SortKey = 'score' | 'name' | 'added' | 'next' | 'match';
 
 export function sortLeads(list: Lead[], key: SortKey, dir: 1 | -1): Lead[] {
   const val = (l: Lead): number | string => {
     if (key === 'score') return l.score ?? 0;
+    if (key === 'match') return l.contactLinks?.match?.score ?? -1;
     if (key === 'name') return l.title.toLowerCase();
     if (key === 'added') return l.createdAt ?? '';
     return followUpState(l).dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
@@ -459,6 +460,7 @@ export function sortLeads(list: Lead[], key: SortKey, dir: 1 | -1): Lead[] {
 
 export function defaultSort(view: View): { key: SortKey; dir: 1 | -1 } {
   if (view === 'new') return { key: 'score', dir: -1 };
+  if (view === 'jobs') return { key: 'match', dir: -1 };
   if (view === 'approved') return { key: 'next', dir: 1 };
   return { key: 'added', dir: -1 };
 }

@@ -777,3 +777,27 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
   .hm-list li, .hm-check, .hm-dock { animation: none; }
   .hm-pulse { animation: none; }
 }
+
+/* Job matching */
+.match-tag { display: inline-flex; align-items: center; padding: 0 8px; border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 20px; font-variant-numeric: tabular-nums; }
+.match-tag.high { background: var(--green-tint); color: var(--green-ink); }
+.match-tag.mid { background: var(--warn-tint); color: var(--warn-ink); }
+.match-tag.low { background: #f1f1f1; color: var(--fg-3); }
+.col-match { width: 84px; white-space: nowrap; }
+.jm { border-bottom: 1px solid var(--border); background: var(--surface-2); padding: 12px 16px; }
+.jm-row { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.jm-main { min-width: 0; flex: 1; display: grid; gap: 6px; }
+.jm-title { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); }
+.jm-title strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.jm-hint { margin: 0; font-size: 12px; color: var(--fg-3); max-width: 560px; }
+.jm-skills { display: flex; flex-wrap: wrap; gap: 4px; }
+.jm-chip { padding: 0 7px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; line-height: 20px; color: var(--fg-2); }
+.jm-more { font-size: 11px; line-height: 20px; color: var(--fg-3); }
+.jm-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.jm-form { display: grid; gap: 8px; margin-top: 4px; max-width: 560px; }
+.jm-form textarea, .jm-line input { width: 100%; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 7px 9px; font: inherit; font-size: 12px; background: var(--surface); color: var(--fg); }
+.jm-form textarea { resize: vertical; }
+.jm-line { display: flex; gap: 8px; align-items: center; }
+.jm-line.end { justify-content: flex-end; }
+.jm-line input { flex: 1; min-width: 0; }
+@media (max-width: 720px) { .jm-row { flex-direction: column; } .jm-actions { flex-wrap: wrap; } }

@@ -12,6 +12,7 @@ import { Funnel } from '@/components/Funnel';
 import { History } from '@/components/History';
 import { HowItWorks, useHowItWorks } from '@/components/HowItWorks';
 import { LeadTable } from '@/components/LeadTable';
+import { JobMatch } from '@/components/JobMatch';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -752,6 +753,8 @@ export default function Home() {
           ) : mode === 'history' ? (
             <History leads={scoped} onOpen={id => setSelectedId(id)} />
           ) : (
+            <>
+            {view === 'jobs' && <JobMatch onChecked={() => void loadData()} />}
             <LeadTable
               leads={pageRows}
               sort={sort}
@@ -763,7 +766,9 @@ export default function Home() {
               selection={selection}
               onToggle={toggle}
               onToggleAll={toggleAll}
+              showMatch={view === 'jobs' && leads.some(l => l.contactLinks?.match)}
             />
+            </>
           )}
           {!loading && mode === 'table' && rows.length > 0 && (
             <div className="crm-foot">

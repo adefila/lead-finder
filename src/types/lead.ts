@@ -14,6 +14,8 @@ export interface ContactLinks {
   sitePages?: string[];
   // "b2b": a B2B company (founder or owner of a business that sells to other businesses). Pitched a website rebuild, not local systems.
   segment?: 'b2b';
+  // Jobs: how well the job fits your uploaded profile (kept here so no database change is needed).
+  match?: { score: number; matched: string[]; missing: string[]; at: string };
 }
 
 export const LEAD_STATUSES = ['new', 'queued', 'approved', 'replied', 'won', 'lost', 'skipped'] as const;

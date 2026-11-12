@@ -16,6 +16,8 @@ interface Props {
   selection: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
+  // Jobs tab: show the match column once a profile has been checked
+  showMatch?: boolean;
 }
 
 function SortHeader({ label, k, sort, onSort, className }: {
@@ -43,7 +45,7 @@ function fullDate(iso?: string): string {
 }
 
 // Deliberately minimal: who, how to reach them, what to do next. Everything else lives in the lead page.
-export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, selection, onToggle, onToggleAll }: Props) {
+export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, emptyKind, selection, onToggle, onToggleAll, showMatch }: Props) {
   const picked = leads.filter(l => selection.has(l.id)).length;
   const all = leads.length > 0 && picked === leads.length;
 
@@ -57,6 +59,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
               <Checkbox label="Select all on this page" checked={all} indeterminate={picked > 0 && !all} onChange={onToggleAll} />
             </th>
             <SortHeader label="Business" k="name" sort={sort} onSort={onSort} className="col-lead" />
+            {showMatch && <SortHeader label="Match" k="match" sort={sort} onSort={onSort} className="col-match" />}
             <th className="col-contact">Contact</th>
             <th className="col-status">Status</th>
             <SortHeader label="Next step" k="next" sort={sort} onSort={onSort} className="col-next" />
@@ -93,6 +96,16 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                     <span className="ellipsis">{l.company}</span>
                   </div>
                 </td>
+                {showMatch && (
+                  <td className="col-match">
+                    {l.contactLinks?.match ? (
+                      <span className={`match-tag ${l.contactLinks.match.score >= 70 ? 'high' : l.contactLinks.match.score >= 45 ? 'mid' : 'low'}`}
+                        title={[l.contactLinks.match.matched.length ? `You have: ${l.contactLinks.match.matched.join(', ')}` : '', l.contactLinks.match.missing.length ? `Not in your profile: ${l.contactLinks.match.missing.join(', ')}` : ''].filter(Boolean).join('. ') || 'Fit with your profile'}>
+                        {l.contactLinks.match.score}%
+                      </span>
+                    ) : <span className="muted">-</span>}
+                  </td>
+                )}
                 <td className="col-contact">
                   <div className="cell-title small">{person || <span className="muted">{l.source === 'job' || l.source === 'remote' ? 'Hiring team' : 'Name not found'}</span>}</div>
                   <div className="cell-sub"><span className="ellipsis">{reach}</span></div>

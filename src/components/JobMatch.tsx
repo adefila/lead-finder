@@ -1,0 +1,117 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Upload, FileText, Link2, Trash2, Sparkles } from 'lucide-react';
+import { useFeedback } from '@/components/feedback';
+
+interface ProfileInfo { skills: string[]; titles: string[]; years: number | null; source: string; updatedAt: string; chars: number }
+
+// Upload your CV or portfolio once, then run a check: every job below gets a match score against it. Free, no AI.
+export function JobMatch({ onChecked }: { onChecked: () => void }) {
+  const { toast, confirm } = useFeedback();
+  const [profile, setProfile] = useState<ProfileInfo | null>(null);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState<'' | 'upload' | 'check'>('');
+  const [open, setOpen] = useState(false);
+  const [link, setLink] = useState('');
+  const [pasted, setPasted] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/profile');
+      const data = await res.json() as { profile: ProfileInfo | null };
+      setProfile(data.profile);
+    } catch { /* leave empty */ }
+    setReady(true);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const check = useCallback(async (quiet = false) => {
+    setBusy('check');
+    try {
+      const res = await fetch('/api/jobs/check', { method: 'POST' });
+      const data = await res.json() as { checked?: number; strong?: number; failed?: number; error?: string };
+      if (!res.ok) { toast(data.error ?? 'Could not run the check', { tone: 'error' }); return; }
+      onChecked();
+      if (!quiet || data.failed) toast(data.failed ? `Checked ${data.checked} jobs, ${data.failed} could not be saved` : `Checked ${data.checked} jobs: ${data.strong} are a strong match`, { tone: data.failed ? 'error' : 'success' });
+    } catch { toast('Could not run the check', { tone: 'error' }); }
+    finally { setBusy(''); }
+  }, [onChecked, toast]);
+
+  const send = useCallback(async (init: RequestInit) => {
+    setBusy('upload');
+    try {
+      const res = await fetch('/api/profile', init);
+      const data = await res.json() as { profile?: ProfileInfo; error?: string };
+      if (!res.ok || !data.profile) { toast(data.error ?? 'Could not read that', { tone: 'error' }); setBusy(''); return; }
+      setProfile(data.profile); setOpen(false); setLink(''); setPasted('');
+      toast(`Read ${data.profile.skills.length} skills from your profile`, { tone: 'success' });
+      await check(true);
+    } catch { toast('Could not read that', { tone: 'error' }); setBusy(''); }
+  }, [check, toast]);
+
+  const upload = (file: File | undefined) => {
+    if (!file) return;
+    const form = new FormData(); form.append('file', file);
+    void send({ method: 'POST', body: form });
+  };
+  const postJson = (body: object) => void send({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  const remove = async () => {
+    if (!await confirm({ title: 'Remove your profile?', body: 'Jobs keep their last score, but no new ones are matched until you upload again.', confirmLabel: 'Remove', danger: true })) return;
+    await fetch('/api/profile', { method: 'DELETE' });
+    setProfile(null);
+  };
+
+  if (!ready) return null;
+  const working = busy !== '';
+
+  return (
+    <div className="jm">
+      <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.txt,.md,.html" onChange={e => { upload(e.target.files?.[0]); e.target.value = ''; }} />
+      {profile && !open ? (
+        <div className="jm-row">
+          <div className="jm-main">
+            <div className="jm-title"><FileText size={14} />Matched to <strong>{profile.source}</strong></div>
+            <div className="jm-skills">
+              {profile.skills.slice(0, 12).map(s => <span key={s} className="jm-chip">{s}</span>)}
+              {profile.skills.length > 12 && <span className="jm-more">+{profile.skills.length - 12} more</span>}
+              {profile.years !== null && <span className="jm-more">about {profile.years} years</span>}
+            </div>
+          </div>
+          <div className="jm-actions">
+            <button className="btn btn-sm btn-primary" onClick={() => void check()} disabled={working}><Sparkles size={13} />{busy === 'check' ? 'Checking…' : 'Run my check'}</button>
+            <button className="btn btn-sm" onClick={() => setOpen(true)} disabled={working}>Replace</button>
+            <button className="icon-btn" onClick={() => void remove()} disabled={working} aria-label="Remove my profile" title="Remove my profile"><Trash2 size={14} /></button>
+          </div>
+        </div>
+      ) : (
+        <div className="jm-row">
+          <div className="jm-main">
+            <div className="jm-title"><Sparkles size={14} />Match jobs to you</div>
+            <p className="jm-hint">Upload your CV or portfolio and every job gets a score for how well it fits. It runs in the app, so it costs nothing, and your file is not kept, only the text.</p>
+            {open && (
+              <div className="jm-form">
+                <div className="jm-line">
+                  <Link2 size={14} />
+                  <input value={link} onChange={e => setLink(e.target.value)} placeholder="Or paste your portfolio link, https://…" aria-label="Portfolio link" />
+                  <button className="btn btn-sm" disabled={working || !link.trim()} onClick={() => postJson({ url: link })}>Read link</button>
+                </div>
+                <textarea value={pasted} onChange={e => setPasted(e.target.value)} placeholder="Or paste the text of your CV here" aria-label="CV text" rows={4} />
+                <div className="jm-line end">
+                  {profile && <button className="btn btn-sm" onClick={() => setOpen(false)}>Cancel</button>}
+                  <button className="btn btn-sm" disabled={working || pasted.trim().length < 80} onClick={() => postJson({ text: pasted })}>Use this text</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="jm-actions">
+            <button className="btn btn-sm btn-primary" onClick={() => fileRef.current?.click()} disabled={working}><Upload size={13} />{busy === 'upload' ? 'Reading…' : 'Upload CV'}</button>
+            {!open && <button className="btn btn-sm" onClick={() => setOpen(true)} disabled={working}>Link or paste</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
