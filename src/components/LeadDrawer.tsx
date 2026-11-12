@@ -11,6 +11,7 @@ import {
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
 import { AnswerChips } from '@/components/ApplyAnswers';
+import { DemoPanel } from '@/components/DemoPanel';
 
 const LINK_LABELS = [
   ['website', 'Website'],
@@ -259,6 +260,8 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             <p className="timeline">The goal is their email address. Use "Add email" above, then schedule the email with their one-page note of ideas.</p>
           </section>
         )}
+
+        {!isJob && links.website && <DemoPanel lead={lead} onUpdate={onUpdate} />}
 
         {interested && !isFollowUp && (
           <section className="dsec">

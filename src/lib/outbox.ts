@@ -5,7 +5,7 @@ import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
 import { hasCheck, isBusinessPitch, isJobLead, leadLanguage } from '@/lib/leadview';
 import { noteCopy } from '@/lib/notecopy';
-import { noteLink, siteLink } from '@/lib/tracking';
+import { emailLink, siteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 import { planNewSend } from '@/lib/pacing';
@@ -237,7 +237,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
-    const testText = withSignature(hasCheck(next) ? withCheckLink(body, noteLink(next), leadLanguage(next)) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
+    const testText = withSignature(emailLink(next) ? withCheckLink(body, emailLink(next), leadLanguage(next)) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
     // Exactly the email the business would get (link and signature included), so you can see
     // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
@@ -337,7 +337,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const text = withSignature(hasCheck(lead) ? withCheckLink(body, noteLink(lead), leadLanguage(lead)) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
+      const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead)) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);

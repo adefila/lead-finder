@@ -17,6 +17,9 @@ export interface ContactLinks {
   // Jobs: how well the job fits your uploaded profile (kept here so no database change is needed).
   // Set once a skipped job was brought back because it matched your profile, so skipping it again sticks.
   matchRestored?: true;
+  // A website demo built for this lead: 'draft' until you approve it, then it replaces the note link in the email.
+  demo?: 'draft' | 'approved';
+  demoLook?: string;
   match?: { score: number; matched: string[]; missing: string[]; at: string };
 }
 

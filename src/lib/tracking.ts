@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import type { Lead } from '@/types/lead';
-import { displayName, isBusinessPitch, leadLanguage, nicheOf, isJobLead, isB2B } from '@/lib/leadview';
+import { displayName, hasCheck, hasDemo, isBusinessPitch, leadLanguage, nicheOf, isJobLead, isB2B } from '@/lib/leadview';
 
 export const APP_URL = process.env.APP_URL ?? 'https://lead-finder-one-self.vercel.app';
 
@@ -44,6 +44,17 @@ export function noteLink(lead: { id: string; title: string; source: string }): s
   const slug = displayName(lead as Lead).toLowerCase().normalize('NFKD')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '') || 'note';
   return `${NOTES_URL}/n/${slug}-${noteCode(lead.id)}`;
+}
+
+// The same signed address, for the website demo built for a lead: /d/green-dental-4f9a2c1b07aa
+export function demoLink(lead: { id: string; title: string; source: string }): string {
+  return noteLink(lead).replace('/n/', '/d/');
+}
+
+// The link an email carries: the approved website demo if there is one, otherwise the one-page note, otherwise nothing.
+export function emailLink(lead: Lead): string | undefined {
+  if (hasDemo(lead)) return demoLink(lead);
+  return hasCheck(lead) ? noteLink(lead) : undefined;
 }
 
 // Tracked link to your portfolio for one lead's emails: /v/green-dental-4f9a2c1b07aa records the

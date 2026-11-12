@@ -5,6 +5,7 @@ import type { Profile } from '@/lib/profile';
 import type { SchoolProfile } from '@/lib/school';
 import type { FeedItem } from '@/lib/scholarshipfeed';
 import type { Answers } from '@/lib/answers';
+import type { DemoContent } from '@/lib/demo';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -382,4 +383,21 @@ export async function getAnswers(): Promise<Answers | null> {
 export async function saveAnswers(a: Answers): Promise<string | null> {
   const { error } = await db().from('profile').upsert({ id: 'answers', text: '', skills: a, titles: [], years: null, source: 'answers', updated_at: new Date().toISOString() }, { onConflict: 'id' });
   return error ? (/relation .*profile|schema cache/i.test(error.message) ? 'Your database has no "profile" table yet. Run the setup SQL in Supabase, then try again.' : explain(error.message)) : null;
+}
+
+// ─── Website demos, one row per lead in the profile table ────────────────────
+
+export async function getDemo(leadId: string): Promise<DemoContent | null> {
+  const { data, error } = await db().from('profile').select('skills').eq('id', `demo-${leadId}`).maybeSingle();
+  if (error) { console.error('[supabase] getDemo:', error.message); return null; }
+  return (data?.skills as DemoContent | null) ?? null;
+}
+
+export async function saveDemo(leadId: string, demo: DemoContent): Promise<string | null> {
+  const { error } = await db().from('profile').upsert({ id: `demo-${leadId}`, text: '', skills: demo, titles: [], years: null, source: 'demo', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  return error ? explain(error.message) : null;
+}
+
+export async function deleteDemo(leadId: string): Promise<void> {
+  await db().from('profile').delete().eq('id', `demo-${leadId}`);
 }

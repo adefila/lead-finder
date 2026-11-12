@@ -11,7 +11,9 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@supabase/supabase-js": "^2.46.2",
+    "cheerio": "^1.2.0",
     "imapflow": "^2.0.7",
+    "lenis": "^1.3.27",
     "lucide-react": "^1.48.0",
     "mailparser": "^3.9.28",
     "mammoth": "^1.13.0",

@@ -329,6 +329,9 @@ export function systemsFor(l: Lead): string[] {
 
 // Local businesses and new companies get a one-page note with ideas; job posts do not. B2B companies get a note about
 // their website (what was noticed and how it would be fixed), as long as something was noticed.
+// A website demo that has been approved for the email.
+export const hasDemo = (l: Pick<Lead, 'contactLinks'>) => l.contactLinks?.demo === 'approved';
+
 export function hasCheck(l: Lead): boolean {
   if (systemsFor(l).length > 0) return true;
   return isB2B(l) && !isJobLead(l) && !fromSite(l) && leadStory(l).ownerProblems.length > 0;
