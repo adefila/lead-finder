@@ -99,8 +99,8 @@ export async function generateDemo(lead: Lead): Promise<DemoResult | { error: st
       max_tokens: 9000,
       messages: [{ role: 'user', content: attempt ? `${prompt}\n\nYour last answer could not be parsed as JSON. Answer again with the JSON object only.` : prompt }],
     });
-    const block = msg.content[0];
-    const text = block.type === 'text' ? block.text : '';
+    // The answer may start with a thinking block: take every text block, not just the first block.
+    const text = msg.content.map(b => (b.type === 'text' ? b.text : '')).join('');
     raw = parseModelJson(text);
     if (!raw) console.error(`[demo] unreadable answer (attempt ${attempt + 1}, stop=${msg.stop_reason}, ${text.length} chars): ${text.slice(0, 160).replace(/\s+/g, ' ')} ... ${text.slice(-120).replace(/\s+/g, ' ')}`);
   }
