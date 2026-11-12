@@ -18,7 +18,8 @@ const WEB_ROLE = /\b(web|front[- ]?end|framer|webflow|wordpress|shopify|landing|
 // UI/UX design and product engineering. A generic backend or React engineer role is not.
 const NICHE = /\b(framer|webflow|no-?code|landing[- ]pages?|marketing (site|website|pages?)s?|websites? (design|redesign|build|builds|development)|web ?design(er|ers)?|product design(er|ers)?|product engineer(s|ing)?|ui ?\/ ?ux|ux ?\/ ?ui|ui designer|ux designer|ui and ux|ux and ui|user experience|user interface)\b/i;
 const NOT_A_FIT = /\b(intern|internship|werkstudent|praktik|student|director|vp|head of|chief|principal|manager|linguist|translator|interpreter)\b|\(m\/w\/d\)/i;
-const NOT_FULL_TIME = /\b(contract|contractor|part[- ]?time|freelance|temporary|temp|internship|fixed[- ]term)\b/i;
+// Contract and freelance roles are kept: you work remotely, so they fit. Part-time, temporary and internships are not.
+const NOT_FULL_TIME = /\b(part[- ]?time|temporary|temp|internship|intern)\b/i;
 
 // Remote roles: a limit that still includes someone living in Nigeria.
 const OPEN_TO_YOU = /\b(worldwide|anywhere|global|everywhere|all countries|nigeria|emea|(?<!south\s)africa)\b/i;
