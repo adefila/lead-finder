@@ -6,7 +6,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { gmailComposeUrl, splitDraft, withCheckLink, withSignature } from '@/lib/compose';
 import { followUpState, MAX_FOLLOW_UPS } from '@/lib/followup';
 import {
-  FIT_HINT, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, callScript, findEmailUrl, fitOf, isBusinessPitch, isJobLead, leadLanguage, leadStory, personOf, shortDate, statusOf, systemsFor,
+  FIT_HINT, SOURCE_LABEL, statusLabel, STATUS_TONE, callScript, findEmailUrl, fitOf, isBusinessPitch, isJobLead, leadLanguage, leadStory, personOf, shortDate, statusOf, systemsFor,
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -159,7 +159,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           <h2 className="drawer-title">{lead.title}</h2>
           <div className="drawer-sub">{lead.company} · Found on {SOURCE_LABEL[lead.source]}</div>
           <div className="drawer-meta">
-            <span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span>
+            <span className={`status ${STATUS_TONE[status]}`}>{statusLabel(lead)}</span>
             <span className={`fit ${fit.tone}`} title={FIT_HINT}>{fit.label} fit</span>
             {isFollowUp && <span className="flag">Follow-up due</span>}
             {fu.exhausted && <span className="flag">No reply after {fu.sent} follow-ups</span>}
@@ -369,9 +369,9 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
         <section className="dsec dsec-foot">
           <div className="actions status-actions">
             <span className="field-label" style={{ margin: 0 }}>Move to</span>
-            {status === 'approved' && <Btn className="btn btn-sm" onClick={() => onStatus('replied')}>They replied</Btn>}
-            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>Won</Btn>}
-            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" title="They said no, or are not a fit. Nothing more is sent to them" onClick={() => onStatus('lost')}>Not interested</Btn>}
+            {status === 'approved' && <Btn className="btn btn-sm" onClick={() => onStatus('replied')}>{isJob ? 'They got back' : 'They replied'}</Btn>}
+            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>{isJob ? 'Got the job' : 'Won'}</Btn>}
+            {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" title="They said no, or are not a fit. Nothing more is sent to them" onClick={() => onStatus('lost')}>{isJob ? 'Rejected' : 'Not interested'}</Btn>}
             {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skip</Btn>}
             {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />{isJob ? 'Back to Jobs' : 'Back to To contact'}</Btn>}
             <span className="spacer" />

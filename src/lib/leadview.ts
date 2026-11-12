@@ -34,7 +34,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
 };
 
 export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'inbound' | 'jobs' | 'remote';
-export type Sub = 'all' | 'followup' | 'opened' | 'visited' | 'won' | 'lost' | 'skipped';
+export type Sub = 'all' | 'followup' | 'opened' | 'visited' | 'applied' | 'replied' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
@@ -51,12 +51,20 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
   approved: [{ id: 'all', label: 'All' }, { id: 'opened', label: 'Opened your note' }, { id: 'visited', label: 'Visited your site' }, { id: 'followup', label: 'Needs a follow-up' }],
+  // Jobs are tracked on their own, start to finish: to apply, applied, got back, got the job, rejected.
+  jobs: [{ id: 'all', label: 'To apply' }, { id: 'applied', label: 'Applied' }, { id: 'replied', label: 'Got back' }, { id: 'won', label: 'Got the job' }, { id: 'lost', label: 'Rejected' }, { id: 'skipped', label: 'Skipped' }],
   done: [{ id: 'all', label: 'All' }, { id: 'won', label: 'Won' }, { id: 'lost', label: 'Lost' }, { id: 'skipped', label: 'Skipped' }],
 };
 
 export const HEADLINES = ['No website', 'No own website', 'No website yet', 'Outdated website', 'Website broken'];
 
 export const statusOf = (l: Lead): LeadStatus => l.status ?? 'new';
+
+const JOB_STATUS_LABEL: Record<LeadStatus, string> = {
+  new: 'To apply', queued: 'Scheduled', approved: 'Applied', replied: 'Got back', won: 'Got the job', lost: 'Rejected', skipped: 'Skipped',
+};
+// The status in words that fit the lead: a job is applied for and rejected, a pitch is waiting for a reply and lost.
+export const statusLabel = (l: Lead): string => (isJobLead(l) ? JOB_STATUS_LABEL : STATUS_LABEL)[statusOf(l)];
 
 // Job posts (jobs in the US, Canada, Germany and Ireland, and remote roles): you apply on the post rather than email.
 export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'job' || l.source === 'remote';
@@ -105,8 +113,14 @@ export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'inbound') return (l.source === 'website' || l.source === 'visitor') && !['won', 'lost', 'skipped'].includes(s);
-  // Only jobs you still need to apply for. Once applied (or the pitch is scheduled) they move on.
-  if (view === 'jobs') return isJobLead(l) && s === 'new';
+  // Jobs have their own pipeline here, and stay out of the lead tabs below.
+  if (view === 'jobs') {
+    if (!isJobLead(l)) return false;
+    if (sub === 'all') return s === 'new';
+    if (sub === 'applied') return s === 'queued' || s === 'approved';
+    return s === sub;
+  }
+  if (isJobLead(l)) return false;
   if (view === 'remote') return l.source === 'remote' && !['won', 'lost', 'skipped'].includes(s);
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
   if (view === 'approved' && sub === 'visited') return s === 'approved' && !!l.contactLinks?.siteVisitedAt;

@@ -1,7 +1,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/types/lead';
-import { STATUS_LABEL, STATUS_TONE, displayName, headlineOf, nextStep, personOf, shortDate, statusOf, type SortKey, jobTag } from '@/lib/leadview';
+import { statusLabel, STATUS_TONE, displayName, headlineOf, nextStep, personOf, shortDate, statusOf, type SortKey, jobTag } from '@/lib/leadview';
 import { Checkbox, Icon } from '@/components/ui';
 import { EmptyState, type EmptyKind } from '@/components/EmptyState';
 
@@ -110,7 +110,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                   <div className="cell-title small">{person || <span className="muted">{l.source === 'job' || l.source === 'remote' ? 'Hiring team' : 'Name not found'}</span>}</div>
                   <div className="cell-sub"><span className="ellipsis">{reach}</span></div>
                 </td>
-                <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span></td>
+                <td className="col-status"><span className={`status ${STATUS_TONE[status]}`}>{statusLabel(l)}</span></td>
                 <td className={['col-next next', step.urgent && 'urgent', !step.text && 'empty'].filter(Boolean).join(' ')}>
                   {step.text || <span className="muted">-</span>}
                 </td>

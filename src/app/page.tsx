@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, isJobLead, matchesSearch, needsEmail, needsEmailDraft, readyToSchedule, sortLeads, statusOf,
+  SOURCE_LABEL, statusLabel, SUBS, VIEWS, defaultSort, displayName, inView, isJobLead, matchesSearch, needsEmail, needsEmailDraft, readyToSchedule, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -12,6 +12,7 @@ import { Funnel } from '@/components/Funnel';
 import { History } from '@/components/History';
 import { HowItWorks, useHowItWorks } from '@/components/HowItWorks';
 import { LeadTable } from '@/components/LeadTable';
+import type { EmptyKind } from '@/components/EmptyState';
 import { JobMatch } from '@/components/JobMatch';
 import { Scholarships } from '@/components/Scholarships';
 import { LeadDrawer } from '@/components/LeadDrawer';
@@ -465,7 +466,8 @@ export default function Home() {
     for (const v of VIEWS) c[v.id] = scoped.filter(l => inView(l, v.id)).length;
     return c;
   }, [scoped]);
-  const followUpsDue = useMemo(() => scoped.filter(needsAttention).length, [scoped]);
+  // Follow-ups are for the leads you pitch. Jobs have no manual follow-ups.
+  const followUpsDue = useMemo(() => scoped.filter(l => !isJobLead(l) && needsAttention(l)).length, [scoped]);
   // "Schedule all" belongs to the To contact tab, so it only counts the leads listed there (not job posts).
   const readyAll = useMemo(() => scoped.filter(l => inView(l, 'new') && readyToSchedule(l)), [scoped]);
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
@@ -689,6 +691,11 @@ export default function Home() {
                   : sub === 'followup' ? 'No reply yet. Send the follow-up or close it.'
                   : sub === 'visited' ? 'Visited your site, no reply yet. Follow up.'
                   : sub === 'opened' ? 'Opened your note, no reply yet. Warmest leads.'
+                  : view === 'jobs' && sub === 'applied' ? 'Applied. Waiting to hear back.'
+                  : view === 'jobs' && sub === 'replied' ? 'They got back to you.'
+                  : view === 'jobs' && sub === 'won' ? 'Offers and jobs you got.'
+                  : view === 'jobs' && sub === 'lost' ? 'Turned you down, or never replied.'
+                  : view === 'jobs' && sub === 'skipped' ? 'Passed on, or not open to you.'
                   : sub === 'won' ? 'Projects you closed.'
                   : sub === 'lost' ? 'Said no, never replied, or bounced.'
                   : sub === 'skipped' ? 'Passed on. Bring any back in one click.'
@@ -700,6 +707,7 @@ export default function Home() {
                 {SUBS[view]!.map(s => (
                   <button key={s.id} aria-pressed={sub === s.id} onClick={() => { keepTabsInView(); setSub(s.id); setPage(0); setSelection(new Set()); }}>
                     {s.label}
+                    {view === 'jobs' && <span className="tab-count">{scoped.filter(l => inView(l, 'jobs', s.id)).length}</span>}
                     {s.id === 'followup' && followUpsDue > 0 && <span className="tab-alert">{followUpsDue}</span>}
                   </button>
                 ))}
@@ -779,7 +787,7 @@ export default function Home() {
               selectedId={selectedId}
               onOpen={setSelectedId}
               onStatus={setStatus}
-              emptyKind={search.trim() ? 'search' : sub !== 'all' ? sub : view}
+              emptyKind={search.trim() ? 'search' : view === 'jobs' && sub !== 'all' ? (`j${sub}` as EmptyKind) : sub !== 'all' ? (sub as EmptyKind) : view}
               selection={selection}
               onToggle={toggle}
               onToggleAll={toggleAll}
@@ -825,7 +833,7 @@ export default function Home() {
           <LeadDrawer
             key="drawer"
             lead={selected}
-            position={selectedIndex >= 0 ? `${selectedIndex + 1} of ${rows.length}` : STATUS_LABEL[statusOf(selected)]}
+            position={selectedIndex >= 0 ? `${selectedIndex + 1} of ${rows.length}` : statusLabel(selected)}
             onClose={() => setSelectedId(null)}
             onPrev={selectedIndex > 0 ? () => setSelectedId(rows[selectedIndex - 1].id) : undefined}
             onNext={selectedIndex >= 0 && selectedIndex < rows.length - 1 ? () => setSelectedId(rows[selectedIndex + 1].id) : undefined}

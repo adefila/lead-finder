@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'inbound' | 'visited' | 'jobs' | 'remote';
+  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'inbound' | 'visited' | 'jobs' | 'remote'
+  | 'japplied' | 'jreplied' | 'jwon' | 'jlost' | 'jskipped';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
   new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
@@ -21,11 +22,18 @@ const COPY: Record<EmptyKind, { title: string; body: string }> = {
   inbound: { title: 'Nothing from your site yet', body: 'When someone fills in the form on adefilasamuel.com, or a company is identified visiting it, they show up here.' },
   visited: { title: 'No visits yet', body: 'When someone you emailed clicks through to adefilasamuel.com, they show up here. A good moment to follow up.' },
   remote: { title: 'No remote roles yet', body: 'Each search checks the job boards for web roles open to you. New ones show up here.' },
+  japplied: { title: 'No applications yet', body: 'Jobs you have applied for show up here while you wait to hear back.' },
+  jreplied: { title: 'No one has got back yet', body: 'When a company replies to an application, mark it here and it shows up in this list.' },
+  jwon: { title: 'No offers yet', body: 'Jobs you get show up here.' },
+  jlost: { title: 'No rejections', body: 'Jobs that turned you down, or never replied, show up here.' },
+  jskipped: { title: 'Nothing skipped', body: 'Jobs you pass on show up here. You can bring them back anytime.' },
   jobs: { title: 'No jobs to apply for', body: 'You are all caught up. Each search checks the job boards for remote roles in your niche, open to anyone anywhere. New ones show up here.' },
 };
 
 // Shared stroke styles live in globals.css (.ill-*), so every drawing matches the dashboard.
-const ART: Record<EmptyKind, ReactNode> = {
+// Jobs reuse the drawings of the matching lead stage.
+const ART_OF: Partial<Record<EmptyKind, EmptyKind>> = { japplied: 'approved', jreplied: 'replied', jwon: 'won', jlost: 'lost', jskipped: 'skipped' };
+const ART: Partial<Record<EmptyKind, ReactNode>> = {
   new: (
     <>
       <rect className="ill-card" x="54" y="46" width="72" height="54" rx="8" transform="rotate(-6 90 73)" />
@@ -169,7 +177,7 @@ export function EmptyState({ kind }: { kind: EmptyKind }) {
       <svg className="empty-art" viewBox="0 0 200 140" aria-hidden>
         <ellipse className="ill-shadow" cx="100" cy="126" rx="56" ry="6" />
         <circle className="ill-halo" cx="100" cy="72" r="58" />
-        {ART[kind]}
+        {ART[kind] ?? ART[ART_OF[kind] ?? 'new']}
       </svg>
       <strong className="empty-title">{title}</strong>
       <p className="empty-body">{body}</p>

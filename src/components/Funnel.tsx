@@ -20,19 +20,23 @@ export function Funnel({ leads, view, onOpen }: { leads: Lead[]; view: View; onO
     cards = [
       { label: 'Jobs found', value: jobs.length, sub: 'all time' },
       { label: 'To apply', value: toApply, sub: `${strong} strong match${strong === 1 ? '' : 'es'}`, view: 'jobs' },
-      { label: 'Applied', value: applied, sub: jobs.length ? `${pct(applied, jobs.length)} of found` : 'none yet' },
-      { label: 'Got back', value: back, sub: applied ? `${pct(back, applied)} of applied` : 'none yet', view: 'replied' },
-      { label: 'No reply yet', value: waiting, sub: applied ? `${pct(waiting, applied)} of applied` : 'none yet', view: 'approved' },
+      { label: 'Applied', value: applied, sub: jobs.length ? `${pct(applied, jobs.length)} of found` : 'none yet', view: 'jobs', subView: 'applied' },
+      { label: 'Got back', value: back, sub: applied ? `${pct(back, applied)} of applied` : 'none yet', view: 'jobs', subView: 'replied' },
+      { label: 'No reply yet', value: waiting, sub: applied ? `${pct(waiting, applied)} of applied` : 'none yet', view: 'jobs', subView: 'applied' },
+      { label: 'Got the job', value: count(jobs, 'won'), sub: applied ? `${pct(count(jobs, 'won'), applied)} of applied` : 'none yet', view: 'jobs', subView: 'won' },
+      { label: 'Rejected', value: count(jobs, 'lost'), sub: applied ? `${pct(count(jobs, 'lost'), applied)} of applied` : 'none yet', view: 'jobs', subView: 'lost' },
     ];
   } else {
+    // Jobs are tracked in their own cards, so the lead cards count only the people you pitch.
+    const jobs = leads.filter(isJobLead);
+    leads = leads.filter(l => !isJobLead(l));
     const contacted = count(leads, 'approved', 'replied', 'won', 'lost');
     const replied = count(leads, 'replied', 'won', 'lost');
     const waiting = count(leads, 'approved');
     const bounced = leads.filter(isBounced).length;
-    const jobs = leads.filter(isJobLead);
     const toApply = count(jobs, 'new');
     cards = [
-      { label: 'Found', value: leads.length, sub: 'all leads', view: 'all' },
+      { label: 'Found', value: leads.length, sub: 'leads you pitch', view: 'all' },
       { label: 'Jobs', value: jobs.length, sub: `${toApply} to apply`, view: 'jobs' },
       { label: 'Contacted', value: contacted, sub: contacted && leads.length ? `${pct(contacted, leads.length)} of found` : 'none yet', view: 'approved' },
       { label: 'Replied', value: replied, sub: contacted ? `${pct(replied, contacted)} of contacted` : 'none yet', view: 'replied' },

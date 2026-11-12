@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { Lead, LeadStatus } from '@/types/lead';
-import { SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, dayKey, displayName, statusOf } from '@/lib/leadview';
+import { SOURCE_LABEL, statusLabel, STATUS_TONE, dayKey, displayName, statusOf } from '@/lib/leadview';
 import { Icon } from '@/components/ui';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -47,7 +47,7 @@ export function History({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string)
               <button key={l.id} className="mini" onClick={() => onOpen(l.id)}>
                 <span className="mini-title" title={l.title}>{displayName(l)}</span>
                 <span className="muted" style={{ fontSize: 12 }}>{SOURCE_LABEL[l.source]}</span>
-                <span className={`status ${STATUS_TONE[statusOf(l)]}`}>{STATUS_LABEL[statusOf(l)]}</span>
+                <span className={`status ${STATUS_TONE[statusOf(l)]}`}>{statusLabel(l)}</span>
               </button>
             ))}
           </div>
