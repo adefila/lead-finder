@@ -10,7 +10,7 @@
 .mm .mm-vlines { border-inline-color: rgba(255, 255, 255, 0.07); }
 
 /* pill labels above headings */
-.mm-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.12); font-size: 12.5px; font-weight: 600; color: var(--text); box-shadow: 0 1px 2px rgba(14, 24, 34, 0.05); margin-bottom: 18px; }
+.mm-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.12); font-size: 12.5px; font-weight: 600; color: var(--text); box-shadow: 0 1px 2px rgba(14, 24, 34, 0.0225); margin-bottom: 18px; }
 .mm-badge svg { color: var(--ink); }
 .mm-deep .mm-badge { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.22); color: #fff; box-shadow: none; }
 .mm-deep .mm-badge svg { color: #fff; }
@@ -151,7 +151,7 @@
 /* ── the problem: three plain points ── */
 .mm-pains { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); margin-top: clamp(36px, 5vw, 60px); }
 .mm-pain { position: relative; display: flex; flex-direction: column; gap: 10px; padding: clamp(22px, 2.6vw, 30px); border-radius: 22px; background: var(--paper); border: 1px solid rgba(14, 24, 34, 0.07); box-shadow: var(--shadow); min-height: 250px; }
-.mm-pain-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.08); color: var(--ink); box-shadow: 0 6px 14px -8px rgba(14, 24, 34, 0.25); }
+.mm-pain-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.08); color: var(--ink); box-shadow: 0 6px 14px -8px rgba(14, 24, 34, 0.113); }
 .mm-pain-n { position: absolute; top: 24px; right: 26px; font-size: 13px; font-weight: 600; color: rgba(14, 24, 34, 0.35); font-variant-numeric: tabular-nums; }
 .mm-pain h3 { margin-top: auto; font-size: clamp(20px, 2vw, 25px); font-weight: 500; letter-spacing: -0.03em; line-height: 1.1; }
 .mm-pain p { font-size: 14px; line-height: 1.6; color: var(--muted-d); }
@@ -160,7 +160,7 @@
 /* ── services as a bento of interface cards ── */
 .mm-bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); margin-top: clamp(40px, 5vw, 64px); }
 .mm-span-2 { grid-column: span 2; } .mm-span-3 { grid-column: span 3; } .mm-span-4 { grid-column: span 4; } .mm-span-6 { grid-column: span 6; }
-.mm-bcard { display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 24px 48px -30px rgba(0, 0, 0, 0.6); }
+.mm-bcard { display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 24px 48px -30px rgba(0, 0, 0, 0.27); }
 .mm-bcard-vis { position: relative; display: grid; place-items: center; min-height: 260px; padding: 28px; background-color: var(--deep2); background-image: var(--p-dots-d); border-bottom: 1px solid rgba(255, 255, 255, 0.1); overflow: hidden; }
 .mm-bcard-vis img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.4; }
 .mm-bcard-vis::after { content: ''; position: absolute; inset: 0; background: rgba(4, 10, 16, 0.25); pointer-events: none; }
@@ -170,7 +170,7 @@
 .mm-bcard-copy p { margin-top: 10px; max-width: 520px; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, 0.78); }
 
 /* ── interface cards drawn from the business's own words ── */
-.mm-mock { width: min(330px, 100%); padding: 16px; border-radius: 16px; background: #fff; color: var(--text); box-shadow: 0 26px 48px -24px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.1); }
+.mm-mock { width: min(330px, 100%); padding: 16px; border-radius: 16px; background: #fff; color: var(--text); box-shadow: 0 26px 48px -24px rgba(0, 0, 0, 0.248), 0 1px 2px rgba(0, 0, 0, 0.045); }
 .mm-mock-head { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
 .mm-mock-head span { padding: 3px 8px; border-radius: 7px; background: var(--tint); color: var(--ink); font-size: 11px; font-weight: 700; }
 .mm-mock ul, .mm-mock ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -208,3 +208,20 @@
 .mm-foot-base { padding-block: 24px 96px; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
 @media (max-width: 1000px) { .mm-foot-top { grid-template-columns: 1fr 1fr; } .mm-foot-brand { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .mm-foot-top { grid-template-columns: 1fr; } }
+
+/* ── the picker ── */
+.mm-pick { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(14px, 2vw, 24px); margin-top: clamp(36px, 5vw, 56px); align-items: stretch; }
+.mm-pick-list { display: grid; gap: 10px; align-content: start; }
+.mm .mm-pick-list button { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; border-radius: 16px; border: 1px solid rgba(14, 24, 34, 0.1); background: #fff; color: var(--text); font-size: 15px; font-weight: 500; letter-spacing: -0.015em; text-align: left; cursor: pointer; transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.25s; }
+.mm .mm-pick-list button svg { margin-left: auto; opacity: 0.4; transition: transform 0.25s, opacity 0.25s; }
+.mm .mm-pick-list button:hover { border-color: rgba(14, 24, 34, 0.28); transform: translateX(3px); }
+.mm .mm-pick-list button.on { background: var(--btn); border-color: var(--btn); color: #fff; }
+.mm .mm-pick-list button.on svg { opacity: 1; transform: translateX(3px); }
+.mm-pick-n { font-size: 12px; font-weight: 600; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.mm-pick-card { display: flex; flex-direction: column; justify-content: center; padding: clamp(24px, 3vw, 40px); border-radius: 22px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.08); box-shadow: var(--shadow); min-height: 320px; }
+.mm-pick-card > div { display: grid; gap: 14px; justify-items: start; }
+.mm-pick-card h3 { font-size: clamp(24px, 2.8vw, 34px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.08; }
+.mm-pick-card p { max-width: 460px; font-size: 14px; line-height: 1.65; color: var(--muted-d); }
+.mm-pick-card ul { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 9px; }
+.mm-pick-card li { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+@media (max-width: 800px) { .mm-pick { grid-template-columns: 1fr; } .mm-pick-card { min-height: 0; } }

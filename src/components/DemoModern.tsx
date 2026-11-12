@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react';
 import {
-  ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleAlert, CircleHelp, Clock, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
+  ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleAlert, CircleHelp, Clock, ListChecks, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
   Minus, Newspaper, Plus, Puzzle, Quote, Route, Trophy, type LucideIcon,
 } from 'lucide-react';
 import { MOCK_VARIANTS, Mock, mockItems } from '@/components/DemoMock';
@@ -74,6 +74,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
     return () => io.disconnect();
   }, [c.process.length]);
 
+  const [need, setNeed] = useState(0);
   const [voice, setVoice] = useState(0);
   const [open, setOpen] = useState<number | null>(0);
   const coverRef = useRef<HTMLDivElement>(null);
@@ -163,6 +164,37 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
               })}
             </div>
             {c.problem.bridge && <motion.p className="mm-bridge mm-center" {...reveal(reduce, 0.1)}>{c.problem.bridge}</motion.p>}
+          </div>
+        </section>
+      )}
+
+      {/* The picker: the visitor chooses what they need, and the page answers in the business's own words */}
+      {c.levels.length > 1 && (
+        <section className="mm-sec mm-soft mm-pat-grid" id="need">
+          <div className="mm-wrap">
+            <div className="mm-center"><Badge icon={ListChecks}>Try it</Badge></div>
+            <motion.h2 className="mm-h2 mm-center" {...reveal(reduce)}>What do you need?</motion.h2>
+            <motion.p className="mm-lead mm-center" {...reveal(reduce, 0.06)}>Pick one and see how {b.word} answers it.</motion.p>
+            <motion.div className="mm-pick" {...reveal(reduce, 0.1)}>
+              <div className="mm-pick-list" role="tablist" aria-label={c.names.levels}>
+                {c.levels.map((l, i) => (
+                  <button key={l.name} role="tab" aria-selected={need === i} className={need === i ? 'on' : ''} onClick={() => setNeed(i)}>
+                    <span className="mm-pick-n">{pad(i + 1)}</span>{l.name}<ArrowRight size={16} aria-hidden />
+                  </button>
+                ))}
+              </div>
+              <div className="mm-pick-card" role="tabpanel">
+                <AnimatePresence mode="wait">
+                  <motion.div key={need} initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: EASE }}>
+                    <span className="mm-tag">{c.names.prefix}{need + 1}</span>
+                    <h3>{c.levels[need].name}</h3>
+                    <p>{c.levels[need].body}</p>
+                    <ul>{mockItems(c.levels[need].pins.map(p => p.label), c.levels[need].body, c.levels[need].name).slice(0, 4).map(t => <li key={t}><span className="mm-tick"><Check size={12} strokeWidth={3} aria-hidden /></span>{t}</li>)}</ul>
+                    <a className="mm-btn mm-btn-primary" href="#contact">Ask about {c.levels[need].name.toLowerCase()}<ArrowRight size={16} className="mm-arrow" aria-hidden /></a>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
           </div>
         </section>
       )}
