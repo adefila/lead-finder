@@ -195,3 +195,16 @@
   .mm-pain { min-height: 0; }
   .mm-span-2, .mm-span-3, .mm-span-4 { grid-column: span 6; }
 }
+
+/* ── footer: calm, four columns, a thin base line ── */
+.mm-foot { padding-top: clamp(56px, 7vw, 88px); background-color: var(--deep); }
+.mm-foot-brand { gap: 20px; }
+.mm .mm-foot-brand .mm-logo { font-size: 19px; }
+.mm-foot-blurb { max-width: 340px; font-size: 14.5px; line-height: 1.65; color: rgba(255, 255, 255, 0.72); }
+.mm-foot-h { margin-bottom: 18px; font-size: 12px; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.55); }
+.mm-foot ul { gap: 13px; font-weight: 400; color: rgba(255, 255, 255, 0.86); }
+.mm-foot ul a:hover { padding-left: 0; text-decoration: none; color: #fff; }
+.mm-foot-top { padding-bottom: clamp(40px, 5vw, 64px); }
+.mm-foot-base { padding-block: 24px 96px; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+@media (max-width: 1000px) { .mm-foot-top { grid-template-columns: 1fr 1fr; } .mm-foot-brand { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .mm-foot-top { grid-template-columns: 1fr; } }

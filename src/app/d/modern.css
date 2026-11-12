@@ -170,7 +170,7 @@
 
 /* footer: a darker shade of the brand with a plus pattern, a large statement and the brand word, and a back-to-top control */
 .mm-foot { background-color: var(--deep2); color: #fff; padding-top: clamp(56px, 7vw, 96px); overflow: hidden; border-top: 1px solid rgba(255, 255, 255, 0.12); }
-.mm-foot-top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+.mm-foot-top { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: clamp(28px, 4vw, 64px); align-items: start; }
 .mm-foot-brand { display: grid; gap: 18px; justify-items: start; }
 .mm-foot-tag { max-width: 440px; font-size: clamp(26px, 3.2vw, 40px); line-height: 1.08; letter-spacing: -0.035em; font-weight: 500; }
 .mm-foot-blurb { max-width: 400px; font-size: 14.5px; line-height: 1.6; color: var(--muted-l); }

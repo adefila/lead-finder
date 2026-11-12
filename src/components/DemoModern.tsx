@@ -419,22 +419,26 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
           <div className="mm-foot-top">
             <div className="mm-foot-brand">
               <a className="mm-logo" href="#top"><span className="mm-logo-mark" aria-hidden>{b.word.charAt(0)}</span>{b.name}</a>
-              <p className="mm-foot-tag">{c.hero.lines.join(' ')}</p>
-              {c.footer.blurb && <p className="mm-foot-blurb">{c.footer.blurb}</p>}
+              {(c.footer.blurb || c.hero.sub) && <p className="mm-foot-blurb">{c.footer.blurb || c.hero.sub}</p>}
               <a className="mm-btn mm-btn-primary" href="#contact">{c.closing.cta}<ArrowRight size={16} className="mm-arrow" aria-hidden /></a>
             </div>
-            <div className="mm-foot-cols" style={{ ['--fc' as string]: c.footer.columns.length + 1 } as React.CSSProperties}>
-              {c.footer.columns.map(col => (
-                <nav key={col.title} aria-label={col.title}><p className="mm-foot-h">{col.title}</p><ul>{col.links.map(l => <li key={l}><a href="#services">{l}</a></li>)}</ul></nav>
-              ))}
-              <div>
-                <p className="mm-foot-h">Find us</p>
-                <ul className="mm-foot-contact">
-                  {c.footer.place && <li><MapPin size={16} aria-hidden />{c.footer.place}</li>}
-                  {c.footer.site && <li><Globe size={16} aria-hidden />{c.footer.site}</li>}
-                  {c.socials.map(s => <li key={s.name}><Link2 size={16} aria-hidden /><a href={s.url} target="_blank" rel="noreferrer" style={{ textTransform: 'capitalize' }}>{s.name}</a></li>)}
-                </ul>
-              </div>
+            <nav aria-label="Company">
+              <p className="mm-foot-h">Company</p>
+              <ul>{c.nav.map(n => <li key={n}><a href={`#${slug(n)}`}>{n}</a></li>)}<li><a href="#contact">Contact</a></li></ul>
+            </nav>
+            {c.levels.length > 0 && (
+              <nav aria-label={c.names.levels}>
+                <p className="mm-foot-h">{c.names.levels}</p>
+                <ul>{c.levels.slice(0, 5).map(l => <li key={l.name}><a href="#services">{l.name}</a></li>)}</ul>
+              </nav>
+            )}
+            <div>
+              <p className="mm-foot-h">Contact</p>
+              <ul className="mm-foot-contact">
+                {c.footer.place && <li><MapPin size={16} aria-hidden />{c.footer.place}</li>}
+                {c.footer.site && <li><Globe size={16} aria-hidden />{c.footer.site}</li>}
+                {c.socials.map(s => <li key={s.name}><Link2 size={16} aria-hidden /><a href={s.url} target="_blank" rel="noreferrer" style={{ textTransform: 'capitalize' }}>{s.name}</a></li>)}
+              </ul>
             </div>
           </div>
           <div className="mm-foot-base">
