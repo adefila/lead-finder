@@ -54,7 +54,9 @@ const RULES = `Rules, all strict:
 - accent: use one of the BRAND COLOURS if one suits, otherwise pick a confident colour that fits the business. It must be a hex colour like #1b94c9.
 - images: choose by index from IMAGES. Prefer photographs (jpg, jpeg, webp). Use null when none fit. Never invent a URL.
 - clients, results, partners, posts and socials: ONLY what the site itself shows. If the site shows none, return an empty list. Never invent a name, a figure or a link.
-- quotes: copy real quotes only; if QUOTES is empty, return an empty list.
+- Every sentence you write must be backed by a sentence in the site material. Do not add reassurances or claims the site does not make (for example "no obligation", "built on referrals", "happy clients", "award-winning").
+- hero.lines: write two short lines in your own words about what the business does for its customer. Do not just copy the site's headings.
+- quotes: if QUOTES has entries, include up to 3 of them (the name goes in "name", and the company if the quote text or site names it, otherwise ""). Copy real quotes only; if QUOTES is empty, return an empty list.
 - 3 to 4 services in levels, 3 to 4 steps in process, 3 things in why, 3 questions in faq. Pins are short phrases already used on the site.
 - tz: the time zone of the business's city, or null if you are unsure.
 Return ONLY the JSON object.`;
