@@ -888,3 +888,5 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .aa-chip { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font: inherit; font-size: 12px; color: var(--fg); cursor: pointer; text-align: left; }
 .aa-chip:hover { border-color: var(--border-strong); }
 .aa-chip span { color: var(--fg-3); white-space: nowrap; }
+
+.aa-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border); }

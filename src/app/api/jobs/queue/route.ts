@@ -13,10 +13,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ jobs });
 }
 
-// Mark one as applied (moves it to Waiting for reply).
+// Mark one or more as applied (moves it to Waiting for reply).
 export async function POST(req: NextRequest) {
-  const { id } = await req.json() as { id?: string };
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const error = await updateLeadStatus(id, 'approved');
-  return error ? NextResponse.json({ error }, { status: 500 }) : NextResponse.json({ ok: true });
+  const body = await req.json() as { id?: string; ids?: string[] };
+  const ids = body.ids ?? (body.id ? [body.id] : []);
+  if (!ids.length) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  let failed = 0;
+  for (const id of ids.slice(0, 200)) if (await updateLeadStatus(id, 'approved')) failed++;
+  return failed ? NextResponse.json({ error: `${failed} could not be updated` }, { status: 500 }) : NextResponse.json({ ok: true, marked: ids.length });
 }

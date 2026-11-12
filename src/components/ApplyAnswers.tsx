@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFeedback } from '@/components/feedback';
 import { ANSWER_FIELDS, EMPTY_ANSWERS, type Answers } from '@/lib/answers';
 
@@ -10,6 +10,7 @@ export function ApplyAnswers({ onClose }: { onClose: () => void }) {
   const [a, setA] = useState<Answers>(EMPTY_ANSWERS);
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/answers').then(r => r.json()).then((d: { answers: Answers }) => { setA(d.answers); setReady(true); }).catch(() => setReady(true));
@@ -25,6 +26,30 @@ export function ApplyAnswers({ onClose }: { onClose: () => void }) {
       onClose();
     } catch { toast('Could not save', { tone: 'error' }); }
     finally { setSaving(false); }
+  };
+
+  // Hand the answers and the jobs waiting to apply to the apply script as one file.
+  const exportData = async () => {
+    try {
+      const [ans, queue] = await Promise.all([fetch('/api/answers').then(r => r.json()), fetch('/api/jobs/queue?min=85').then(r => r.json())]);
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), answers: ans.answers, jobs: queue.jobs }, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob); link.download = 'apply-data.json'; link.click();
+      URL.revokeObjectURL(link.href);
+      toast(`Exported ${queue.jobs?.length ?? 0} jobs to apply for`, { tone: 'success' });
+    } catch { toast('Could not export', { tone: 'error' }); }
+  };
+
+  // The script writes apply-results.json: mark what it submitted as applied.
+  const importResults = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text()) as { applied?: string[] };
+      if (!data.applied?.length) { toast('No applied jobs in that file', { tone: 'error' }); return; }
+      const res = await fetch('/api/jobs/queue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: data.applied }) });
+      if (!res.ok) { toast('Could not mark them applied', { tone: 'error' }); return; }
+      toast(`Marked ${data.applied.length} job${data.applied.length === 1 ? '' : 's'} applied. Refresh to see them`, { tone: 'success' });
+    } catch { toast('That file could not be read', { tone: 'error' }); }
   };
 
   if (!ready) return <div className="aa"><p className="jm-hint">Loading…</p></div>;
@@ -46,6 +71,12 @@ export function ApplyAnswers({ onClose }: { onClose: () => void }) {
             )}
           </label>
         ))}
+      </div>
+      <div className="aa-tools">
+        <input ref={importRef} type="file" accept=".json" hidden onChange={e => { void importResults(e.target.files?.[0]); e.target.value = ''; }} />
+        <span className="jm-hint">For the apply script:</span>
+        <button className="btn btn-sm" onClick={() => void exportData()}>Export for applying</button>
+        <button className="btn btn-sm" onClick={() => importRef.current?.click()}>Import results</button>
       </div>
       <div className="jm-line end">
         <button className="btn btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
