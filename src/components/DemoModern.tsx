@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react';
 import {
-  ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleHelp, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
-  Minus, Newspaper, Plus, Quote, Route, Trophy, type LucideIcon,
+  ArrowRight, ArrowUp, ArrowUpRight, BarChart3, Check, CircleAlert, CircleHelp, Clock, Globe, Handshake, Layers, Link2, MapPin, MessageSquareQuote,
+  Minus, Newspaper, Plus, Puzzle, Quote, Route, Trophy, type LucideIcon,
 } from 'lucide-react';
+import { MOCK_VARIANTS, Mock, mockItems } from '@/components/DemoMock';
 import Lenis from 'lenis';
 import type { DemoContent } from '@/lib/demo';
 import { EASE, Count, Line, Picture, Pins, pad, reveal } from '@/components/DemoSite';
@@ -21,6 +22,9 @@ function Fact({ value, reduce }: { value: string; reduce: boolean }) {
 
 const Badge = ({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) => <span className="mm-badge"><Icon size={14} aria-hidden />{children}</span>;
 const FLAT_PNG = /\.png(\?|$)/i;
+const PAIN_ICONS: LucideIcon[] = [Clock, Puzzle, CircleAlert];
+// How many of the six columns each service card takes, so the grid always fills its rows.
+const bentoSpans = (n: number): number[] => (n <= 2 ? [3, 3] : n === 3 ? [3, 3, 6] : n === 4 ? [4, 2, 2, 4] : [3, 3, 2, 2, 2]);
 
 // A card that floats at its own pace as the statement scene scrolls past.
 function Float({ p, from, to, reduce, className, children }: { p: MotionValue<number>; from: number; to: number; reduce: boolean; className: string; children: React.ReactNode }) {
@@ -105,8 +109,10 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
         </div>
 
         <motion.div className="mm-wrap mm-hero-cards" style={{ y: reduce ? 0 : heroCardY }} initial={reduce ? false : { opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 1.2, ease: EASE }}>
-          <div className="mm-card-big">
-            <Picture src={img('hero')} alt={b.name} reduce={reduce} className="mm-card-pic" />
+          <div className={`mm-card-big${img('hero') && !FLAT_PNG.test(img('hero') ?? '') ? '' : ' has-mock'}`}>
+            {img('hero') && !FLAT_PNG.test(img('hero') ?? '')
+              ? <Picture src={img('hero')} alt={b.name} reduce={reduce} className="mm-card-pic" />
+              : <div className="mm-card-mock mm-pat-dots-dark" aria-hidden><Mock variant="list" title={c.names.levels} items={c.levels.slice(0, 4).map(l => l.name)} reduce={reduce} /></div>}
             <div className="mm-card-cap"><h2>{c.levelsTitle}</h2>{first && <p>{first.body}</p>}</div>
           </div>
           <div className="mm-card-glass">
@@ -132,6 +138,31 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
           <p>Clients include</p>
           <div className="mm-marquee" aria-hidden>
             <div className="mm-marquee-track">{[...c.clients, ...c.clients, ...c.clients, ...c.clients].map((n, i) => <span key={i}>{n}</span>)}</div>
+          </div>
+        </section>
+      )}
+
+      {/* The problem: what the customer is up against, three plain points, then a line that leads into the services */}
+      {c.problem.points.length > 0 && c.problem.title && (
+        <section className="mm-sec">
+          <div className="mm-wrap">
+            <div className="mm-center"><Badge icon={CircleAlert}>{c.problem.badge}</Badge></div>
+            <motion.h2 className="mm-h2 mm-center" {...reveal(reduce)}>{c.problem.title}</motion.h2>
+            {c.problem.body && <motion.p className="mm-lead mm-center" {...reveal(reduce, 0.06)}>{c.problem.body}</motion.p>}
+            <div className="mm-pains">
+              {c.problem.points.map((p, i) => {
+                const Icon = PAIN_ICONS[i % PAIN_ICONS.length];
+                return (
+                  <motion.div key={p.title} className="mm-pain" {...reveal(reduce, i * 0.1)} whileHover={reduce ? undefined : { y: -6 }}>
+                    <span className="mm-pain-icon"><Icon size={20} aria-hidden /></span>
+                    <span className="mm-pain-n">{pad(i + 1)}</span>
+                    <h3>{p.title}</h3>
+                    <p>{p.body}</p>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {c.problem.bridge && <motion.p className="mm-bridge mm-center" {...reveal(reduce, 0.1)}>{c.problem.bridge}</motion.p>}
           </div>
         </section>
       )}
@@ -196,26 +227,18 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
           <div className="mm-wrap">
             <div className="mm-center"><Badge icon={Layers}>{c.names.levels}</Badge></div>
             <motion.h2 className="mm-h2 mm-center" {...reveal(reduce)}>{c.levelsTitle}</motion.h2>
-            <div className="mm-rows">
+            <div className="mm-bento">
               {c.levels.map((l, i) => (
-                <motion.div key={l.name} className={`mm-row${i % 2 ? ' flip' : ''}`} {...reveal(reduce)}>
-                  <div className="mm-row-copy">
-                    <span className="mm-idx">{c.names.prefix}{i + 1}</span>
+                <motion.article key={l.name} className={`mm-bcard mm-span-${bentoSpans(c.levels.length)[i] ?? 3}`} {...reveal(reduce, (i % 2) * 0.08)} whileHover={reduce ? undefined : { y: -6 }}>
+                  <div className="mm-bcard-vis">
+                    {img(l.image) && !FLAT_PNG.test(img(l.image) ?? '') && /* eslint-disable-next-line @next/next/no-img-element */ <img src={img(l.image)!} alt="" referrerPolicy="no-referrer" loading="lazy" />}
+                    <Mock variant={MOCK_VARIANTS[i % MOCK_VARIANTS.length]} title={l.name} tag={`${c.names.prefix}${i + 1}`} items={mockItems(l.pins.map(p => p.label), l.body, l.name)} reduce={reduce} />
+                  </div>
+                  <div className="mm-bcard-copy">
                     <h3>{l.name}</h3>
                     <p>{l.body}</p>
-                    {l.pins.length > 0 && <ul>{l.pins.slice(0, 3).map(p => <li key={p.label}><span className="mm-tick"><Check size={12} strokeWidth={3} aria-hidden /></span>{p.label}</li>)}</ul>}
-                    <a className="mm-btn mm-btn-ghost" href="#contact">Ask about this</a>
                   </div>
-                  <div className="mm-row-vis">
-                    <div className="mm-panel">
-                      {img(l.image) && !FLAT_PNG.test(img(l.image) ?? '') && /* eslint-disable-next-line @next/next/no-img-element */ <img src={img(l.image)!} alt="" referrerPolicy="no-referrer" loading="lazy" />}
-                      <div className="mm-mini">
-                        <p className="mm-mini-head"><span>{c.names.prefix}{i + 1}</span>{l.name}</p>
-                        <ul>{(l.pins.length ? l.pins.map(p => p.label) : [l.name]).slice(0, 3).map(p => <li key={p}><span className="mm-tick"><Check size={12} strokeWidth={3} aria-hidden /></span>{p}</li>)}</ul>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+                </motion.article>
               ))}
             </div>
           </div>
@@ -243,7 +266,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
                   <motion.div key={wf} className="mm-wf-frame" initial={{ opacity: 0, scale: 1.03 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>
                     {photo(wf)
                       ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={photo(wf)!} alt="" referrerPolicy="no-referrer" loading="lazy" />
-                      : <div className="dm-pattern" />}
+                      : <div className="mm-wf-mock mm-pat-dots-dark"><Mock variant="steps" title={c.names.process} items={c.process.map(s => s.title)} active={wf} reduce={reduce} /></div>}
                     <span className="mm-wf-tag"><b>{pad(wf + 1)}</b>{c.process[wf]?.title}</span>
                   </motion.div>
                 </AnimatePresence>

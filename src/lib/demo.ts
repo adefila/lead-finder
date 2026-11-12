@@ -29,6 +29,8 @@ export interface DemoContent {
   // Modern look: real client names for the strip under the hero, the word to colour in the statement, and optional
   // sections that only appear when the site gives the material (results, partners, articles, social links)
   clients: string[];
+  // Modern look: the problem the customer has, three plain pain points, and one line that leads into the services
+  problem: { badge: string; title: string; body: string; points: { title: string; body: string }[]; bridge: string };
   highlight: string;
   results: { value: string; label: string; client: string }[];
   partners: string[];
@@ -125,6 +127,11 @@ export function finishDemo(raw: Record<string, unknown>, images: (string | null)
     trust: str(r.trust, 80), micro: str(r.micro, 80), factsTitle: str(r.factsTitle, 70), factsSub: str(r.factsSub, 180),
     facts: list(r.facts, 3, f => { const o = f as Record<string, unknown>; const v = str(o?.value, 14), l = str(o?.label, 28); return v && l ? { value: v, label: l, note: str(o.note, 150) } : null; }),
     clients: list(r.clients, 8, x => str(x, 40) || null), highlight: str(r.highlight, 24),
+    problem: (() => {
+      const p = (r.problem ?? {}) as Record<string, unknown>;
+      const points = list(p.points, 3, x => { const o = x as Record<string, unknown>; const t = str(o?.title, 40), b = str(o?.body, 190); return t && b ? { title: t, body: b } : null; });
+      return { badge: str(p.badge, 24, 'The problem'), title: str(p.title, 70), body: str(p.body, 240), points: points.length >= 2 ? points : [], bridge: str(p.bridge, 160) };
+    })(),
     results: list(r.results, 4, x => { const o = x as Record<string, unknown>; const v = str(o?.value, 12), l = str(o?.label, 40); return v && l ? { value: v, label: l, client: str(o.client, 40) } : null; }),
     partners: list(r.partners, 12, x => str(x, 36) || null),
     posts: list(r.posts, 3, x => { const o = x as Record<string, unknown>; const t = str(o?.title, 110); const u = typeof o?.url === 'string' && /^https?:/i.test(o.url) ? o.url : ''; return t ? { title: t, url: u } : null; }),
@@ -294,6 +301,16 @@ const asModern = (d: DemoContent, extra: Partial<DemoContent>, accent?: string):
   ...d, ...extra, look: 'modern', brand: accent ? { ...d.brand, ...brandColours(accent) } : d.brand,
 });
 const ASCEND_M = asModern(ASCEND, {
+  problem: {
+    badge: 'The problem', title: 'IT keeps pulling you away from the business.',
+    body: 'When nobody owns the technology, small problems turn into lost hours and the same questions to a different support line each time.',
+    points: [
+      { title: 'Support that starts over', body: 'Every call begins with explaining your setup again to someone who has never seen it.' },
+      { title: 'Tools that do not fit', body: 'Cloud, email and security bought piece by piece, each from a different supplier.' },
+      { title: 'Nobody who owns it', body: 'When something breaks, it is unclear who is responsible for fixing it.' },
+    ],
+    bridge: 'Ascend gives small and medium businesses one team that knows the setup and looks after all of it.',
+  },
   highlight: 'time', clients: ['Squires Real Estate', 'Richard Noble & Company', 'Weeding Women', 'Lawnswood Pet Cremation', 'Coterra Environment'],
   trust: 'Supporting Perth businesses since 2007', micro: 'Free consultation · Perth CBD and metro',
   factsTitle: 'IT that fits the way you work.', factsSub: 'Ascend looks after IT, cloud and infrastructure for small and medium businesses, with one accountable team.',
@@ -335,6 +352,6 @@ const ASCEND_FULL = asModern(ASCEND_M, {
 export const SAMPLE_DEMOS: Record<string, DemoContent> = {
   'ascend-full': ASCEND_FULL,
   sample: ASCEND, 'sample-clayton': CLAYTON, 'sample-simpleway': SIMPLEWAY,
-  'ascend-modern': ASCEND_M, 'clayton-modern': CLAYTON_M, 'simpleway-modern': SIMPLEWAY_M,
+  'ascend-modern': ASCEND_M, 'ascend-plain': { ...ASCEND_M, images: { hero: null, band: null, side: null }, quotes: [] }, 'clayton-modern': CLAYTON_M, 'simpleway-modern': SIMPLEWAY_M,
 };
 export const SAMPLE_DEMO = ASCEND;

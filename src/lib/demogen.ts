@@ -36,6 +36,7 @@ const SCHEMA = `{
   "closing": { "title": "a question or invitation in their voice", "body": "one line", "cta": "...", "fields": ["Your name", "Work email", "a third field that fits their service"] },
   "footer": { "blurb": "one sentence", "columns": [ { "title": "...", "links": ["..."] } ], "place": "city, state or country", "site": "their domain" },
   "clients": ["real client or customer names the site mentions, up to 6, or an empty list"],
+  "problem": { "badge": "2 words, e.g. The problem", "title": "a calm headline naming the trouble their customers have, max 9 words", "body": "1-2 sentences on why that trouble happens, in plain words", "points": [ { "title": "3-4 words", "body": "one sentence, what the customer experiences" } ], "bridge": "one sentence that leads into what the business does about it" },
   "highlight": "one word from the statement to colour in",
   "results": [ { "value": "a figure the site really states", "label": "what it measures", "client": "who" } ],
   "partners": ["partner or technology names the site lists, otherwise []"],
@@ -59,6 +60,8 @@ const RULES = `Rules, all strict:
 - quotes: if QUOTES has entries, include up to 3 of them (the name goes in "name", and the company if the quote text or site names it, otherwise ""). Copy real quotes only; if QUOTES is empty, return an empty list.
 - 3 to 4 services in levels, 3 to 4 steps in process, 3 things in why, 3 questions in faq. Pins are short phrases already used on the site.
 - tz: the time zone of the business's city, or null if you are unsure.
+- problem: exactly 3 points. Describe the trouble the business's customers have BEFORE they hire it, using the site's own wording where it describes this. No numbers or percentages unless the site states them. Do not mention the business by name in the problem section.
+- levels[].pins: 3 short phrases per service, taken from the site (they become the lines of a small interface card), never invented.
 Return ONLY the JSON object.`;
 
 export interface DemoResult { demo: DemoContent; scan: SiteScan | null; generic: boolean }
@@ -72,10 +75,12 @@ const GENERIC_RULES = `Rules, all strict. There is NO website to read, only the 
 - look: "modern" unless the business is construction, engineering or industrial (then "blueprint").
 - accent: pick a calm confident colour that suits the trade, as a hex colour.
 - footer.site: empty string. Use the business name and place given.
+- problem: exactly 3 points describing the trouble a customer of this kind of business has, in plain neutral words, no numbers, no statistics, no promises.
+- levels[].pins: 3 short neutral phrases per service (what that service covers), no claims.
 - 3 services, 3 process steps, 3 things in why (each a neutral statement of how the business works, not a boast), 3 questions in faq with careful answers that make no promises.
 Return ONLY the JSON object.`;
 
-const BANNED = /(award[- ]winning|guarantee[ds]?|no obligation|happy clients?|trusted by|years of experience|market[- ]leading|number one|#1|best in|cheapest|lowest price|100%|satisfaction|certified)/i;
+const BANNED = /(award[- ]winning|guarantee[ds]?|no obligation|happy clients?|trusted by|years of experience|market[- ]leading|number one|#1|best in|cheapest|lowest price|100%|satisfaction|certified|built on referrals|referrals)/i;
 
 async function ask(client: Anthropic, prompt: string): Promise<Record<string, unknown> | null> {
   // One retry: the first answer sometimes has a stray comment or is cut short.
@@ -133,14 +138,21 @@ export async function generateDemo(lead: Lead, opts: { generic?: boolean } = {})
     prompt = `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${GENERIC_RULES}\n${tail}\n\nWHAT WE KNOW\n${material}`;
   }
 
-  const raw = await ask(client, prompt);
-  if (!raw) return { error: 'The model returned something that could not be read' };
-  const demo = finishDemo(raw, scan?.images ?? []);
-  if (!scan) demo.images = { hero: null, band: null, side: null };
-  if (!demo.hero.lines.length || demo.levels.length < 2) return { error: 'The model returned too little to build a page' };
-  // Unbacked claims are dropped on automatic builds: better to send the plain note than a promise we cannot keep.
-  const hit = JSON.stringify(demo).match(BANNED);
-  if (hit && !scan) return { error: `The text made a claim it should not (${hit[0]})` };
+  // A claim the site does not make is not allowed: on a hit, ask once more with that phrase named, then give up.
+  const siteText = scan ? JSON.stringify(scan).toLowerCase() : '';
+  let demo: DemoContent | null = null;
+  let note = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await ask(client, note ? `${prompt}\n\n${note}` : prompt);
+    if (!raw) return { error: 'The model returned something that could not be read' };
+    const made = finishDemo(raw, scan?.images ?? []);
+    if (!scan) made.images = { hero: null, band: null, side: null };
+    if (!made.hero.lines.length || made.levels.length < 2) return { error: 'The model returned too little to build a page' };
+    const hit = JSON.stringify(made).match(new RegExp(BANNED.source, 'gi'))?.filter(h => !siteText.includes(h.toLowerCase()));
+    if (!hit?.length) { demo = made; break; }
+    note = `Your last answer used claims the material does not make (${[...new Set(hit.map(h => h.toLowerCase()))].join(', ')}). Write it again without them, and without anything like them. Also: no referrals, no "happy clients".`;
+  }
+  if (!demo) return { error: 'The text kept making claims it should not' };
   return { demo, scan, generic: !scan };
 }
 
