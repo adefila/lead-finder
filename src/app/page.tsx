@@ -13,6 +13,7 @@ import { History } from '@/components/History';
 import { HowItWorks, useHowItWorks } from '@/components/HowItWorks';
 import { LeadTable } from '@/components/LeadTable';
 import { JobMatch } from '@/components/JobMatch';
+import { Scholarships } from '@/components/Scholarships';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -54,7 +55,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('new');
   const [sub, setSub] = useState<Sub>('all');
-  const [mode, setMode] = useState<'table' | 'history'>('table');
+  const [mode, setMode] = useState<'table' | 'history' | 'scholarships'>('table');
   const [source, setSource] = useState<Lead['source'] | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortOverride, setSortOverride] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
@@ -659,7 +660,12 @@ export default function Home() {
                   {v.id === 'approved' && followUpsDue > 0 && <span className="tab-alert" title={`${followUpsDue} need a follow-up`}>{followUpsDue}</span>}
                 </button>
               ))}
+              <button className="tab" role="tab" aria-selected={mode === 'scholarships'} title="Master's funding for computer science: Germany, Sweden and other low-cost countries"
+                onClick={() => { keepTabsInView(); setMode('scholarships'); setSelection(new Set()); }}>
+                Scholarships
+              </button>
             </div>
+            {mode !== 'scholarships' && <>
             <div className="view-head">
               {mode === 'table' && view === 'done' && sub === 'lost' && (
                 <Btn className="btn btn-sm view-action" onClick={recoverBounced} disabled={recovering}
@@ -719,6 +725,7 @@ export default function Home() {
                 <button aria-pressed={mode === 'history'} onClick={() => setMode('history')} title="Leads grouped by the day they were found">By day</button>
               </div>
             </div>
+            </>}
           </div>
 
           {mode === 'table' && picked.length > 0 && (
@@ -755,7 +762,9 @@ export default function Home() {
               </div>
             )}
 
-          {loading ? (
+          {mode === 'scholarships' ? (
+            <Scholarships />
+          ) : loading ? (
             <div className="empty">Loading leads…</div>
           ) : mode === 'history' ? (
             <History leads={scoped} onOpen={id => setSelectedId(id)} />

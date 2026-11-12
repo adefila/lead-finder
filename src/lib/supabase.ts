@@ -2,6 +2,7 @@ import { createClient as sb } from '@supabase/supabase-js';
 import type { Lead, LeadStatus } from '@/types/lead';
 import { humanize } from '@/lib/compose';
 import type { Profile } from '@/lib/profile';
+import type { SchoolProfile } from '@/lib/school';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -334,4 +335,23 @@ export async function saveProfile(p: Profile): Promise<string | null> {
 
 export async function deleteProfile(): Promise<void> {
   await db().from('profile').delete().eq('id', 'me');
+}
+
+// ─── School details (transcript and degree), kept as a second row in the profile table ──
+
+export async function getSchool(): Promise<SchoolProfile | null> {
+  const { data, error } = await db().from('profile').select('skills').eq('id', 'school').maybeSingle();
+  if (error) { console.error('[supabase] getSchool:', error.message); return null; }
+  return (data?.skills as SchoolProfile | null) ?? null;
+}
+
+export async function saveSchool(s: SchoolProfile): Promise<string | null> {
+  const { error } = await db().from('profile').upsert({
+    id: 'school', text: '', skills: s, titles: [], years: null, source: s.files.join(', '), updated_at: s.updatedAt,
+  }, { onConflict: 'id' });
+  return error ? (/relation .*profile|schema cache/i.test(error.message) ? 'Your database has no "profile" table yet. Run the setup SQL in Supabase, then try again.' : explain(error.message)) : null;
+}
+
+export async function deleteSchool(): Promise<void> {
+  await db().from('profile').delete().eq('id', 'school');
 }

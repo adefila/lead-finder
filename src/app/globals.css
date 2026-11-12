@@ -801,3 +801,51 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .jm-line.end { justify-content: flex-end; }
 .jm-line input { flex: 1; min-width: 0; }
 @media (max-width: 720px) { .jm-row { flex-direction: column; } .jm-actions { flex-wrap: wrap; } }
+
+/* Scholarships */
+.sc { display: grid; }
+.sc-school { border-bottom: 1px solid var(--border); }
+.sc-cvhint { margin-top: 8px; }
+.sc-fix { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 12px; color: var(--fg-2); }
+.sc-fix label { display: inline-flex; align-items: center; gap: 6px; }
+.sc-fix select { height: 26px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); font: inherit; font-size: 12px; padding: 0 6px; color: var(--fg); }
+.sc-countries { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.sc-label { font-size: 12px; font-weight: 600; color: var(--fg-2); margin-bottom: 8px; }
+.sc-cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.sc-country { display: grid; gap: 4px; align-content: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); text-decoration: none; color: inherit; }
+.sc-country:hover { border-color: var(--border-strong); }
+.sc-cname { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--fg); }
+.sc-cost { font-size: 11px; font-weight: 600; padding: 0 6px; line-height: 18px; border-radius: 4px; background: var(--warn-tint); color: var(--warn-ink); white-space: nowrap; }
+.sc-cost.good { background: var(--green-tint); color: var(--green-ink); }
+.sc-cost.bad { background: #f1f1f1; color: var(--fg-3); }
+.sc-cnote { font-size: 12px; line-height: 1.5; color: var(--fg-3); }
+.sc-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px; }
+.sc-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.sc-item { border-bottom: 1px solid var(--border); }
+.sc-item.dim { opacity: 0.55; }
+.sc-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.sc-head:hover { background: var(--surface-2); }
+.sc-name { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 14px; font-weight: 600; color: var(--fg); }
+.sc-sub { font-size: 12px; font-weight: 400; color: var(--fg-3); }
+.sc-fund { font-size: 11px; font-weight: 600; padding: 0 7px; line-height: 20px; border-radius: 4px; white-space: nowrap; background: #f1f1f1; color: var(--fg-2); }
+.sc-fund.full { background: var(--green-tint); color: var(--green-ink); }
+.sc-mark { font-size: 11px; font-weight: 600; color: var(--fg-2); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 6px; line-height: 18px; }
+.sc-chev { color: var(--fg-3); transition: transform 0.15s; flex-shrink: 0; }
+.sc-chev.open { transform: rotate(180deg); }
+.sc-body { padding: 0 16px 16px 66px; display: grid; gap: 10px; font-size: 13px; color: var(--fg-2); }
+.sc-body p { margin: 0; line-height: 1.6; max-width: 680px; }
+.sc-body dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; max-width: 720px; }
+.sc-body dt { color: var(--fg-3); }
+.sc-body dd { margin: 0; }
+.sc-why, .sc-gap { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: 12px; }
+.sc-why li::marker { color: var(--green); }
+.sc-gap li::marker { color: var(--warn-ink); }
+.sc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.sc-actions .btn[aria-pressed='true'] { background: var(--fg); border-color: var(--fg); color: #fff; }
+.sc-foot { margin: 0; padding: 12px 16px 16px; font-size: 12px; color: var(--fg-3); }
+@media (max-width: 720px) {
+  .sc-head { flex-wrap: wrap; }
+  .sc-body { padding-left: 16px; }
+  .sc-body dl { grid-template-columns: 1fr; gap: 0; }
+  .sc-body dt { margin-top: 6px; }
+}
