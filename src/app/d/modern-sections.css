@@ -68,9 +68,9 @@
 .mm-row-copy { display: grid; gap: 14px; justify-items: start; }
 .mm-idx { padding: 5px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); font-size: 12px; font-weight: 700; color: #fff; }
 .mm-row-copy h3 { font-size: clamp(26px, 3vw, 40px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; }
-.mm-row-copy p { max-width: 440px; font-size: 16px; line-height: 1.65; color: rgba(255, 255, 255, 0.8); }
+.mm-row-copy p { max-width: 440px; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, 0.8); }
 .mm-row-copy ul { margin: 4px 0 10px; }
-.mm-row-copy li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 500; color: #fff; }
+.mm-row-copy li { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #fff; }
 .mm-row-vis .mm-panel { height: clamp(260px, 30vw, 380px); }
 .mm .mm-row-vis .mm-mini { width: min(340px, 80%); }
 
@@ -81,7 +81,7 @@
 .mm-wf-step.on { opacity: 1; }
 .mm-wf-n { align-self: flex-start; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--btn); color: var(--ink); font-size: 12.5px; font-weight: 700; background: #fff; }
 .mm-wf-step h3 { font-size: clamp(26px, 3vw, 40px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; }
-.mm-wf-step p { max-width: 400px; font-size: 16px; line-height: 1.65; color: var(--muted-d); }
+.mm-wf-step p { max-width: 400px; font-size: 14px; line-height: 1.65; color: var(--muted-d); }
 .mm-wf-pic { position: sticky; top: 12vh; height: 76vh; border-radius: 26px; overflow: hidden; background: var(--deep2); box-shadow: var(--shadow-lg); }
 .mm-wf-frame { position: absolute; inset: 0; }
 .mm-wf-frame img { width: 100%; height: 100%; object-fit: cover; }
@@ -113,11 +113,11 @@
 .mm-result img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
 .mm-result::after { content: ''; position: absolute; inset: 0; background: rgba(4, 10, 16, 0.4); }
 .mm-result > * { position: relative; z-index: 2; }
-.mm-result-client { position: absolute; top: 20px; left: 22px; z-index: 2; font-size: 15px; font-weight: 600; }
+.mm-result-client { position: absolute; top: 20px; left: 22px; z-index: 2; font-size: 14px; font-weight: 600; }
 .mm-result-num { font-size: clamp(56px, 6vw, 76px); line-height: 1; letter-spacing: -0.05em; font-weight: 500; }
 .mm-result-label { margin-top: 6px; font-size: 14px; color: rgba(255, 255, 255, 0.86); }
 .mm-partners { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: clamp(36px, 5vw, 56px); }
-.mm-partner { display: grid; place-items: center; min-height: 78px; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.09); box-shadow: var(--shadow); font-size: 15px; font-weight: 600; letter-spacing: -0.02em; color: #263340; text-align: center; }
+.mm-partner { display: grid; place-items: center; min-height: 78px; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.09); box-shadow: var(--shadow); font-size: 14px; font-weight: 600; letter-spacing: -0.02em; color: #263340; text-align: center; }
 .mm-posts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); margin-top: clamp(36px, 5vw, 56px); }
 .mm-post { display: grid; gap: 14px; align-content: start; }
 .mm-post-pic { position: relative; aspect-ratio: 16 / 10; border-radius: 18px; overflow: hidden; background: var(--deep2); border: 1px solid rgba(255, 255, 255, 0.14); }
@@ -154,7 +154,7 @@
 .mm-pain-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.08); color: var(--ink); box-shadow: 0 6px 14px -8px rgba(14, 24, 34, 0.25); }
 .mm-pain-n { position: absolute; top: 24px; right: 26px; font-size: 13px; font-weight: 600; color: rgba(14, 24, 34, 0.35); font-variant-numeric: tabular-nums; }
 .mm-pain h3 { margin-top: auto; font-size: clamp(20px, 2vw, 25px); font-weight: 500; letter-spacing: -0.03em; line-height: 1.1; }
-.mm-pain p { font-size: 15px; line-height: 1.6; color: var(--muted-d); }
+.mm-pain p { font-size: 14px; line-height: 1.6; color: var(--muted-d); }
 .mm-bridge { margin-top: clamp(36px, 5vw, 60px); max-width: 640px; font-size: clamp(19px, 2.2vw, 26px); font-weight: 500; letter-spacing: -0.025em; line-height: 1.3; color: var(--text); }
 
 /* ── services as a bento of interface cards ── */
@@ -167,7 +167,7 @@
 .mm-bcard-vis .mm-mock { position: relative; z-index: 2; }
 .mm-bcard-copy { padding: clamp(20px, 2.4vw, 30px); }
 .mm-bcard-copy h3 { font-size: clamp(21px, 2.2vw, 28px); font-weight: 500; letter-spacing: -0.03em; line-height: 1.1; color: #fff; }
-.mm-bcard-copy p { margin-top: 10px; max-width: 520px; font-size: 15px; line-height: 1.65; color: rgba(255, 255, 255, 0.78); }
+.mm-bcard-copy p { margin-top: 10px; max-width: 520px; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, 0.78); }
 
 /* ── interface cards drawn from the business's own words ── */
 .mm-mock { width: min(330px, 100%); padding: 16px; border-radius: 16px; background: #fff; color: var(--text); box-shadow: 0 26px 48px -24px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.1); }
@@ -200,7 +200,7 @@
 .mm-foot { padding-top: clamp(56px, 7vw, 88px); background-color: var(--deep); }
 .mm-foot-brand { gap: 20px; }
 .mm .mm-foot-brand .mm-logo { font-size: 19px; }
-.mm-foot-blurb { max-width: 340px; font-size: 14.5px; line-height: 1.65; color: rgba(255, 255, 255, 0.72); }
+.mm-foot-blurb { max-width: 340px; font-size: 14px; line-height: 1.65; color: rgba(255, 255, 255, 0.72); }
 .mm-foot-h { margin-bottom: 18px; font-size: 12px; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.55); }
 .mm-foot ul { gap: 13px; font-weight: 400; color: rgba(255, 255, 255, 0.86); }
 .mm-foot ul a:hover { padding-left: 0; text-decoration: none; color: #fff; }
