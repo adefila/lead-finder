@@ -377,6 +377,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
                 <Icon name="sync" />{redrafting ? 'Rewriting…' : 'Write a new version'}
               </Btn>
             )}
+            {isFollowUp && interested && !personal && <Btn className="btn btn-primary" onClick={() => { setPersonal(true); setFollowUpLoaded(false); }} disabled={drafting}><Icon name="sparkle" />Write a personal follow-up</Btn>}
             {isFollowUp && <Btn className="btn btn-quiet" onClick={writeFollowUp} disabled={drafting}><Icon name="sync" />Write a new version</Btn>}
           </div>
         </section>
