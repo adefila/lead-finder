@@ -6,7 +6,7 @@ import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, MIN_FIT, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads, getProfile } from '@/lib/supabase';
-import { withMatches } from '@/lib/jobmatch';
+import { strongMatches, withMatches } from '@/lib/jobmatch';
 
 // Marker (in sent_jobs) for the one-time return of businesses the old 65 bar had skipped.
 const RESTORE_MARK = 'restore:business-fit-50';
@@ -106,6 +106,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // When you have uploaded a profile, new jobs arrive already matched to it.
     const profile = await getProfile().catch(() => null);
     await saveLeads(profile ? withMatches(jobsWithEmails, profile) : jobsWithEmails);
+    // Jobs that fit your profile well are kept even when the general fit score passed them over.
+    if (profile) {
+      const kept = new Set(jobsWithEmails.map(j => j.id));
+      const extra = strongMatches(freshJobs.filter(j => isJobLead(j) && !kept.has(j.id)), profile);
+      if (extra.length) { await saveLeads(extra); await markSent(extra.map(j => j.id)); console.log(`[cron] ${extra.length} more jobs kept because they match your profile`); }
+    }
     const followUpsDue = (await getLeads()).filter(needsAttention).length;
     await markSent(jobsWithEmails.map(j => j.id));
 

@@ -79,3 +79,11 @@ export function withMatches<T extends Lead>(leads: T[], profile: Pick<Profile, '
     ? { ...l, contactLinks: { ...l.contactLinks, match: matchJob(l, profile) } }
     : l);
 }
+
+// New jobs that fit you well, ready to save: the match is attached and the score is lifted to it, so the daily
+// clean-up (which skips anything under the fit bar) leaves them alone.
+export function strongMatches<T extends Lead>(leads: T[], profile: Pick<Profile, 'skills' | 'titles' | 'years'>): T[] {
+  return withMatches(leads, profile)
+    .filter(l => (l.contactLinks?.match?.score ?? 0) >= STRONG_MATCH)
+    .map(l => ({ ...l, score: Math.max(l.score ?? 0, l.contactLinks!.match!.score) }));
+}

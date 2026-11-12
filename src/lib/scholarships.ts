@@ -146,13 +146,13 @@ export const SCHOLARSHIPS: Scholarship[] = [
 // Countries to look at for a master's that costs little or nothing. Facts to confirm on the official page.
 export interface CountryNote { country: string; cost: string; note: string; url: string }
 export const COUNTRIES: CountryNote[] = [
-  { country: 'Germany', cost: 'Free tuition', note: 'Public universities charge no tuition. You pay a semester fee of roughly 150 to 350 euros, and show about 11,900 euros a year in a blocked account. Baden-Württemberg charges non-EU students about 1,500 euros a semester.', url: 'https://www.study-in-germany.de/en/' },
-  { country: 'Sweden', cost: 'Paid, free with a scholarship', note: 'Non-EU students pay tuition, so the scholarships above are what make it free. You also show living funds for the residence permit.', url: 'https://studyinsweden.se/' },
+  { country: 'Germany', cost: 'Free tuition', note: 'No tuition at public universities. Semester fee of about 150 to 350 euros. Baden-Württemberg charges non-EU students.', url: 'https://www.study-in-germany.de/en/' },
+  { country: 'Sweden', cost: 'Paid, free with a scholarship', note: 'Non-EU students pay tuition, so a scholarship is what makes it free.', url: 'https://studyinsweden.se/' },
   { country: 'Hungary', cost: 'Free with Stipendium Hungaricum', note: 'Fully funded for students from partner countries.', url: 'https://stipendiumhungaricum.hu/' },
-  { country: 'Austria', cost: 'Low fees', note: 'Public universities charge non-EU students about 730 euros a semester, with some exemptions.', url: 'https://www.studyinaustria.at/en' },
-  { country: 'Iceland', cost: 'Almost free', note: 'Public universities charge only a yearly registration fee, but English-taught computer science courses are few.', url: 'https://www.studyiniceland.is/' },
-  { country: 'Czechia', cost: 'Free in Czech only', note: 'Tuition is free for courses taught in Czech. English-taught courses charge fees.', url: 'https://www.studyin.cz/' },
-  { country: 'Norway', cost: 'No longer free', note: 'Public universities began charging tuition to non-EU students from autumn 2023, so it is no longer a free option.', url: 'https://www.studyinnorway.no/' },
+  { country: 'Austria', cost: 'Low fees', note: 'About 730 euros a semester for non-EU students.', url: 'https://www.studyinaustria.at/en' },
+  { country: 'Iceland', cost: 'Almost free', note: 'Yearly registration fee only, but few English computer science courses.', url: 'https://www.studyiniceland.is/' },
+  { country: 'Czechia', cost: 'Free in Czech only', note: 'Free for Czech-taught courses. English-taught ones charge fees.', url: 'https://www.studyin.cz/' },
+  { country: 'Norway', cost: 'No longer free', note: 'Charges non-EU students tuition since autumn 2023.', url: 'https://www.studyinnorway.no/' },
 ];
 
 // The next time a month comes round, and how far off that is.

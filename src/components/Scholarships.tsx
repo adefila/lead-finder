@@ -142,7 +142,7 @@ export function Scholarships() {
           <div className="jm-row">
             <div className="jm-main">
               <div className="jm-title"><FileText size={14} />Score these against your grades</div>
-              <p className="jm-hint">Upload your transcript and degree certificate (PDF or Word, up to 4 files). The app reads your degree, grade and graduation year, and the files are not kept, only those details. Nothing is paid for. Reference letters can wait until you apply.</p>
+              <p className="jm-hint">Upload your transcript and certificate (PDF or Word). Free, and the files are not kept.</p>
               {pasting && (
                 <div className="jm-form">
                   <textarea rows={4} value={pasted} onChange={e => setPasted(e.target.value)} placeholder="Paste the text of your transcript or certificate" aria-label="Transcript text" />
@@ -161,10 +161,11 @@ export function Scholarships() {
 
       <div className="sc-countries">
         <div className="sc-label">Where a master&rsquo;s costs little or nothing</div>
-        <div className="sc-cgrid">
+        <div className="sc-clist">
           {countries.map(c => (
-            <a key={c.country} className="sc-country" href={c.url} target="_blank" rel="noopener noreferrer">
-              <span className="sc-cname">{c.country}<span className={`sc-cost${/no longer/i.test(c.cost) ? ' bad' : /^free|almost/i.test(c.cost) ? ' good' : ''}`}>{c.cost}</span></span>
+            <a key={c.country} className="sc-crow" href={c.url} target="_blank" rel="noopener noreferrer">
+              <span className="sc-cname">{c.country}</span>
+              <span className={`sc-cost${/no longer/i.test(c.cost) ? ' bad' : /^free|almost/i.test(c.cost) ? ' good' : ''}`}>{c.cost}</span>
               <span className="sc-cnote">{c.note}</span>
             </a>
           ))}

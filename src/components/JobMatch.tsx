@@ -27,14 +27,16 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  const check = useCallback(async (quiet = false) => {
+  const check = useCallback(async () => {
     setBusy('check');
     try {
       const res = await fetch('/api/jobs/check', { method: 'POST' });
-      const data = await res.json() as { checked?: number; strong?: number; failed?: number; error?: string };
+      const data = await res.json() as { checked?: number; strong?: number; failed?: number; added?: number; restored?: number; error?: string };
       if (!res.ok) { toast(data.error ?? 'Could not run the check', { tone: 'error' }); return; }
       onChecked();
-      if (!quiet || data.failed) toast(data.failed ? `Checked ${data.checked} jobs, ${data.failed} could not be saved` : `Checked ${data.checked} jobs: ${data.strong} are a strong match`, { tone: data.failed ? 'error' : 'success' });
+      const found = (data.added ?? 0) + (data.restored ?? 0);
+      if (data.failed) toast(`${data.failed} jobs could not be saved`, { tone: 'error' });
+      else toast(found ? `${found} job${found === 1 ? '' : 's'} added that match you` : 'No new matches right now. Check again tomorrow', { tone: found ? 'success' : 'default' });
     } catch { toast('Could not run the check', { tone: 'error' }); }
     finally { setBusy(''); }
   }, [onChecked, toast]);
@@ -47,7 +49,7 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
       if (!res.ok || !data.profile) { toast(data.error ?? 'Could not read that', { tone: 'error' }); setBusy(''); return; }
       setProfile(data.profile); setOpen(false); setLink(''); setPasted('');
       toast(`Read ${data.profile.skills.length} skills from your profile`, { tone: 'success' });
-      await check(true);
+      await check();
     } catch { toast('Could not read that', { tone: 'error' }); setBusy(''); }
   }, [check, toast]);
 
@@ -75,13 +77,13 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
           <div className="jm-main">
             <div className="jm-title"><FileText size={14} />Matched to <strong>{profile.source}</strong></div>
             <div className="jm-skills">
-              {profile.skills.slice(0, 12).map(s => <span key={s} className="jm-chip">{s}</span>)}
-              {profile.skills.length > 12 && <span className="jm-more">+{profile.skills.length - 12} more</span>}
+              {profile.skills.slice(0, 8).map(s => <span key={s} className="jm-chip">{s}</span>)}
+              {profile.skills.length > 8 && <span className="jm-more">+{profile.skills.length - 8} more</span>}
               {profile.years !== null && <span className="jm-more">about {profile.years} years</span>}
             </div>
           </div>
           <div className="jm-actions">
-            <button className="btn btn-sm btn-primary" onClick={() => void check()} disabled={working}><Sparkles size={13} />{busy === 'check' ? 'Checking…' : 'Run my check'}</button>
+            <button className="btn btn-sm btn-primary" onClick={() => void check()} disabled={working}><Sparkles size={13} />{busy === 'check' ? 'Searching job boards…' : 'Find jobs for me'}</button>
             <button className="btn btn-sm" onClick={() => setOpen(true)} disabled={working}>Replace</button>
             <button className="icon-btn" onClick={() => void remove()} disabled={working} aria-label="Remove my profile" title="Remove my profile"><Trash2 size={14} /></button>
           </div>
@@ -90,7 +92,7 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
         <div className="jm-row">
           <div className="jm-main">
             <div className="jm-title"><Sparkles size={14} />Match jobs to you</div>
-            <p className="jm-hint">Upload your CV or portfolio and every job gets a score for how well it fits. It runs in the app, so it costs nothing, and your file is not kept, only the text.</p>
+            <p className="jm-hint">Upload your CV to find and score jobs that fit you. Free, and the file is not kept.</p>
             {open && (
               <div className="jm-form">
                 <div className="jm-line">

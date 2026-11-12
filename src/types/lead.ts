@@ -15,6 +15,8 @@ export interface ContactLinks {
   // "b2b": a B2B company (founder or owner of a business that sells to other businesses). Pitched a website rebuild, not local systems.
   segment?: 'b2b';
   // Jobs: how well the job fits your uploaded profile (kept here so no database change is needed).
+  // Set once a skipped job was brought back because it matched your profile, so skipping it again sticks.
+  matchRestored?: true;
   match?: { score: number; matched: string[]; missing: string[]; at: string };
 }
 

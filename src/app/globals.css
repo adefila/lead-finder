@@ -811,7 +811,11 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .sc-fix select { height: 26px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); font: inherit; font-size: 12px; padding: 0 6px; color: var(--fg); }
 .sc-countries { padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .sc-label { font-size: 12px; font-weight: 600; color: var(--fg-2); margin-bottom: 8px; }
-.sc-cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.sc-clist { display: grid; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.sc-crow { display: grid; grid-template-columns: 110px 210px minmax(0, 1fr); gap: 12px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
+.sc-crow:last-child { border-bottom: 0; }
+.sc-crow:hover { background: var(--surface-2); }
+.sc-crow .sc-cost { justify-self: start; }
 .sc-country { display: grid; gap: 4px; align-content: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); text-decoration: none; color: inherit; }
 .sc-country:hover { border-color: var(--border-strong); }
 .sc-cname { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--fg); }
@@ -860,3 +864,5 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .stat.bad .stat-value { color: #b42318; }
 @media (max-width: 900px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-value { font-size: 20px; } }
+
+@media (max-width: 720px) { .sc-crow { grid-template-columns: 1fr; gap: 4px; } }
