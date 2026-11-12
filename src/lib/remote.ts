@@ -25,7 +25,39 @@ const OPEN_TO_YOU = /\b(worldwide|anywhere|global|everywhere|all countries|niger
 const NIGERIA_UTC = 1;
 // Some "worldwide" listings say otherwise in the text ("US only", "must be based in Canada").
 const PLACE = '(the )?(us|usa|u\\.s\\.?|united states|america|canada|uk|united kingdom|europe|eu|european union|latam|latin america|apac|india|philippines|australia)';
-const TEXT_LIMIT = new RegExp(`\\b(${PLACE}[- ](only|residents?|citizens?)|(must|should|need to) (be )?(based|located|living|residing|reside|live) in ${PLACE}|(only|exclusively) (open to|hiring|accepting) (candidates |applicants |people )?(in|from) ${PLACE}|(legally )?authori[sz]ed to work in ${PLACE})\\b`, 'i');
+const TEXT_LIMIT = new RegExp(`\\b(${PLACE}[- ](only|residents?|citizens?|based|located|candidates|applicants)|(must|should|need to|required to) (currently )?(be )?(a )?(based|located|living|residing|reside|live|resident|citizen) (of |in |within )?${PLACE}|(only|exclusively) (open to|hiring|accepting|considering) (candidates |applicants |people |residents )?(in|from|within) ${PLACE}|(legally |currently )?(authori[sz]ed|eligible|permitted|right) to work (legally )?(in|within) ${PLACE}|(open|available) (to|for) (candidates |applicants |residents )?(located |based |living )?(in|within) ${PLACE} only|remote\\s*[-–(]\\s*${PLACE})\\b`, 'i');
+
+// The sentence that limits a job to some place, or null.
+export function locationLimit(text: string): string | null {
+  // A lowercase "us" is the word, not the country ("contact us only").
+  for (const m of text.matchAll(new RegExp(TEXT_LIMIT.source, 'gi'))) {
+    if (/\bus\b/.test(m[0]) && !/united states|usa|america/i.test(m[0])) continue;
+    return m[0].trim();
+  }
+  return null;
+}
+
+// Read the job post itself: the saved description is cut short, and the limit is often further down.
+export async function postLimit(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LeadFinder/1.0)' }, redirect: 'follow', signal: AbortSignal.timeout(8_000) });
+    if (!res.ok || !/html|text/.test(res.headers.get('content-type') ?? '')) return null;
+    const html = (await res.text()).slice(0, 400_000);
+    return locationLimit(html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '));
+  } catch { return null; }
+}
+
+// Drop the jobs whose post limits them to a place you are not in. Six at a time.
+export async function withoutLimited<T extends Pick<Lead, 'url' | 'source'>>(leads: T[]): Promise<{ kept: T[]; dropped: number }> {
+  const kept: T[] = [];
+  let dropped = 0;
+  for (let i = 0; i < leads.length; i += 6) {
+    const batch = leads.slice(i, i + 6);
+    const limits = await Promise.all(batch.map(l => (l.source === 'job' || l.source === 'remote') ? postLimit(l.url) : Promise.resolve(null)));
+    batch.forEach((l, j) => { if (limits[j]) dropped++; else kept.push(l); });
+  }
+  return { kept, dropped };
+}
 
 // Relocation roles: the listing has to offer it, and must not rule it out.
 const RELOCATION = /\b(relocation (support|assistance|package|bonus|budget|allowance|help)|relocation is (available|offered|provided|supported)|(we|will|can|happy to|able to) (sponsor|support) (your |a |the )?(work )?visas?|visa sponsorship (is |are )?(available|offered|provided|possible)|(offer|offers|provide|provides|including) (visa sponsorship|relocation)|sponsorship (and|&) relocation|relocation (and|&) visa|help (you )?(to )?relocate)\b/i;
@@ -307,7 +339,7 @@ const fullTime = (r: Pick<Role, 'type' | 'title'>) => !NOT_FULL_TIME.test(`${r.t
 
 function remoteOpenToYou(r: Role): boolean {
   if (!r.remote) return false;
-  if (TEXT_LIMIT.test(r.text)) return false;
+  if (TEXT_LIMIT.test(`${r.title} ${r.where} ${r.text}`)) return false;
   const placesOk = r.openToYou ?? (!r.places.length || r.places.some(p => OPEN_TO_YOU.test(p)));
   const zonesOk = !r.zones?.length || r.zones.some(z => Math.abs(z - NIGERIA_UTC) <= 1);
   return placesOk && zonesOk;

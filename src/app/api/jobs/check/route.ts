@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getExistingLeadIds, getLeads, getProfile, getSentIds, markSent, saveLeads, updateLead } from '@/lib/supabase';
 import { isJobLead } from '@/lib/leadview';
-import { isNicheRole, savedJobStillWanted, fetchJobBoards } from '@/lib/remote';
+import { isNicheRole, savedJobStillWanted, fetchJobBoards, postLimit, withoutLimited } from '@/lib/remote';
 import { matchJob, STRONG_MATCH, strongMatches } from '@/lib/jobmatch';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,20 @@ export async function POST() {
   ]);
   const jobs = existing.filter(isJobLead);
 
+  // First, read each waiting job's post: any that limit the role to another country move to Skipped.
+  let limited = 0;
+  const waiting = jobs.filter(l => (l.status ?? 'new') === 'new');
+  for (let i = 0; i < waiting.length; i += 6) {
+    await Promise.all(waiting.slice(i, i + 6).map(async l => {
+      const limit = await postLimit(l.url);
+      if (!limit) return;
+      limited++;
+      l.status = 'skipped';
+      l.contactLinks = { ...l.contactLinks, matchRestored: true };   // so a later check does not bring it back
+      await updateLead(l.id, { status: 'skipped', contact_links: l.contactLinks });
+    }));
+  }
+
   let strong = 0, restored = 0, failed = 0;
   for (let i = 0; i < jobs.length; i += 10) {
     await Promise.all(jobs.slice(i, i + 10).map(async l => {
@@ -35,10 +49,10 @@ export async function POST() {
   }
 
   const known = new Set([...sentIds, ...existingIds]);
-  const added = strongMatches(fresh.filter(j => isJobLead(j) && !known.has(j.id)), profile);
+  const { kept: added } = await withoutLimited(strongMatches(fresh.filter(j => isJobLead(j) && !known.has(j.id)), profile));
   if (added.length) {
     await saveLeads(added);
     await markSent(added.map(j => j.id));
   }
-  return NextResponse.json({ checked: jobs.length, strong, failed, added: added.length, restored, searched: fresh.length });
+  return NextResponse.json({ checked: jobs.length, strong, failed, added: added.length, restored, limited, searched: fresh.length });
 }

@@ -31,12 +31,12 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
     setBusy('check');
     try {
       const res = await fetch('/api/jobs/check', { method: 'POST' });
-      const data = await res.json() as { checked?: number; strong?: number; failed?: number; added?: number; restored?: number; error?: string };
+      const data = await res.json() as { checked?: number; strong?: number; failed?: number; added?: number; restored?: number; limited?: number; error?: string };
       if (!res.ok) { toast(data.error ?? 'Could not run the check', { tone: 'error' }); return; }
       onChecked();
       const found = (data.added ?? 0) + (data.restored ?? 0);
       if (data.failed) toast(`${data.failed} jobs could not be saved`, { tone: 'error' });
-      else toast(found ? `${found} job${found === 1 ? '' : 's'} added that match you` : 'No new matches right now. Check again tomorrow', { tone: found ? 'success' : 'default' });
+      else toast((found ? `${found} job${found === 1 ? '' : 's'} added that match you` : 'No new matches right now. Check again tomorrow') + (data.limited ? `. ${data.limited} limited to another country were skipped` : ''), { tone: found ? 'success' : 'default' });
     } catch { toast('Could not run the check', { tone: 'error' }); }
     finally { setBusy(''); }
   }, [onChecked, toast]);

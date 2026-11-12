@@ -256,6 +256,18 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           </section>
         )}
 
+        {isJob && !email ? (
+          status === 'new' && (
+            <section className="dsec">
+              <h3 className="dsec-title">Apply</h3>
+              <p className="check-hint"><span>No email address for this job, so there is no message to send. Apply on the job post.</span></p>
+              <div className="actions">
+                <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"><Icon name="external" />Open job post</LinkBtn>
+                <Btn className="btn" title="Moves it to Waiting for reply" onClick={markContacted}>I have applied</Btn>
+              </div>
+            </section>
+          )
+        ) : (
         <section className="dsec">
           <h3 className="dsec-title">{messageTitle}</h3>
           {fu.exhausted && <div className="note">They have not replied after {fu.sent} follow-ups. You can close this one, or mark it as replied if they got back to you.</div>}
@@ -350,6 +362,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             {isFollowUp && <Btn className="btn btn-quiet" onClick={writeFollowUp} disabled={drafting}><Icon name="sync" />Write a new version</Btn>}
           </div>
         </section>
+        )}
 
         <section className="dsec dsec-foot">
           <div className="actions status-actions">

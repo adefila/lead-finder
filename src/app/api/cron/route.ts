@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAllowed } from '@/lib/session';
 import { fetchPlacesLeads } from '@/lib/places';
 import { fetchCompaniesHouseLeads } from '@/lib/companies';
-import { fetchJobBoards, isNicheRole, savedJobStillWanted } from '@/lib/remote';
+import { fetchJobBoards, isNicheRole, savedJobStillWanted, withoutLimited } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, MIN_FIT, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads, getProfile } from '@/lib/supabase';
@@ -100,7 +100,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       seenEmails.add(email);
       return l;
     });
-    const jobsWithEmails = await generateColdEmails(top);
+    // A job post that limits the role to a place you are not in ("US only") is dropped before it is saved.
+    const { kept: unlimited, dropped: limitedOut } = await withoutLimited(top);
+    if (limitedOut) console.log(`[cron] dropped ${limitedOut} jobs limited to another country`);
+    const jobsWithEmails = await generateColdEmails(unlimited);
 
     // 4. Save. New leads show on the dashboard; no morning email is sent (turned off on request).
     // markSent still records them so the next run does not treat them as fresh again.
@@ -112,7 +115,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Jobs that fit your profile well are kept even when the general fit score passed them over.
     if (profile) {
       const kept = new Set(jobsWithEmails.map(j => j.id));
-      const extra = strongMatches(freshJobs.filter(j => isJobLead(j) && !kept.has(j.id)), profile);
+      const extra = (await withoutLimited(strongMatches(freshJobs.filter(j => isJobLead(j) && !kept.has(j.id)), profile))).kept;
       if (extra.length) { await saveLeads(extra); await markSent(extra.map(j => j.id)); console.log(`[cron] ${extra.length} more jobs kept because they match your profile`); }
     }
     const followUpsDue = (await getLeads()).filter(needsAttention).length;
