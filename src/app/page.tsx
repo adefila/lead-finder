@@ -27,6 +27,11 @@ function lastSentLabel(iso?: string | null): string {
   if (!iso) return 'nothing sent yet';
   return `last sent ${new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
 }
+// Short form for the header: "last sent Thu 14:30".
+function shortSent(iso?: string | null): string {
+  if (!iso) return 'nothing sent yet';
+  return `last sent ${new Date(iso).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
+}
 type OutboxRun = OutboxStatus & { replies?: number; optOuts?: number; sent?: { title: string; kind: string }; skipped?: string; error?: string };
 
 const PAGE_SIZE = 15;
@@ -559,13 +564,15 @@ export default function Home() {
                       <b>New emails</b><span>{outbox.sentToday} of {outbox.limit} today, restarts at midnight</span>
                       {!!outbox.weekLimit && <><b>This week</b><span>{outbox.sentWeek ?? 0} of {outbox.weekLimit}, resets Sunday</span></>}
                       <b>Follow-ups</b><span>{outbox.followUpsToday ?? 0} today, no limit</span>
+                      {outbox.paused && <em>Sending is paused. Replies are still checked.</em>}
+                      {!outbox.paused && outbox.pausedUntil && <em>Gmail asked to slow down, so sending waits for a while.</em>}
                       <em>Sent on weekdays, 9am to 4pm in each business's own time, spread through the day.</em>
                     </>
                   ) : <em>Automatic sending is off until your email login is added in Vercel.</em>}
                 </span>
                 <Icon name="clock" size={13} />
                 {!outbox.configured ? 'Automatic sending is off'
-                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday} of ${outbox.limit} new today${outbox.weekLimit ? `, ${outbox.sentWeek ?? 0} of ${outbox.weekLimit} this week` : ''}${outbox.followUpsToday ? ` · ${outbox.followUpsToday} follow-up${outbox.followUpsToday === 1 ? '' : 's'} today (not limited)` : ''} · ${outbox.paused ? 'sending paused, replies still checked' : outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, Gmail asked to slow down` : outbox.slowed ? `${lastSentLabel(outbox.lastSent)} · sending slower today` : lastSentLabel(outbox.lastSent)}`}
+                  : `${outbox.queued === 0 ? 'Nothing scheduled' : `${outbox.queued} scheduled`} · ${outbox.sentToday}/${outbox.limit} today${outbox.weekLimit ? ` · ${outbox.sentWeek ?? 0}/${outbox.weekLimit} week` : ''} · ${outbox.paused ? 'paused' : outbox.pausedUntil ? `paused until ${new Date(outbox.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : outbox.slowed ? `${shortSent(outbox.lastSent)}, slower today` : shortSent(outbox.lastSent)}`}
               </span>
             )}
             <Btn className="btn btn-sm btn-primary" onClick={runNow} disabled={running}>

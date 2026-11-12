@@ -567,10 +567,10 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .reveal-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 171, 74, 0.2); }
 
 /* ── Empty states ───────────────────────── */
-.empty-state { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 48px 20px 72px; }
+.empty-state { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 48px 20px 72px; }
 .empty-art { width: min(320px, 78vw); height: auto; margin-bottom: 8px; overflow: visible; }
 .empty-title { font-size: 18px; font-weight: 600; color: var(--fg); letter-spacing: -0.2px; }
-.empty-body { font-size: 13px; color: var(--fg-3); max-width: 340px; line-height: 1.6; }
+.empty-body { margin: 0; font-size: 13px; color: var(--fg-3); max-width: 340px; line-height: 1.6; }
 .ill-halo { fill: #f1f6f3; }
 .ill-shadow { fill: #ececec; }
 .ill-line, .ill-card, .ill-soft, .ill-accent, .ill-accent-thin, .ill-trail, .ill-check, .ill-on-accent, .ill-spark {
