@@ -31,6 +31,8 @@ export interface OutgoingMail {
   text: string;
   inReplyTo?: string;
   html?: string;
+  // Send as another address on your domain (it must be a "Send mail as" alias of the mailbox, or Gmail uses the mailbox address).
+  from?: { name: string; address: string };
 }
 
 export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<string> {
@@ -41,7 +43,7 @@ export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<str
     auth: { user: cfg.user, pass: cfg.pass },
   });
   const info = await transport.sendMail({
-    from: { name: cfg.fromName, address: cfg.user },
+    from: mail.from ?? { name: cfg.fromName, address: cfg.user },
     to: mail.to,
     subject: mail.subject,
     text: mail.text,

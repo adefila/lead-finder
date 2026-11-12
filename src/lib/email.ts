@@ -167,23 +167,24 @@ function buildEmailHtml(leads: Lead[], followUpsDue: number): string {
 // Everything Lead Finder tells you goes to one inbox. Change it with NOTIFY_EMAIL.
 export const NOTIFY_TO = () => process.env.NOTIFY_EMAIL?.trim() || 'samuel@adefilasamuel.com';
 
-// Sent through the Workspace mailbox first: Resend's test sender can only reach the Resend
-// account's own address, so it is the fallback, not the first choice.
+// The alerts come FROM info@ and land in the inbox above, so they are not your own address writing to itself.
+// Change the sender with NOTIFY_FROM.
+export const NOTIFY_FROM = () => process.env.NOTIFY_FROM?.trim() || 'info@adefilasamuel.com';
+
+// Resend first, because it can send as any address on your verified domain. If that fails, the Workspace mailbox
+// sends it as the same address (shown as info@ only when it is set up as a "Send mail as" alias in Gmail).
 async function deliverNotification(subject: string, html: string): Promise<string> {
   const to = NOTIFY_TO();
-  const cfg = mailConfig();
-  if (cfg) {
-    try {
-      return await sendMail(cfg, { to, subject, text: subject, html });
-    } catch (err) {
-      console.error('[email] Workspace send failed, trying Resend:', err);
-    }
+  const from = NOTIFY_FROM();
+  if (process.env.RESEND_API_KEY) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { data, error } = await resend.emails.send({ from: `Lead Finder <${from}>`, to, subject, html });
+    if (!error) return data?.id ?? '';
+    console.error('[email] Resend failed, trying the Workspace mailbox:', JSON.stringify(error));
   }
-  if (!process.env.RESEND_API_KEY) throw new Error('No mail provider is set up for notifications');
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const { data, error } = await resend.emails.send({ from: 'Lead Finder <samuel@adefilasamuel.com>', to, subject, html });
-  if (error) throw new Error(`Notification send failed: ${JSON.stringify(error)}`);
-  return data?.id ?? '';
+  const cfg = mailConfig();
+  if (!cfg) throw new Error('No mail provider is set up for notifications');
+  return sendMail(cfg, { to, subject, text: subject, html, from: { name: 'Lead Finder', address: from } });
 }
 
 export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<void> {
