@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Upload, FileText, Link2, Trash2, Sparkles } from 'lucide-react';
 import { useFeedback } from '@/components/feedback';
+import { ApplyAnswers } from '@/components/ApplyAnswers';
 
 interface ProfileInfo { skills: string[]; titles: string[]; years: number | null; source: string; updatedAt: string; chars: number }
 
@@ -13,6 +14,7 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState<'' | 'upload' | 'check'>('');
   const [open, setOpen] = useState(false);
+  const [answersOpen, setAnswersOpen] = useState(false);
   const [link, setLink] = useState('');
   const [pasted, setPasted] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -84,6 +86,7 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
           </div>
           <div className="jm-actions">
             <button className="btn btn-sm btn-primary" onClick={() => void check()} disabled={working}><Sparkles size={13} />{busy === 'check' ? 'Searching job boards…' : 'Find jobs for me'}</button>
+            <button className="btn btn-sm" onClick={() => setAnswersOpen(v => !v)} aria-expanded={answersOpen}>Application answers</button>
             <button className="btn btn-sm" onClick={() => setOpen(true)} disabled={working}>Replace</button>
             <button className="icon-btn" onClick={() => void remove()} disabled={working} aria-label="Remove my profile" title="Remove my profile"><Trash2 size={14} /></button>
           </div>
@@ -114,6 +117,7 @@ export function JobMatch({ onChecked }: { onChecked: () => void }) {
           </div>
         </div>
       )}
+      {answersOpen && <ApplyAnswers onClose={() => setAnswersOpen(false)} />}
     </div>
   );
 }

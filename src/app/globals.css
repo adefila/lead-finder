@@ -875,3 +875,16 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .sc-soon { font-size: 11px; font-weight: 700; color: var(--warn-ink); background: var(--warn-tint); border-radius: 4px; padding: 0 7px; line-height: 20px; white-space: nowrap; }
 @media (max-width: 720px) { .sc-feed { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .jm-row { align-items: stretch; } }
+
+/* Application answers */
+.aa { display: grid; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.aa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 12px; }
+.aa-field { display: grid; gap: 4px; min-width: 0; }
+.aa-field.wide { grid-column: 1 / -1; }
+.aa-label { font-size: 12px; font-weight: 500; color: var(--fg-2); }
+.aa-field input, .aa-field select, .aa-field textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 7px 9px; font: inherit; font-size: 13px; background: var(--surface); color: var(--fg); }
+.aa-field textarea { resize: vertical; }
+.aa-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.aa-chip { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font: inherit; font-size: 12px; color: var(--fg); cursor: pointer; text-align: left; }
+.aa-chip:hover { border-color: var(--border-strong); }
+.aa-chip span { color: var(--fg-3); white-space: nowrap; }

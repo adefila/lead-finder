@@ -4,6 +4,7 @@ import { humanize } from '@/lib/compose';
 import type { Profile } from '@/lib/profile';
 import type { SchoolProfile } from '@/lib/school';
 import type { FeedItem } from '@/lib/scholarshipfeed';
+import type { Answers } from '@/lib/answers';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -368,4 +369,17 @@ export async function getFeed(): Promise<{ items: FeedItem[]; updatedAt: string 
 export async function saveFeed(items: FeedItem[]): Promise<void> {
   const { error } = await db().from('profile').upsert({ id: 'feed', text: '', skills: items, titles: [], years: null, source: 'scholars4dev.com', updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) console.error('[supabase] saveFeed:', error.message);
+}
+
+// ─── Application answers (fourth row in the profile table) ───────────────────
+
+export async function getAnswers(): Promise<Answers | null> {
+  const { data, error } = await db().from('profile').select('skills').eq('id', 'answers').maybeSingle();
+  if (error) { console.error('[supabase] getAnswers:', error.message); return null; }
+  return (data?.skills as Answers | null) ?? null;
+}
+
+export async function saveAnswers(a: Answers): Promise<string | null> {
+  const { error } = await db().from('profile').upsert({ id: 'answers', text: '', skills: a, titles: [], years: null, source: 'answers', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  return error ? (/relation .*profile|schema cache/i.test(error.message) ? 'Your database has no "profile" table yet. Run the setup SQL in Supabase, then try again.' : explain(error.message)) : null;
 }

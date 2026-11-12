@@ -10,6 +10,7 @@ import {
 } from '@/lib/leadview';
 import { Btn, CopyButton, Icon, LinkBtn, EASE } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
+import { AnswerChips } from '@/components/ApplyAnswers';
 
 const LINK_LABELS = [
   ['website', 'Website'],
@@ -261,6 +262,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             <section className="dsec">
               <h3 className="dsec-title">Apply</h3>
               <p className="check-hint"><span>No email address for this job, so there is no message to send. Apply on the job post.</span></p>
+              <AnswerChips />
               <div className="actions">
                 <LinkBtn className="btn btn-primary" href={lead.url} target="_blank" rel="noreferrer"><Icon name="external" />Open job post</LinkBtn>
                 <Btn className="btn" title="Moves it to Waiting for reply" onClick={markContacted}>I have applied</Btn>
