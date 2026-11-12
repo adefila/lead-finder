@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, LANGUAGE_NAME } from '@/lib/leadview';
+import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -574,6 +574,20 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
 // ─── Follow-ups ──────────────────────────────────────────────────────────────
 
+// The rules for a follow-up to someone who looked at the note or the site: one person writing to another.
+function humanRules(facts: string[]): string {
+  const draw = facts.length
+    ? `\n- Things you can draw on (use at most ONE, only if it truly fits, and say it naturally):\n${facts.map(f => `  * ${f}`).join('\n')}`
+    : '';
+  return `- This is a personal note, not a sequence email. Write it the way Samuel would type it himself to one person he has been thinking about: relaxed, direct, with some warmth, plain words, contractions.
+- 35 to 65 words, two or three short paragraphs. Shorter beats longer.
+- Open with something specific to THEM (their business, their town, one real thought about how their day works), never about emails or about Samuel. Never open with "just following up", "hope you're well", "wanted to check in", "quick question", or any line that could be sent to a hundred businesses.
+- One idea only, said the way you would to a friend: what actually changes for them day to day (who stops doing what). No list of services and no pitch for several things.
+- Offer one small thing Samuel will do himself (for example a short video of how it would look for them, or a rough sketch of the page) and ask a plain question in your own words. Do NOT end with "Yes or no is fine", "let me know" or "I'd love to hear your thoughts".
+- Sound like a person: vary sentence length, you may start a sentence with "And" or "But", and it can be a little informal. Not sloppy, no slang, no jokes, no emojis.
+- Do not repeat the first email's wording or its offer. Do not apologise for writing again.${draw}`;
+}
+
 // personal: the "Write a personal follow-up" button, used on leads who looked at your note or site. It is written as a
 // one-off note, outside the automatic sequence.
 export async function draftFollowUp(lead: Lead, opts: { personal?: boolean } = {}): Promise<string> {
@@ -587,6 +601,16 @@ export async function draftFollowUp(lead: Lead, opts: { personal?: boolean } = {
   const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
   // They opened the one-page note: build this follow-up around one idea from it.
   const ideas = (lead.noteOpenedAt || lead.contactLinks?.siteVisitedAt) && hasCheck(lead) ? systemsFor(lead) : [];
+  // Leads who looked at the note or the site get a personal note, not a sequence email.
+  const warm = !!opts.personal || ideas.length > 0;
+  const story = leadStory(lead);
+  const rating = story.other.find(o => /stars from \d+/i.test(o))?.replace(/\.$/, '');
+  const where = lead.company.split(' · ').slice(1).join(' · ');
+  const facts = [
+    where ? `Where they are: ${where}` : '',
+    rating ? `Their reviews: ${rating}` : '',
+    ...story.ownerProblems.slice(0, 2).map(p => `Something Samuel noticed: ${p}`),
+  ].filter(Boolean);
   const noteBlock = ideas.length ? `
 
 His first email linked a one-page note with these ideas for their business. They have shown interest but not replied:
@@ -594,10 +618,10 @@ ${ideas.map(i => `- ${i}`).join('\n')}
 
 For this follow-up:
 - Pick the ONE idea above that fits their business best and say in one or two sentences how it would work for them day to day (who does what, what they no longer have to do). Be concrete, no jargon.
-- Then make an easy offer: a 10-minute call, or a short video walking through it for their business. End with a simple yes/no question.
+- Then make an easy offer: a short video walking through it for their business, or a quick call if they would rather talk. Put the question in your own words, not as a stock closing line.
 - Never say or hint that you know they opened the note or visited the website (no "I saw you looked at", "noticed you checked", "saw you visited"). Write as if it is a natural next step.` : '';
 
-  const prompt = `Samuel Adefila contacted this lead${since ? ` ${since} days ago` : ''} and hasn't heard back. Write follow-up number ${number} of 2, sent as ${channel}.
+  const prompt = `Samuel Adefila contacted this lead${since ? ` ${since} days ago` : ''} and hasn't heard back. ${warm ? `Write one short, personal follow-up note, sent as ${channel}.` : `Write follow-up number ${number} of 2, sent as ${channel}.`}
 
 Lead: ${lead.title} (${lead.company})${person ? `\nPerson: ${person}${lead.contactTitle ? `, ${lead.contactTitle}` : ''}` : ''}
 What we know: ${lead.description.slice(0, 400)}
@@ -612,8 +636,8 @@ Rules:
 - Plain words only: never technical terms such as HTTPS, SSL, certificate, SEO, viewport, load time or automation.
 - Never ask whether they read, saw or had time for the earlier message, in any language (not "did you see my email", "je me demandais si vous aviez eu le temps de lire", "heeft u mijn bericht gezien", "fikk du lest"). Go straight to the new useful point.
 - If you ask a question, end it with a question mark.
-- Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
-- Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.
+${warm ? humanRules(facts) : `- Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
+- Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.`}
 - Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
 - Sign off "Samuel".${leadLanguage(lead) !== 'en' ? `
 - Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, as a native speaker would, with the same form of address as his first message${leadLanguage(lead) === 'nl' ? ' ("u", never "je" or "jij")' : leadLanguage(lead) === 'fr' ? ' ("vous", never "tu")' : ''}.` : ''}
