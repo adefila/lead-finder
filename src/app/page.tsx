@@ -53,7 +53,7 @@ function pageNumbers(current: number, count: number): (number | null)[] {
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>('new');
+  const [view, setView] = useState<View>('all');
   const [sub, setSub] = useState<Sub>('all');
   const [mode, setMode] = useState<'table' | 'history' | 'scholarships'>('table');
   const [source, setSource] = useState<Lead['source'] | 'all'>('all');
@@ -501,14 +501,12 @@ export default function Home() {
     const pad = 16;
     const left = active.offsetLeft - strip.offsetLeft;
     const right = left + active.offsetWidth;
-    if (left - pad < strip.scrollLeft) strip.scrollTo({ left: Math.max(0, left - pad), behavior: 'smooth' });
-    else if (right + pad * 2 > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: right + pad * 2 - strip.clientWidth, behavior: 'smooth' });
+    if (left - pad < strip.scrollLeft) strip.scrollTo({ left: Math.max(0, left - pad), behavior: 'auto' });
+    else if (right + pad * 2 > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: right + pad * 2 - strip.clientWidth, behavior: 'auto' });
   }, [view, mode]);
 
-  // If you have scrolled past the tabs, bring them back into view so a shorter list does not yank the page.
   function keepTabsInView() {
-    const top = cardRef.current?.getBoundingClientRect().top ?? 0;
-    if (top < 72) window.scrollTo({ top: window.scrollY + top - 72 });
+    // Left empty on purpose: the page no longer jumps when you switch tabs (the card keeps a steady height instead).
   }
 
   function changeView(v: View, s: Sub = 'all') {
@@ -647,7 +645,7 @@ export default function Home() {
           </div>
         )}
 
-        <Funnel leads={scoped} />
+        <Funnel leads={scoped} onOpen={(v, s) => changeView(v, s)} />
 
         <section className="crm-card" ref={cardRef}>
           <div className="crm-toolbar">
@@ -685,12 +683,12 @@ export default function Home() {
               </h2>
               <p className="view-hint">
                 {mode === 'history' ? 'Leads grouped by the day they were found.'
-                  : sub === 'followup' ? 'No reply yet and a follow-up is due. Send it, or close the lead.'
-                  : sub === 'visited' ? 'They clicked through to adefilasamuel.com from your email but have not replied. A good moment for a short, personal follow-up.'
-                  : sub === 'opened' ? 'They opened your one-page note but have not replied. Your warmest leads: a personal follow-up works well here.'
+                  : sub === 'followup' ? 'No reply yet. Send the follow-up or close it.'
+                  : sub === 'visited' ? 'Visited your site, no reply yet. Follow up.'
+                  : sub === 'opened' ? 'Opened your note, no reply yet. Warmest leads.'
                   : sub === 'won' ? 'Projects you closed.'
-                  : sub === 'lost' ? 'Leads that said no, or never replied.'
-                  : sub === 'skipped' ? 'Leads you passed on. Bring any back with one click.'
+                  : sub === 'lost' ? 'Said no, never replied, or bounced.'
+                  : sub === 'skipped' ? 'Passed on. Bring any back in one click.'
                   : VIEWS.find(v => v.id === view)?.hint}
               </p>
             </div>

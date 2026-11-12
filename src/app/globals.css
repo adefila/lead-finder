@@ -226,7 +226,7 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 
 /* ── CRM card & toolbar ─────────────────── */
-.crm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.crm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-height: calc(100vh - 220px); overflow-anchor: none; }
 .crm-card > .table-wrap, .crm-card > .panel { border-radius: 0 0 8px 8px; }
 .crm-foot { border-radius: 0 0 8px 8px; }
 .crm-toolbar { display: grid; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
@@ -259,7 +259,7 @@ a { color: inherit; }
 }
 .view-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; color: var(--fg); }
 .view-title .muted { font-weight: 500; }
-.view-hint { font-size: 13px; color: var(--fg-3); }
+.view-hint { font-size: 13px; color: var(--fg-3); min-height: 20px; margin: 0; }
 .tab-count { font-size: 12px; font-weight: 500; color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .tab-alert { font-size: 11px; font-weight: 700; color: var(--warn-ink); background: var(--warn-tint); border-radius: 9px; padding: 0 6px; line-height: 18px; }
 .subtabs { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -849,3 +849,14 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
   .sc-body dl { grid-template-columns: 1fr; gap: 0; }
   .sc-body dt { margin-top: 6px; }
 }
+
+/* Number cards */
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.stat { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
+.stat:hover { border-color: var(--border-strong); }
+.stat-label { font-size: 12px; font-weight: 500; color: var(--fg-3); }
+.stat-value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--fg); }
+.stat-sub { font-size: 12px; color: var(--fg-3); min-height: 16px; }
+.stat.bad .stat-value { color: #b42318; }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-value { font-size: 20px; } }

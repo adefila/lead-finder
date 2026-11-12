@@ -38,15 +38,15 @@ export type Sub = 'all' | 'followup' | 'opened' | 'visited' | 'won' | 'lost' | '
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
-  { id: 'all', label: 'All', hint: 'Every lead, whatever stage it is at.' },
-  { id: 'new', label: 'To contact', hint: 'New leads you have not reached out to yet. Best fit first.' },
-  { id: 'queued', label: 'Scheduled', hint: 'Emails that go out on their own on weekdays, during their business hours. Up to 20 new a day.' },
-  { id: 'approved', label: 'Waiting for reply', hint: 'You have been in touch. Follow-ups go out on their own until they reply.' },
-  { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply quickly, this is where deals are won.' },
-  { id: 'done', label: 'Done', hint: 'Leads you won, lost or skipped.' },
+  { id: 'all', label: 'All', hint: 'Every lead, at any stage.' },
+  { id: 'new', label: 'To contact', hint: 'Not contacted yet. Best fit first.' },
+  { id: 'queued', label: 'Scheduled', hint: 'Sent automatically on weekdays. Up to 20 new a day.' },
+  { id: 'approved', label: 'Waiting for reply', hint: 'Contacted. Follow-ups go out until they reply.' },
+  { id: 'replied', label: 'Replied', hint: 'They wrote back. Reply fast.' },
+  { id: 'done', label: 'Done', hint: 'Won, lost or skipped.' },
   // Not pipeline stages: shortcuts to open leads you have not finished with.
-  { id: 'inbound', label: 'From your site', hint: 'People who filled in the form on adefilasamuel.com, and companies identified visiting it. Reply to form enquiries first.' },
-  { id: 'jobs', label: 'Jobs', hint: 'Jobs in your niche you have not applied for yet: full-time remote roles open to you, and on-site roles abroad that offer visa sponsorship or relocation. Click Applied when done and it moves to Waiting for reply.' },
+  { id: 'inbound', label: 'From your site', hint: 'Form enquiries and site visitors. Reply first.' },
+  { id: 'jobs', label: 'Jobs', hint: 'Roles to apply for. Click Applied when done.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
@@ -464,3 +464,6 @@ export function defaultSort(view: View): { key: SortKey; dir: 1 | -1 } {
   if (view === 'approved') return { key: 'next', dir: 1 };
   return { key: 'added', dir: -1 };
 }
+
+// A lead whose email bounced: the address does not exist.
+export const isBounced = (l: Pick<Lead, 'status' | 'sendError'>) => l.status === 'lost' && /^Email bounced/i.test(l.sendError ?? '');
