@@ -574,8 +574,10 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
 // ─── Follow-ups ──────────────────────────────────────────────────────────────
 
-export async function draftFollowUp(lead: Lead): Promise<string> {
-  const number = (lead.followUps ?? 0) + 1;
+// personal: the "Write a personal follow-up" button, used on leads who looked at your note or site. It is written as a
+// one-off note, outside the automatic sequence.
+export async function draftFollowUp(lead: Lead, opts: { personal?: boolean } = {}): Promise<string> {
+  const number = opts.personal ? 1 : (lead.followUps ?? 0) + 1;
   const since = lead.contactedAt
     ? Math.max(1, Math.round((Date.now() - new Date(lead.contactedAt).getTime()) / 86400000))
     : null;
@@ -584,16 +586,16 @@ export async function draftFollowUp(lead: Lead): Promise<string> {
     : 'a short DM';
   const person = lead.contactName && lead.contactName !== lead.title ? lead.contactName : '';
   // They opened the one-page note: build this follow-up around one idea from it.
-  const ideas = lead.noteOpenedAt && hasCheck(lead) ? systemsFor(lead) : [];
+  const ideas = (lead.noteOpenedAt || lead.contactLinks?.siteVisitedAt) && hasCheck(lead) ? systemsFor(lead) : [];
   const noteBlock = ideas.length ? `
 
-His first email linked a one-page note with these ideas for their business. They have looked at it but not replied:
+His first email linked a one-page note with these ideas for their business. They have shown interest but not replied:
 ${ideas.map(i => `- ${i}`).join('\n')}
 
 For this follow-up:
 - Pick the ONE idea above that fits their business best and say in one or two sentences how it would work for them day to day (who does what, what they no longer have to do). Be concrete, no jargon.
 - Then make an easy offer: a 10-minute call, or a short video walking through it for their business. End with a simple yes/no question.
-- Never say or hint that you know they opened or read the note (no "I saw you looked at", "noticed you checked"). Write as if it is a natural next step.` : '';
+- Never say or hint that you know they opened the note or visited the website (no "I saw you looked at", "noticed you checked", "saw you visited"). Write as if it is a natural next step.` : '';
 
   const prompt = `Samuel Adefila contacted this lead${since ? ` ${since} days ago` : ''} and hasn't heard back. Write follow-up number ${number} of 2, sent as ${channel}.
 

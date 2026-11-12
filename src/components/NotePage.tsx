@@ -10,6 +10,10 @@ export async function NotePage({ lead }: { lead: Lead }) {
   const { copy, locale } = await noteCopy(lead);
   const sender = (process.env.MAIL_USER ?? process.env.GMAIL_USER ?? '').trim();
   const mailto = sender ? `mailto:${sender}?subject=${encodeURIComponent(copy.mailSubject)}` : null;
+  // One tap to say yes: an email already written, or WhatsApp.
+  const yes = sender ? `mailto:${sender}?subject=${encodeURIComponent(copy.mailSubject)}&body=${encodeURIComponent(copy.yesBody)}` : null;
+  const wa = (process.env.WHATSAPP_NUMBER ?? '2348109841877').replace(/\D/g, '');
+  const whatsapp = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(copy.whatsappText)}` : null;
 
   return (
     <main className="check" lang={locale}>
@@ -17,6 +21,17 @@ export async function NotePage({ lead }: { lead: Lead }) {
         <p className="check-eyebrow">{copy.eyebrow}</p>
         <h1 className="check-title">{name}</h1>
         <p className="check-sub">{copy.sub}</p>
+
+        {(yes || whatsapp) && (
+          <section className="check-quick">
+            <h2>{copy.quickTitle}</h2>
+            <p>{copy.quickText}</p>
+            <div className="check-actions">
+              {yes && <a className="btn btn-primary" href={yes}>{copy.yesButton}</a>}
+              {whatsapp && <a className="btn" href={whatsapp} target="_blank" rel="noreferrer">{copy.whatsappButton}</a>}
+            </div>
+          </section>
+        )}
 
         {copy.workingText && (
           <section className="check-sec">

@@ -890,3 +890,8 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .aa-chip span { color: var(--fg-3); white-space: nowrap; }
 
 .aa-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border); }
+
+.check-quick { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.check-quick h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.check-quick p { font-size: 14px; line-height: 1.6; color: var(--fg-2); }
+.check-quick .check-actions { margin-top: 12px; }

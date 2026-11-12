@@ -5,14 +5,14 @@ import { draftFollowUp } from '@/lib/claude';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const { id } = await req.json() as { id?: string };
+  const { id, personal } = await req.json() as { id?: string; personal?: boolean };
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
 
   try {
-    const message = await draftFollowUp(lead);
+    const message = await draftFollowUp(lead, { personal: !!personal });
     return NextResponse.json({ message });
   } catch (e) {
     console.error('[follow-up]', e);

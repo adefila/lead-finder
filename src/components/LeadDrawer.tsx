@@ -67,7 +67,10 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
 
   const status = statusOf(lead);
   const fu = followUpState(lead);
-  const isFollowUp = fu.due && !lead.autoSequence;
+  // "Write a personal follow-up" (for leads who visited) turns the message box into a follow-up on request.
+  const [personal, setPersonal] = useState(false);
+  const interested = status === 'approved' && !!(lead.contactLinks?.siteVisitedAt || lead.noteOpenedAt);
+  const isFollowUp = (fu.due && !lead.autoSequence) || personal;
   const story = useMemo(() => leadStory(lead), [lead]);
   const offers = useMemo(() => systemsFor(lead), [lead]);
   const fit = fitOf(lead.score);
@@ -85,7 +88,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
       const res = await fetch('/api/follow-up', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: lead.id }),
+        body: JSON.stringify({ id: lead.id, personal }),
       });
       const data = await res.json() as { message?: string; error?: string };
       if (data.message) {
@@ -98,7 +101,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
     } finally {
       setDrafting(false);
     }
-  }, [lead.id, initial.subject, toast]);
+  }, [lead.id, initial.subject, toast, personal]);
 
   useEffect(() => {
     if (isFollowUp && !followUpLoaded && !drafting) writeFollowUp();
@@ -254,6 +257,16 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             </h3>
             <p className="script">{callScript(lead)}</p>
             <p className="timeline">The goal is their email address. Use "Add email" above, then schedule the email with their one-page note of ideas.</p>
+          </section>
+        )}
+
+        {interested && !isFollowUp && (
+          <section className="dsec">
+            <h3 className="dsec-title">{lead.contactLinks?.siteVisitedAt ? 'They visited your website' : 'They opened your note'}</h3>
+            <p className="check-hint"><span>A short message written for this business now, while they are interested. It never mentions that they visited. It counts as one of their follow-ups.</span></p>
+            <div className="actions">
+              <Btn className="btn btn-primary" onClick={() => setPersonal(true)}><Icon name="sparkle" />Write a personal follow-up</Btn>
+            </div>
           </section>
         )}
 

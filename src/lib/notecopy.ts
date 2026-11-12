@@ -24,6 +24,13 @@ export interface NoteCopy {
   seeWork: string;
   closing: string;
   mailSubject: string;
+  // A one-tap next step, shown near the top of the note
+  quickTitle: string;
+  quickText: string;
+  yesButton: string;
+  whatsappButton: string;
+  yesBody: string;
+  whatsappText: string;
 }
 
 const LOCALE: Record<LeadLang, string> = { en: 'en-GB', nl: 'nl-NL', no: 'nb-NO', fr: 'fr-LU' };
@@ -54,6 +61,12 @@ export function englishNoteCopy(lead: Lead): NoteCopy {
     seeWork: 'See my work',
     closing: 'Or just reply to my email. No pressure, and this note is yours to keep either way.',
     mailSubject: `Ideas for ${name}`,
+    quickTitle: 'Want a closer look?',
+    quickText: 'Reply YES and I will send a short video of what I would do for your business. No cost, no obligation.',
+    yesButton: 'Reply YES',
+    whatsappButton: 'Message me on WhatsApp',
+    yesBody: `Yes please, send me the short video for ${name}.`,
+    whatsappText: `Hi Samuel, I saw the ideas you sent for ${name}.`,
   };
 }
 
@@ -97,7 +110,7 @@ ${JSON.stringify(copy)}`,
 // Saved per lead and language: translated once, then reused for every view.
 const translatedNote = unstable_cache(
   async (_leadId: string, lang: LeadLang, english: NoteCopy) => translate(english, lang),
-  ['note-copy-v1'],
+  ['note-copy-v2'],
   { revalidate: false },
 );
 
