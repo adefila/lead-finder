@@ -648,7 +648,7 @@ export default function Home() {
           </div>
         )}
 
-        <Funnel leads={scoped} onOpen={(v, s) => changeView(v, s)} />
+        <Funnel leads={scoped} view={mode === 'table' ? view : 'all'} onOpen={(v, s) => changeView(v, s)} />
 
         <section className="crm-card" ref={cardRef}>
           <div className="crm-toolbar">
