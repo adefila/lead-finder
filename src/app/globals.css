@@ -866,3 +866,9 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-value { font-size: 20px; } }
 
 @media (max-width: 720px) { .sc-crow { grid-template-columns: 1fr; gap: 4px; } }
+
+.sc-feed { grid-template-columns: 130px minmax(0, 1fr) 110px; }
+.sc-ftitle { color: var(--fg); font-size: 13px; }
+.sc-new { margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--green-ink); background: var(--green-tint); border-radius: 4px; padding: 0 6px; line-height: 18px; }
+.sc-soon { font-size: 11px; font-weight: 700; color: var(--warn-ink); background: var(--warn-tint); border-radius: 4px; padding: 0 7px; line-height: 20px; white-space: nowrap; }
+@media (max-width: 720px) { .sc-feed { grid-template-columns: 1fr; } }

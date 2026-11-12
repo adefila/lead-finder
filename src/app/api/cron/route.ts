@@ -7,6 +7,7 @@ import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, MIN_FIT, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads, getProfile } from '@/lib/supabase';
 import { strongMatches, withMatches } from '@/lib/jobmatch';
+import { refreshFeed } from '@/lib/scholarshipfeed';
 
 // Marker (in sent_jobs) for the one-time return of businesses the old 65 bar had skipped.
 const RESTORE_MARK = 'restore:business-fit-50';
@@ -103,6 +104,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 4. Save. New leads show on the dashboard; no morning email is sent (turned off on request).
     // markSent still records them so the next run does not treat them as fresh again.
+    // Newly posted scholarships, for the Scholarships tab (best effort).
+    await refreshFeed(true).catch(() => []);
     // When you have uploaded a profile, new jobs arrive already matched to it.
     const profile = await getProfile().catch(() => null);
     await saveLeads(profile ? withMatches(jobsWithEmails, profile) : jobsWithEmails);

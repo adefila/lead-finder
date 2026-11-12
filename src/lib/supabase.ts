@@ -3,6 +3,7 @@ import type { Lead, LeadStatus } from '@/types/lead';
 import { humanize } from '@/lib/compose';
 import type { Profile } from '@/lib/profile';
 import type { SchoolProfile } from '@/lib/school';
+import type { FeedItem } from '@/lib/scholarshipfeed';
 
 function db() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -354,4 +355,17 @@ export async function saveSchool(s: SchoolProfile): Promise<string | null> {
 
 export async function deleteSchool(): Promise<void> {
   await db().from('profile').delete().eq('id', 'school');
+}
+
+// ─── Newly posted scholarships (third row in the profile table) ──────────────
+
+export async function getFeed(): Promise<{ items: FeedItem[]; updatedAt: string | null }> {
+  const { data, error } = await db().from('profile').select('skills, updated_at').eq('id', 'feed').maybeSingle();
+  if (error || !data) return { items: [], updatedAt: null };
+  return { items: (data.skills as FeedItem[]) ?? [], updatedAt: data.updated_at ? String(data.updated_at) : null };
+}
+
+export async function saveFeed(items: FeedItem[]): Promise<void> {
+  const { error } = await db().from('profile').upsert({ id: 'feed', text: '', skills: items, titles: [], years: null, source: 'scholars4dev.com', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  if (error) console.error('[supabase] saveFeed:', error.message);
 }

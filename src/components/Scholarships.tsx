@@ -6,6 +6,7 @@ import { useFeedback } from '@/components/feedback';
 import type { Scholarship, ScholarshipMatch, CountryNote } from '@/lib/scholarships';
 import { CLASS_LABEL } from '@/lib/scholarships';
 import type { Classification, SchoolProfile } from '@/lib/school';
+import type { FeedItem } from '@/lib/scholarshipfeed';
 
 type Row = Scholarship & { match: ScholarshipMatch; monthsAway: number | null };
 type Mark = 'saved' | 'applied' | 'no';
@@ -20,6 +21,9 @@ function loadMarks(): Record<string, Mark> {
   try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Mark>; } catch { return {}; }
 }
 
+const closingSoon = (r: Row) => r.monthsAway !== null && r.monthsAway <= 2;
+const isNewPost = (i: FeedItem) => Date.now() - new Date(i.foundAt).getTime() < 7 * 86400_000;
+
 function whenLabel(r: Row): string {
   if (r.monthsAway === null) return r.closes;
   const m = r.monthsAway;
@@ -31,6 +35,7 @@ export function Scholarships() {
   const { toast, confirm } = useFeedback();
   const [rows, setRows] = useState<Row[]>([]);
   const [countries, setCountries] = useState<CountryNote[]>([]);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [school, setSchool] = useState<SchoolProfile | null>(null);
   const [hasCv, setHasCv] = useState(false);
   const [ready, setReady] = useState(false);
@@ -46,8 +51,8 @@ export function Scholarships() {
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/scholarships');
-      const data = await res.json() as { list: Row[]; countries: CountryNote[]; school: SchoolProfile | null; hasCv: boolean };
-      setRows(data.list); setCountries(data.countries); setSchool(data.school); setHasCv(data.hasCv);
+      const data = await res.json() as { list: Row[]; countries: CountryNote[]; school: SchoolProfile | null; hasCv: boolean; feed: FeedItem[] };
+      setRows(data.list); setFeed(data.feed ?? []); setCountries(data.countries); setSchool(data.school); setHasCv(data.hasCv);
     } catch { toast('Could not load scholarships', { tone: 'error' }); }
     setReady(true);
   }, [toast]);
@@ -172,6 +177,21 @@ export function Scholarships() {
         </div>
       </div>
 
+      {feed.length > 0 && (
+        <div className="sc-countries">
+          <div className="sc-label">Newly posted</div>
+          <div className="sc-clist">
+            {feed.slice(0, 6).map(i => (
+              <a key={i.link} className="sc-crow sc-feed" href={i.link} target="_blank" rel="noopener noreferrer">
+                <span className="sc-cname">{i.region}{isNewPost(i) && <span className="sc-new">New</span>}</span>
+                <span className="sc-cnote sc-ftitle">{i.title}</span>
+                <span className="sc-cnote">{i.deadline.replace(/ deadline/i, '') || 'See page'}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="sc-bar">
         <div className="subtabs" role="group" aria-label="Filter scholarships">
           {FILTERS.map(f => <button key={f.id} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}</button>)}
@@ -188,6 +208,7 @@ export function Scholarships() {
               <button className="sc-head" onClick={() => setOpenId(open ? null : r.id)} aria-expanded={open}>
                 <span className={`match-tag ${tone}`} title="Fit with your details">{r.match.score}%</span>
                 <span className="sc-name">{r.name}<span className="sc-sub">{r.country} · {r.provider}</span></span>
+                {closingSoon(r) && <span className="sc-soon">{r.monthsAway === 0 ? 'Closes this month' : 'Closing soon'}</span>}
                 <span className={`sc-fund ${r.funding}`}>{r.funding === 'full' ? 'Fully funded' : 'Part funded'}</span>
                 {marks[r.id] && <span className="sc-mark">{marks[r.id] === 'saved' ? 'Saved' : marks[r.id] === 'applied' ? 'Applied' : 'Passed'}</span>}
                 <ChevronDown size={15} className={`sc-chev${open ? ' open' : ''}`} />
