@@ -371,7 +371,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
             {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" onClick={() => onStatus('won')}>Won</Btn>}
             {(status === 'approved' || status === 'replied') && <Btn className="btn btn-sm" title="They said no, or are not a fit. Nothing more is sent to them" onClick={() => onStatus('lost')}>Not interested</Btn>}
             {status === 'new' && <Btn className="btn btn-sm" onClick={() => onStatus('skipped')}>Skip</Btn>}
-            {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />Back to To contact</Btn>}
+            {status !== 'new' && <Btn className="btn btn-sm btn-quiet" onClick={() => onStatus('new')}><Icon name="undo" />{isJob ? 'Back to Jobs' : 'Back to To contact'}</Btn>}
             <span className="spacer" />
             <Btn className="btn btn-sm btn-danger" onClick={onDelete}><Icon name="trash" />Delete</Btn>
           </div>

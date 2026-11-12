@@ -111,6 +111,8 @@ export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   if (view === 'approved' && sub === 'followup') return needsAttention(l);
   if (view === 'approved' && sub === 'visited') return s === 'approved' && !!l.contactLinks?.siteVisitedAt;
   if (view === 'approved' && sub === 'opened') return s === 'approved' && !!l.noteOpenedAt;
+  // To contact is for leads you pitch. Job posts have their own Jobs tab, so they are not listed here too.
+  if (view === 'new') return s === 'new' && !isJobLead(l);
   return s === view;
 }
 

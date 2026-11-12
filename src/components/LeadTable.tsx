@@ -133,7 +133,7 @@ export function LeadTable({ leads, sort, onSort, selectedId, onOpen, onStatus, e
                       </button>
                     )}
                     {(status === 'skipped' || status === 'lost') && (
-                      <button className="row-btn" title="Move back to To contact" onClick={() => onStatus(l.id, 'new')}>
+                      <button className="row-btn" title={l.source === 'job' || l.source === 'remote' ? 'Move back to Jobs' : 'Move back to To contact'} onClick={() => onStatus(l.id, 'new')}>
                         Bring back
                       </button>
                     )}

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import type { Lead, LeadStatus } from '@/types/lead';
 import {
-  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, matchesSearch, needsEmail, needsEmailDraft, readyToSchedule, sortLeads, statusOf,
+  SOURCE_LABEL, STATUS_LABEL, SUBS, VIEWS, defaultSort, displayName, inView, isJobLead, matchesSearch, needsEmail, needsEmailDraft, readyToSchedule, sortLeads, statusOf,
   type SortKey, type Sub, type View,
 } from '@/lib/leadview';
 import { needsAttention } from '@/lib/followup';
@@ -417,7 +417,7 @@ export default function Home() {
   // Every lead in To contact (within the current search and source filter) that is ready to email.
   async function scheduleAll() {
     const ids = readyAll.map(l => l.id);
-    const waitingRewrite = scoped.filter(needsEmailDraft).filter(l => statusOf(l) === 'new').length;
+    const waitingRewrite = scoped.filter(needsEmailDraft).filter(l => inView(l, 'new')).length;
     const perDay = outbox?.limit ?? 20;
     const perWeek = outbox?.weekLimit ?? 100;
     const weekdays = Math.max(1, Math.ceil(ids.length / perDay));
@@ -445,7 +445,9 @@ export default function Home() {
     }
     const done = ids.filter((_, i) => results[i]);
     if (!done.length) return;
-    const verb = { approved: 'moved to Waiting for reply', queued: 'scheduled', skipped: 'skipped', new: 'moved back to To contact' }[status as string] ?? 'updated';
+    // Job posts go back to the Jobs tab, everything else to To contact.
+    const backTo = done.length > 0 && done.every(id => { const l = leads.find(x => x.id === id); return !!l && isJobLead(l); }) ? 'Jobs' : 'To contact';
+    const verb = { approved: 'moved to Waiting for reply', queued: 'scheduled', skipped: 'skipped', new: `moved back to ${backTo}` }[status as string] ?? 'updated';
     notify(`${done.length} lead${done.length > 1 ? 's' : ''} ${verb}`, {
       label: 'Undo',
       run: () => done.forEach(id => setStatus(id, before.get(id) ?? 'new', true)),
@@ -464,7 +466,8 @@ export default function Home() {
     return c;
   }, [scoped]);
   const followUpsDue = useMemo(() => scoped.filter(needsAttention).length, [scoped]);
-  const readyAll = useMemo(() => scoped.filter(readyToSchedule), [scoped]);
+  // "Schedule all" belongs to the To contact tab, so it only counts the leads listed there (not job posts).
+  const readyAll = useMemo(() => scoped.filter(l => inView(l, 'new') && readyToSchedule(l)), [scoped]);
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
   const sendFailures = useMemo(() => leads
     // A temporary "try again later" (4xx) while it is still being retried is not a failure yet.
