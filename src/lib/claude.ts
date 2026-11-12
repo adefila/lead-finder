@@ -533,8 +533,12 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
 
   const drafts = new Map<string, Draft>();
   const BATCH = 5;
+  // A job without an email address is not written for: there is nobody to send a message to, and the application
+  // text used to cost a model call for each one. Jobs that do have an email still get their draft.
+  const skipped = leads.filter(l => (draftKind(l) === 'job' || draftKind(l) === 'remote') && !l.contactEmail).length;
+  if (skipped) console.log(`[claude] Not drafting for ${skipped} jobs with no email address`);
   for (const kind of ['job', 'places', 'b2b', 'newco', 'remote', 'inbound', 'visitor'] as DraftKind[]) {
-    const group = leads.filter(l => draftKind(l) === kind);
+    const group = leads.filter(l => draftKind(l) === kind && !((kind === 'job' || kind === 'remote') && !l.contactEmail));
     for (let i = 0; i < group.length; i += BATCH) {
       try {
         const map = await draftBatch(group.slice(i, i + BATCH), kind);

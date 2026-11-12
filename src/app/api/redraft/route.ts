@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
 
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+  // Jobs with no email address are not written for (see generateColdEmails).
+  if ((lead.source === 'job' || lead.source === 'remote') && !lead.contactEmail) return NextResponse.json({ error: 'This job has no email address, so no message is written for it' }, { status: 400 });
 
   // Re-read the site so the owner's name can be found again (site text isn't stored).
   const website = lead.contactLinks?.website;
