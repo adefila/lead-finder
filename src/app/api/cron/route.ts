@@ -5,6 +5,7 @@ import { fetchCompaniesHouseLeads } from '@/lib/companies';
 import { fetchJobBoards, isNicheRole, savedJobStillWanted, withoutLimited } from '@/lib/remote';
 import { backfillJobContacts, findJobContacts } from '@/lib/jobcontacts';
 import { generateColdEmails, MIN_FIT, MIN_FIT_BUSINESS, minFitFor, scoreJobs } from '@/lib/claude';
+import { buildMissingDemos } from '@/lib/demoauto';
 import { getSentIds, markSent, getExistingLeadIds, saveLeads, getLeads, updateLeadStatus, deleteLeads, getProfile } from '@/lib/supabase';
 import { strongMatches, withMatches } from '@/lib/jobmatch';
 import { refreshFeed } from '@/lib/scholarshipfeed';
@@ -123,6 +124,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 5. Jobs already in the dashboard get the same contact search, with whatever time is left.
     const backfill = await backfillJobContacts(Math.min(60_000, 250_000 - (Date.now() - start)));
+
+    // 6. Demos for business leads that have an email, built ahead of sending (best effort, with the time left).
+    const demos = await buildMissingDemos(Math.max(0, 285_000 - (Date.now() - start))).catch(() => ({ built: 0, tried: 0 }));
+    if (demos.tried) console.log(`[cron] demos built: ${demos.built}/${demos.tried}`);
 
     const durationMs = Date.now() - start;
     console.log(`[cron] Done in ${(durationMs / 1000).toFixed(1)}s — ${jobsWithEmails.length} leads saved`);

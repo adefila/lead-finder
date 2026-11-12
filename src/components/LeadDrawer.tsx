@@ -261,7 +261,7 @@ function DrawerContent({ lead, position, onClose, onPrev, onNext, onStatus, onFo
           </section>
         )}
 
-        {!isJob && links.website && <DemoPanel lead={lead} onUpdate={onUpdate} />}
+        {!isJob && (lead.contactEmail || links.website) && <DemoPanel lead={lead} onUpdate={onUpdate} />}
 
         {interested && !isFollowUp && (
           <section className="dsec">

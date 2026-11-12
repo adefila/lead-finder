@@ -3,6 +3,7 @@ import { getLeads, getOutboxLeads, getLeadById, countFirstSentSince, countFollow
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
+import { ensureDemoFor } from '@/lib/demoauto';
 import { hasCheck, isBusinessPitch, isJobLead, leadLanguage } from '@/lib/leadview';
 import { noteCopy } from '@/lib/notecopy';
 import { emailLink, siteLink } from '@/lib/tracking';
@@ -337,6 +338,8 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
+      // No demo yet for this business? Build one now (up to 40s), otherwise the email carries the one-page note.
+      await Promise.race([ensureDemoFor(lead), new Promise(r => setTimeout(r, 40_000))]).catch(() => undefined);
       const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead)) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.

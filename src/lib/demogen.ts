@@ -61,41 +61,25 @@ const RULES = `Rules, all strict:
 - tz: the time zone of the business's city, or null if you are unsure.
 Return ONLY the JSON object.`;
 
-export interface DemoResult { demo: DemoContent; scan: SiteScan }
+export interface DemoResult { demo: DemoContent; scan: SiteScan | null; generic: boolean }
 
-export async function generateDemo(lead: Lead): Promise<DemoResult | { error: string }> {
-  const site = lead.contactLinks?.website;
-  if (!site) return { error: 'This lead has no website to read' };
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return { error: 'The model key is not set' };
-  const scan = await scanSite(site);
-  if (!scan) return { error: 'Could not open their website' };
-  if (scan.paragraphs.length < 2 && scan.headings.length < 3) return { error: 'Their site has too little text to build a demo from' };
+const GENERIC_RULES = `Rules, all strict. There is NO website to read, only the business name, its place and a short description, so this is a generic concept:
+- Say only what any business of this kind plainly does. No years, numbers, awards, clients, prices, guarantees, reviews, partners or claims of any kind.
+- Describe services neutrally, in plain words, as a customer would search for them. Do not say "trusted", "experienced", "leading", "best", "family run", "affordable" or similar.
+- hero.lines: two short lines about what the business does for its customer. No em dashes or en dashes, no exclamation marks.
+- images: all null. clients, results, partners, posts, socials, quotes and coverage: empty lists. since: null. tz: null unless the city is obvious.
+- facts: exactly 3, none of them numbers or statistics: a place served, a kind of service, a way to get in touch. Use words only.
+- look: "modern" unless the business is construction, engineering or industrial (then "blueprint").
+- accent: pick a calm confident colour that suits the trade, as a hex colour.
+- footer.site: empty string. Use the business name and place given.
+- 3 services, 3 process steps, 3 things in why (each a neutral statement of how the business works, not a boast), 3 questions in faq with careful answers that make no promises.
+Return ONLY the JSON object.`;
 
-  const material = [
-    `BUSINESS: ${lead.title}`,
-    `WHERE: ${lead.company}`,
-    `SITE: ${scan.url}`,
-    `TITLE: ${scan.title}`,
-    scan.description && `DESCRIPTION: ${scan.description}`,
-    `BRAND COLOURS: ${scan.colors.join(', ') || 'none found'}`,
-    scan.since ? `STARTED: ${scan.since}` : '',
-    `NAV: ${scan.nav.join(' | ')}`,
-    `HEADINGS:\n${scan.headings.map(h => `- ${h}`).join('\n')}`,
-    `PARAGRAPHS:\n${scan.paragraphs.map(p => `- ${p}`).join('\n')}`,
-    scan.bullets.length ? `LIST ITEMS:\n${scan.bullets.map(b => `- ${b}`).join('\n')}` : '',
-    `QUOTES:\n${scan.quotes.length ? scan.quotes.map(q => `- "${q.text}" (${q.by})`).join('\n') : '(none)'}`,
-    scan.socials.length ? `SOCIALS:\n${scan.socials.map(x => `- ${x.name}: ${x.url}`).join('\n')}` : '',
-    scan.articles.length ? `ARTICLES:\n${scan.articles.map(x => `- ${x.title} | ${x.url}`).join('\n')}` : '',
-    `IMAGES:\n${scan.images.map((u, i) => `${i}: ${u}`).join('\n') || '(none)'}`,
-  ].filter(Boolean).join('\n\n');
+const BANNED = /(award[- ]winning|guarantee[ds]?|no obligation|happy clients?|trusted by|years of experience|market[- ]leading|number one|#1|best in|cheapest|lowest price|100%|satisfaction|certified)/i;
 
-  const client = new Anthropic({ apiKey: key });
-  const prompt = `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${RULES}\n- Output valid JSON only: double-quoted keys and strings, no comments, no trailing commas, no text before or after the object. Where the shape shows alternatives with |, write just one of them.\n\nSITE MATERIAL\n${material}`;
-
+async function ask(client: Anthropic, prompt: string): Promise<Record<string, unknown> | null> {
   // One retry: the first answer sometimes has a stray comment or is cut short.
-  let raw: Record<string, unknown> | null = null;
-  for (let attempt = 0; attempt < 2 && !raw; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const msg = await client.messages.create({
       model: MODEL,
       max_tokens: 9000,
@@ -103,13 +87,61 @@ export async function generateDemo(lead: Lead): Promise<DemoResult | { error: st
     });
     // The answer may start with a thinking block: take every text block, not just the first block.
     const text = msg.content.map(b => (b.type === 'text' ? b.text : '')).join('');
-    raw = parseModelJson(text);
-    if (!raw) console.error(`[demo] unreadable answer (attempt ${attempt + 1}, stop=${msg.stop_reason}, ${text.length} chars): ${text.slice(0, 160).replace(/\s+/g, ' ')} ... ${text.slice(-120).replace(/\s+/g, ' ')}`);
+    const raw = parseModelJson(text);
+    if (raw) return raw;
+    console.error(`[demo] unreadable answer (attempt ${attempt + 1}, stop=${msg.stop_reason}, ${text.length} chars): ${text.slice(0, 160).replace(/\s+/g, ' ')} ... ${text.slice(-120).replace(/\s+/g, ' ')}`);
   }
+  return null;
+}
+
+// opts.generic: if the site cannot be read (or there is none), write a neutral concept from the name and place alone.
+export async function generateDemo(lead: Lead, opts: { generic?: boolean } = {}): Promise<DemoResult | { error: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { error: 'The model key is not set' };
+  const site = lead.contactLinks?.website;
+  let scan: SiteScan | null = null;
+  if (site) {
+    scan = await scanSite(site);
+    if (scan && scan.paragraphs.length < 2 && scan.headings.length < 3) scan = null;
+  }
+  if (!scan && !opts.generic) return { error: site ? 'Could not read their website, or it has too little text' : 'This lead has no website to read' };
+
+  const client = new Anthropic({ apiKey: key });
+  const tail = `- Output valid JSON only: double-quoted keys and strings, no comments, no trailing commas, no text before or after the object. Where the shape shows alternatives with |, write just one of them.`;
+  let prompt: string;
+  if (scan) {
+    const material = [
+      `BUSINESS: ${lead.title}`,
+      `WHERE: ${lead.company}`,
+      `SITE: ${scan.url}`,
+      `TITLE: ${scan.title}`,
+      scan.description && `DESCRIPTION: ${scan.description}`,
+      `BRAND COLOURS: ${scan.colors.join(', ') || 'none found'}`,
+      scan.since ? `STARTED: ${scan.since}` : '',
+      `NAV: ${scan.nav.join(' | ')}`,
+      `HEADINGS:\n${scan.headings.map(h => `- ${h}`).join('\n')}`,
+      `PARAGRAPHS:\n${scan.paragraphs.map(p => `- ${p}`).join('\n')}`,
+      scan.bullets.length ? `LIST ITEMS:\n${scan.bullets.map(b => `- ${b}`).join('\n')}` : '',
+      `QUOTES:\n${scan.quotes.length ? scan.quotes.map(q => `- "${q.text}" (${q.by})`).join('\n') : '(none)'}`,
+      scan.socials.length ? `SOCIALS:\n${scan.socials.map(x => `- ${x.name}: ${x.url}`).join('\n')}` : '',
+      scan.articles.length ? `ARTICLES:\n${scan.articles.map(x => `- ${x.title} | ${x.url}`).join('\n')}` : '',
+      `IMAGES:\n${scan.images.map((u, i) => `${i}: ${u}`).join('\n') || '(none)'}`,
+    ].filter(Boolean).join('\n\n');
+    prompt = `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${RULES}\n${tail}\n\nSITE MATERIAL\n${material}`;
+  } else {
+    const material = [`BUSINESS: ${lead.title}`, `WHERE: ${lead.company}`, lead.description ? `NOTES: ${lead.description.replace(/\s+/g, ' ').slice(0, 300)}` : ''].filter(Boolean).join('\n');
+    prompt = `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${GENERIC_RULES}\n${tail}\n\nWHAT WE KNOW\n${material}`;
+  }
+
+  const raw = await ask(client, prompt);
   if (!raw) return { error: 'The model returned something that could not be read' };
-  const demo = finishDemo(raw, scan.images);
+  const demo = finishDemo(raw, scan?.images ?? []);
+  if (!scan) demo.images = { hero: null, band: null, side: null };
   if (!demo.hero.lines.length || demo.levels.length < 2) return { error: 'The model returned too little to build a page' };
-  return { demo, scan };
+  // Unbacked claims are dropped on automatic builds: better to send the plain note than a promise we cannot keep.
+  const hit = JSON.stringify(demo).match(BANNED);
+  if (hit && !scan) return { error: `The text made a claim it should not (${hit[0]})` };
+  return { demo, scan, generic: !scan };
 }
 
 // The first complete JSON object in the text, tolerating code fences and trailing commas.

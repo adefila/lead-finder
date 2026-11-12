@@ -20,6 +20,9 @@ export interface ContactLinks {
   // A website demo built for this lead: 'draft' until you approve it, then it replaces the note link in the email.
   demo?: 'draft' | 'approved';
   demoLook?: string;
+  // 'site' = built from their website, 'generic' = no readable site so a neutral concept; demoTried = last failed automatic build.
+  demoSource?: 'site' | 'generic';
+  demoTried?: string;
   match?: { score: number; matched: string[]; missing: string[]; at: string };
 }
 

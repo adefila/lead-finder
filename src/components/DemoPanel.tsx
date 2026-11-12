@@ -5,7 +5,7 @@ import { Check, ExternalLink, LayoutTemplate, RefreshCw, Trash2 } from 'lucide-r
 import type { Lead } from '@/types/lead';
 import { useFeedback } from '@/components/feedback';
 
-interface State { status: 'draft' | 'approved' | null; look: string | null; url: string | null; hasWebsite: boolean }
+interface State { status: 'draft' | 'approved' | null; look: string | null; url: string | null; hasWebsite: boolean; source?: string | null }
 const LOOK: Record<string, string> = { modern: 'Modern', console: 'Console', blueprint: 'Blueprint' };
 
 // In a lead's page: build a website demo from their own site, look at it, and approve it. Only an approved demo
@@ -63,14 +63,14 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
     } finally { setBusy(''); }
   };
 
-  if (!state || !state.hasWebsite) return null;
+  if (!state) return null;
   const working = busy !== '';
   return (
     <section className="dsec">
       <h3 className="dsec-title"><LayoutTemplate size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Website demo</h3>
       {!state.status ? (
         <>
-          <p className="check-hint"><span>Builds a one-page concept of their website from their own site, in a look that suits them. It takes about half a minute. Nothing is sent until you approve it.</span></p>
+          <p className="check-hint"><span>Built automatically before the email goes out. You can also build one now: it reads their site, or writes a generic concept when they have none. It takes about half a minute.</span></p>
           <div className="actions">
             <button className="btn btn-primary" onClick={() => void build()} disabled={working}><LayoutTemplate size={14} />{busy === 'build' ? 'Reading their site and building…' : 'Create demo'}</button>
           </div>
@@ -80,6 +80,7 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
           <p className="check-hint"><span>
             {state.status === 'approved' ? 'Approved: their email links to this demo instead of the note.' : 'A draft. Look at it, then approve it to use it in their email.'}
             {state.look ? ` Look: ${LOOK[state.look] ?? state.look}.` : ''}
+            {state.source === 'generic' ? ' Built from the business name only (no readable site), so the text is generic.' : ''}
           </span></p>
           <div className="actions">
             {state.url && <a className="btn" href={state.url} target="_blank" rel="noreferrer"><ExternalLink size={14} />Open demo</a>}

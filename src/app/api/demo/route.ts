@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   const demo = lead.contactLinks?.demo ? await getDemo(id) : null;
-  return NextResponse.json({ status: demo ? lead.contactLinks?.demo : null, look: demo?.look ?? null, url: demo ? previewUrl(lead) : null, hasWebsite: !!lead.contactLinks?.website });
+  return NextResponse.json({ status: demo ? lead.contactLinks?.demo : null, look: demo?.look ?? null, url: demo ? previewUrl(lead) : null, hasWebsite: !!lead.contactLinks?.website, source: lead.contactLinks?.demoSource ?? null });
 }
 
 // Build (or rebuild) the demo from the lead's own website. It starts as a draft: nothing goes in an email until you approve it.
@@ -26,11 +26,11 @@ export async function POST(req: NextRequest) {
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   try {
-    const result = await generateDemo(lead);
+    const result = await generateDemo(lead, { generic: true });
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: 422 });
     const error = await saveDemo(id, result.demo);
     if (error) return NextResponse.json({ error }, { status: 500 });
-    await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: result.demo.look } });
+    await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: result.demo.look, demoSource: result.generic ? 'generic' : 'site' } });
     return NextResponse.json({ status: 'draft', look: result.demo.look, url: previewUrl(lead) });
   } catch (e) {
     console.error('[demo] build failed:', e);
