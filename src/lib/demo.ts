@@ -9,7 +9,7 @@ export interface Pin { label: string; x: number; y: number }   // x and y are pe
 
 export interface DemoContent {
   look: Look;
-  brand: { name: string; word: string; accent: string; accentLit: string; accentInk: string; onAccent: string; deep: string; deep2: string; tint: string; onLit: string; btn: string; btnHover: string };
+  brand: { name: string; word: string; logo: string | null; accent: string; accentLit: string; accentInk: string; onAccent: string; deep: string; deep2: string; tint: string; onLit: string; btn: string; btnHover: string };
   tz: string | null;                                // a time zone puts a live clock in the strip
   centre: string;                                   // the middle of the strip, e.g. "Perth" or "Geraldton and Perth"
   status: string;                                   // the left of the strip
@@ -29,6 +29,7 @@ export interface DemoContent {
   // Modern look: real client names for the strip under the hero, the word to colour in the statement, and optional
   // sections that only appear when the site gives the material (results, partners, articles, social links)
   clients: string[];
+  clientLogos: { name: string; url: string }[];   // the site's own logos for some of those clients
   // Modern look: the problem the customer has, three plain pain points, and one line that leads into the services
   problem: { badge: string; title: string; body: string; points: { title: string; body: string }[]; bridge: string };
   highlight: string;
@@ -111,7 +112,7 @@ export function finishDemo(raw: Record<string, unknown>, images: (string | null)
   });
   return {
     look: r.look === ('blueprint' as never) ? 'blueprint' : r.look === ('console' as never) ? 'console' : 'modern',
-    brand: { name, word: str(brand.word, 24, name.split(' ')[0]), ...brandColours(brand.accent) },
+    brand: { name, word: str(brand.word, 24, name.split(' ')[0]), logo: null, ...brandColours(brand.accent) },
     tz: typeof r.tz === 'string' && r.tz && !/^(null|none)$/i.test(r.tz) ? r.tz : null,
     centre: str(r.centre, 40), status: str(r.status, 40, 'Open for business'),
     meter: r.meter === ('page' as never) ? 'page' : 'percent',
@@ -126,7 +127,7 @@ export function finishDemo(raw: Record<string, unknown>, images: (string | null)
     statement: str(r.statement, 160),
     trust: str(r.trust, 80), micro: str(r.micro, 80), factsTitle: str(r.factsTitle, 70), factsSub: str(r.factsSub, 180),
     facts: list(r.facts, 3, f => { const o = f as Record<string, unknown>; const v = str(o?.value, 14), l = str(o?.label, 28); return v && l ? { value: v, label: l, note: str(o.note, 150) } : null; }),
-    clients: list(r.clients, 8, x => str(x, 40) || null), highlight: str(r.highlight, 24),
+    clients: list(r.clients, 8, x => str(x, 40) || null), clientLogos: [], highlight: str(r.highlight, 24),
     problem: (() => {
       const p = (r.problem ?? {}) as Record<string, unknown>;
       const points = list(p.points, 3, x => { const o = x as Record<string, unknown>; const t = str(o?.title, 40), b = str(o?.body, 190); return t && b ? { title: t, body: b } : null; });

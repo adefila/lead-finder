@@ -21,6 +21,19 @@ function Fact({ value, reduce }: { value: string; reduce: boolean }) {
 }
 
 const Badge = ({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) => <span className="mm-badge"><Icon size={14} aria-hidden />{children}</span>;
+// The business's own logo on a white chip (so any logo reads on the dark bar); the lettermark if it is missing or will not load.
+function Brand({ b, full }: { b: DemoContent['brand']; full?: boolean }) {
+  const [bad, setBad] = useState(false);
+  if (b.logo && !bad) {
+    return (
+      <span className="mm-logo-chip">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={b.logo} alt={b.name} referrerPolicy="no-referrer" onError={() => setBad(true)} />
+      </span>
+    );
+  }
+  return <><span className="mm-logo-mark" aria-hidden>{b.word.charAt(0)}</span>{full ? b.name : b.word}</>;
+}
 const FLAT_PNG = /\.png(\?|$)/i;
 const PAIN_ICONS: LucideIcon[] = [Clock, Puzzle, CircleAlert];
 // How many of the six columns each service card takes, so the grid always fills its rows.
@@ -86,7 +99,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
     <div className="mm" style={style}>
       <header className="mm-nav">
         <div className="mm-wrap mm-nav-in">
-          <a className="mm-logo" href="#top"><span className="mm-logo-mark" aria-hidden>{b.word.charAt(0)}</span>{b.word}</a>
+          <a className="mm-logo" href="#top" aria-label={b.name}><Brand b={b} /></a>
           <nav aria-label="Sections">{c.nav.map(n => <a key={n} href={`#${slug(n)}`}>{n}</a>)}</nav>
           <a className="mm-btn mm-btn-white" href="#contact">Get in touch</a>
         </div>
@@ -138,7 +151,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
         <section className="mm-clients" aria-label="Clients">
           <p>Clients include</p>
           <div className="mm-marquee" aria-hidden>
-            <div className="mm-marquee-track">{[...c.clients, ...c.clients, ...c.clients, ...c.clients].map((n, i) => <span key={i}>{n}</span>)}</div>
+            <div className="mm-marquee-track">{[...c.clients, ...c.clients, ...c.clients, ...c.clients].map((n, i) => { const lg = (c.clientLogos ?? []).find(l => l.name.toLowerCase() === n.toLowerCase()); return <span key={i}>{lg ? <span className="mm-client-logo">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={lg.url} alt={n} referrerPolicy="no-referrer" loading="lazy" /></span> : n}</span>; })}</div>
           </div>
         </section>
       )}
@@ -450,7 +463,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
         <div className="mm-wrap">
           <div className="mm-foot-top">
             <div className="mm-foot-brand">
-              <a className="mm-logo" href="#top"><span className="mm-logo-mark" aria-hidden>{b.word.charAt(0)}</span>{b.name}</a>
+              <a className="mm-logo" href="#top" aria-label={b.name}><Brand b={b} full /></a>
               {(c.footer.blurb || c.hero.sub) && <p className="mm-foot-blurb">{c.footer.blurb || c.hero.sub}</p>}
               <a className="mm-btn mm-btn-primary" href="#contact">{c.closing.cta}<ArrowRight size={16} className="mm-arrow" aria-hidden /></a>
             </div>

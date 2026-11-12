@@ -225,3 +225,10 @@
 .mm-pick-card ul { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 9px; }
 .mm-pick-card li { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
 @media (max-width: 800px) { .mm-pick { grid-template-columns: 1fr; } .mm-pick-card { min-height: 0; } }
+
+/* ── the business's own logo and its clients' logos ── */
+.mm .mm-logo-chip { display: inline-flex; align-items: center; height: 40px; padding: 6px 12px; border-radius: 10px; background: #fff; border: 1px solid rgba(14, 24, 34, 0.08); }
+.mm-logo-chip img { display: block; height: 100%; width: auto; max-width: 150px; object-fit: contain; }
+.mm-foot .mm-logo-chip { height: 44px; }
+.mm-client-logo { display: inline-flex; align-items: center; height: 40px; padding: 6px 14px; border-radius: 10px; background: #fff; }
+.mm-client-logo img { height: 100%; width: auto; max-width: 130px; object-fit: contain; }

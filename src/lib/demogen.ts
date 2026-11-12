@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { scanSite, type SiteScan } from '@/lib/sitescan';
-import { finishDemo, type DemoContent } from '@/lib/demo';
+import { brandColours, finishDemo, type DemoContent } from '@/lib/demo';
 
 // Builds a lead's demo page: read their site, ask the model to write the demo as data (only from what the site says),
 // then clean it up (finishDemo: no dashes, safe lengths, readable colours). Used by the "Create demo" button.
@@ -52,8 +52,9 @@ const RULES = `Rules, all strict:
 - Pick ONE idea from the business's own world and carry it through the names, the status and the numbering. Examples: an IT firm climbs levels (L1 to L4); a tender writer works through a submission (§1 to §3); a process consultancy takes steps (S1 to S4). Choose what is true to THIS business.
 - look: use "modern" for almost every business-to-business company (consulting, IT, software, finance, legal, agencies, training, services). Use "blueprint" ONLY for construction, engineering, architecture, manufacturing and other industrial businesses. Use "console" ONLY for developer tools, infrastructure and data products that would suit a dark technical look.
 - facts: exactly 3, each a REAL fact from the site (a year they started, a number of services, a place, a certification). Never invent a statistic.
-- accent: use one of the BRAND COLOURS if one suits, otherwise pick a confident colour that fits the business. It must be a hex colour like #1b94c9.
+- accent: use the first of the BRAND COLOURS (it is the business's real colour). Only if none are listed, pick a confident colour that fits the business, as a hex colour like #1b94c9.
 - images: choose by index from IMAGES. Prefer photographs (jpg, jpeg, webp). Use null when none fit. Never invent a URL.
+- clients: use the names in CLIENT LOGOS first (they are shown with their real logos), then names from the text.
 - clients, results, partners, posts and socials: ONLY what the site itself shows. If the site shows none, return an empty list. Never invent a name, a figure or a link.
 - Every sentence you write must be backed by a sentence in the site material. Do not add reassurances or claims the site does not make (for example "no obligation", "built on referrals", "happy clients", "award-winning").
 - hero.lines: write two short lines in your own words about what the business does for its customer. Do not just copy the site's headings.
@@ -122,6 +123,7 @@ export async function generateDemo(lead: Lead, opts: { generic?: boolean } = {})
       `TITLE: ${scan.title}`,
       scan.description && `DESCRIPTION: ${scan.description}`,
       `BRAND COLOURS: ${scan.colors.join(', ') || 'none found'}`,
+      scan.clientLogos.length ? `CLIENT LOGOS: ${scan.clientLogos.map(l => l.name).join(', ')}` : '',
       scan.since ? `STARTED: ${scan.since}` : '',
       `NAV: ${scan.nav.join(' | ')}`,
       `HEADINGS:\n${scan.headings.map(h => `- ${h}`).join('\n')}`,
@@ -153,6 +155,13 @@ export async function generateDemo(lead: Lead, opts: { generic?: boolean } = {})
     note = `Your last answer used claims the material does not make (${[...new Set(hit.map(h => h.toLowerCase()))].join(', ')}). Write it again without them, and without anything like them. Also: no referrals, no "happy clients".`;
   }
   if (!demo) return { error: 'The text kept making claims it should not' };
+  // The business's own logo and exact brand colour, and the site's own logos for the clients it names.
+  if (scan) {
+    if (scan.logo) demo.brand.logo = scan.logo;
+    if (scan.brandColor) demo.brand = { ...demo.brand, ...brandColours(scan.brandColor) };
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+    demo.clientLogos = scan.clientLogos.filter(l => demo!.clients.some(n => norm(n).includes(norm(l.name)) || norm(l.name).includes(norm(n))));
+  }
   return { demo, scan, generic: !scan };
 }
 
