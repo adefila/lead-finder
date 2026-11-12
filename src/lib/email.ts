@@ -173,18 +173,28 @@ export const NOTIFY_FROM = () => process.env.NOTIFY_FROM?.trim() || 'info@adefil
 
 // Resend first, because it can send as any address on your verified domain. If that fails, the Workspace mailbox
 // sends it as the same address (shown as info@ only when it is set up as a "Send mail as" alias in Gmail).
-async function deliverNotification(subject: string, html: string): Promise<string> {
+async function deliver(subject: string, html: string): Promise<{ id: string; via: 'resend' | 'workspace'; from: string; to: string }> {
   const to = NOTIFY_TO();
   const from = NOTIFY_FROM();
   if (process.env.RESEND_API_KEY) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const { data, error } = await resend.emails.send({ from: `Lead Finder <${from}>`, to, subject, html });
-    if (!error) return data?.id ?? '';
+    if (!error) return { id: data?.id ?? '', via: 'resend', from, to };
     console.error('[email] Resend failed, trying the Workspace mailbox:', JSON.stringify(error));
   }
   const cfg = mailConfig();
   if (!cfg) throw new Error('No mail provider is set up for notifications');
-  return sendMail(cfg, { to, subject, text: subject, html, from: { name: 'Lead Finder', address: from } });
+  const id = await sendMail(cfg, { to, subject, text: subject, html, from: { name: 'Lead Finder', address: from } });
+  return { id, via: 'workspace', from, to };
+}
+
+async function deliverNotification(subject: string, html: string): Promise<string> {
+  return (await deliver(subject, html)).id;
+}
+
+// A harmless test alert, so you can see where the alerts come from and where they land.
+export async function sendTestAlert() {
+  return deliver('Test alert from Lead Finder', '<p style="font-family:sans-serif;font-size:14px">This is a test of the alerts about new leads and website visitors. If it is from info@ and in your inbox, it works.</p>');
 }
 
 export async function sendLeadsEmail(leads: Lead[], followUpsDue = 0): Promise<void> {
