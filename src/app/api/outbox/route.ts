@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { hasTimerSecret, isAllowed } from '@/lib/session';
 import { runOutbox } from '@/lib/outbox';
+import { buildMissingDemos } from '@/lib/demoauto';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 async function run() {
   try {
@@ -18,8 +19,12 @@ async function run() {
 
 // Called every ~15 minutes by an external timer (Authorization: Bearer CRON_SECRET),
 // or by the dashboard's "Send the next email now" button.
+// The next few queued leads get their website demo built in the background on every tick, so they are ready when their turn comes.
+const prebuild = () => buildMissingDemos(240_000).then(r => { if (r.tried) console.log(`[outbox] demos built: ${r.built}/${r.tried}`); }).catch(e => console.error('[outbox] demos failed:', e));
+
 export async function GET(req: NextRequest) {
   if (!(await isAllowed(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  after(prebuild);
 
   // The timer gives up after 30 seconds, so answer it straight away and do the work
   // after the response. A slow Gmail can then never make the timer report a failure.

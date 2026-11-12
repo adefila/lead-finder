@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const { subject, body: draft } = splitDraft(lead.proposal ?? '');
   const lang = leadLanguage(lead);
-  const body = withSignature(emailLink(lead) ? withCheckLink(draft, emailLink(lead), lang) : draft, lang, isJobLead(lead), isBusinessPitch(lead));
+  const body = withSignature(emailLink(lead) ? withCheckLink(draft, emailLink(lead), lang, !lead.contactLinks?.website) : draft, lang, isJobLead(lead), isBusinessPitch(lead));
   if (via === 'bid') return NextResponse.redirect(lead.url || home);
   if (!lead.contactEmail) return NextResponse.redirect(home);
   const target = via === 'gmail'

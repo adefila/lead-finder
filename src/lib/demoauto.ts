@@ -23,6 +23,10 @@ export function wantsDemo(l: Lead): boolean {
 export async function ensureDemoFor(lead: Lead): Promise<boolean> {
   if (lead.contactLinks?.demo === 'approved') return true;
   if (!wantsDemo(lead)) return false;
+  // Mark the attempt first: if this run is cut short, the lead is not held forever and the email goes out with the note.
+  const marked = { ...lead.contactLinks, demoTried: new Date().toISOString() };
+  await updateLead(lead.id, { contact_links: marked });
+  lead.contactLinks = marked;
   try {
     const result = await generateDemo(lead, { generic: true });
     if ('error' in result) {
@@ -45,11 +49,12 @@ export async function ensureDemoFor(lead: Lead): Promise<boolean> {
 }
 
 // Builds demos ahead of time for the leads most likely to be emailed next (queued first), within a time budget.
-export async function buildMissingDemos(budgetMs: number, limit = 6, concurrency = 3): Promise<{ built: number; tried: number }> {
+export async function buildMissingDemos(budgetMs: number, limit = 4, concurrency = 4): Promise<{ built: number; tried: number }> {
   const start = Date.now();
   const all = await getLeads();
-  const order = { queued: 0, approved: 1, new: 2 } as Record<string, number>;
-  const todo = all.filter(wantsDemo).sort((a, b) => (order[a.status ?? 'new'] ?? 3) - (order[b.status ?? 'new'] ?? 3)).slice(0, limit);
+  // Only leads waiting to be emailed, in the order they will be sent (best fit first, then oldest).
+  const todo = all.filter(l => l.status === 'queued' && !l.lastSentAt && !l.optedOut && wantsDemo(l))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')).slice(0, limit);
   let built = 0, tried = 0, next = 0;
   const worker = async () => {
     while (next < todo.length && Date.now() - start < budgetMs - 45_000) {

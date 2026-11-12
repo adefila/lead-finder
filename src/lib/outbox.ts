@@ -3,7 +3,7 @@ import { getLeads, getOutboxLeads, getLeadById, countFirstSentSince, countFollow
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
-import { ensureDemoFor } from '@/lib/demoauto';
+import { wantsDemo } from '@/lib/demoauto';
 import { hasCheck, isBusinessPitch, isJobLead, leadLanguage } from '@/lib/leadview';
 import { noteCopy } from '@/lib/notecopy';
 import { emailLink, siteLink } from '@/lib/tracking';
@@ -238,7 +238,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
-    const testText = withSignature(emailLink(next) ? withCheckLink(body, emailLink(next), leadLanguage(next)) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
+    const testText = withSignature(emailLink(next) ? withCheckLink(body, emailLink(next), leadLanguage(next), !next.contactLinks?.website) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
     // Exactly the email the business would get (link and signature included), so you can see
     // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
@@ -289,6 +289,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   const first = plan?.send
     ? [...openNow].sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
+      || Number(wantsDemo(a)) - Number(wantsDemo(b))         // ones still waiting for their demo after the ready ones
       || (b.score ?? 0) - (a.score ?? 0)                     // best fit first
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
     [0]
@@ -299,6 +300,12 @@ export async function runOutbox(): Promise<OutboxResult> {
     const why = capReason ? `${capReason}, no follow-ups due`
       : `${plan?.reason ?? 'Nothing due inside business hours right now'}${backoff.slowed ? ' (slowed after Gmail pushed back)' : ''}`;
     return { ...result, skipped: why };
+  }
+
+  // A new email waits for its demo: the demo builder (started by this same timer tick) is working on it, and the
+  // lead goes out on a later tick with the demo, or with the note if the demo could not be built.
+  if (lead === first && lead !== followUp && wantsDemo(lead)) {
+    return { ...result, skipped: `${lead.title}: waiting for its website demo to be built, it goes out on a later run` };
   }
 
   // The lead list was read at the start of this run, which can take a while. If you moved this lead out in the
@@ -338,9 +345,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      // No demo yet for this business? Build one now (up to 40s), otherwise the email carries the one-page note.
-      await Promise.race([ensureDemoFor(lead), new Promise(r => setTimeout(r, 40_000))]).catch(() => undefined);
-      const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead)) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
+      const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
