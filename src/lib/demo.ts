@@ -110,7 +110,7 @@ export function finishDemo(raw: Record<string, unknown>, images: (string | null)
   return {
     look: r.look === ('blueprint' as never) ? 'blueprint' : r.look === ('console' as never) ? 'console' : 'modern',
     brand: { name, word: str(brand.word, 24, name.split(' ')[0]), ...brandColours(brand.accent) },
-    tz: typeof r.tz === 'string' && r.tz ? r.tz : null,
+    tz: typeof r.tz === 'string' && r.tz && !/^(null|none)$/i.test(r.tz) ? r.tz : null,
     centre: str(r.centre, 40), status: str(r.status, 40, 'Open for business'),
     meter: r.meter === ('page' as never) ? 'page' : 'percent',
     nav: list(r.nav, 4, x => str(x, 18) || null),

@@ -37,10 +37,10 @@ const SCHEMA = `{
   "footer": { "blurb": "one sentence", "columns": [ { "title": "...", "links": ["..."] } ], "place": "city, state or country", "site": "their domain" },
   "clients": ["real client or customer names the site mentions, up to 6, or an empty list"],
   "highlight": "one word from the statement to colour in",
-  "results": [ { "value": "a figure the site really states", "label": "what it measures", "client": "who" } ] (only if the site states real results, otherwise []),
+  "results": [ { "value": "a figure the site really states", "label": "what it measures", "client": "who" } ],
   "partners": ["partner or technology names the site lists, otherwise []"],
-  "posts": [ { "title": "an article title from ARTICLES", "url": "its url from ARTICLES" } ] (otherwise []),
-  "socials": [ { "name": "linkedin|facebook|instagram|youtube|twitter", "url": "from SOCIALS" } ] (otherwise []),
+  "posts": [ { "title": "an article title from ARTICLES", "url": "its url from ARTICLES" } ],
+  "socials": [ { "name": "linkedin|facebook|instagram|youtube|twitter", "url": "from SOCIALS" } ],
   "since": year or null
 }`;
 
@@ -89,20 +89,44 @@ export async function generateDemo(lead: Lead): Promise<DemoResult | { error: st
   ].filter(Boolean).join('\n\n');
 
   const client = new Anthropic({ apiKey: key });
-  const msg = await client.messages.create({
-    model: MODEL,
-    max_tokens: 6000,
-    messages: [{ role: 'user', content: `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${RULES}\n\nSITE MATERIAL\n${material}` }],
-  });
-  const block = msg.content[0];
-  const text = block.type === 'text' ? block.text : '';
-  const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-  try {
-    const raw = JSON.parse(json) as Record<string, unknown>;
-    const demo = finishDemo(raw, scan.images);
-    if (!demo.hero.lines.length || demo.levels.length < 2) return { error: 'The model returned too little to build a page' };
-    return { demo, scan };
-  } catch {
-    return { error: 'The model returned something that could not be read' };
+  const prompt = `Write a concept website for this business as one JSON object, in exactly this shape:\n${SCHEMA}\n\n${RULES}\n- Output valid JSON only: double-quoted keys and strings, no comments, no trailing commas, no text before or after the object. Where the shape shows alternatives with |, write just one of them.\n\nSITE MATERIAL\n${material}`;
+
+  // One retry: the first answer sometimes has a stray comment or is cut short.
+  let raw: Record<string, unknown> | null = null;
+  for (let attempt = 0; attempt < 2 && !raw; attempt++) {
+    const msg = await client.messages.create({
+      model: MODEL,
+      max_tokens: 9000,
+      messages: [{ role: 'user', content: attempt ? `${prompt}\n\nYour last answer could not be parsed as JSON. Answer again with the JSON object only.` : prompt }],
+    });
+    const block = msg.content[0];
+    const text = block.type === 'text' ? block.text : '';
+    raw = parseModelJson(text);
+    if (!raw) console.error(`[demo] unreadable answer (attempt ${attempt + 1}, stop=${msg.stop_reason}, ${text.length} chars): ${text.slice(0, 160).replace(/\s+/g, ' ')} ... ${text.slice(-120).replace(/\s+/g, ' ')}`);
   }
+  if (!raw) return { error: 'The model returned something that could not be read' };
+  const demo = finishDemo(raw, scan.images);
+  if (!demo.hero.lines.length || demo.levels.length < 2) return { error: 'The model returned too little to build a page' };
+  return { demo, scan };
+}
+
+// The first complete JSON object in the text, tolerating code fences and trailing commas.
+function parseModelJson(text: string): Record<string, unknown> | null {
+  const t = text.replace(/```(?:json)?/gi, '');
+  const start = t.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < t.length; i++) {
+    const ch = t[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end < 0) return null;
+  const slice = t.slice(start, end + 1);
+  for (const candidate of [slice, slice.replace(/,\s*([}\]])/g, '$1')]) {
+    try { return JSON.parse(candidate) as Record<string, unknown>; } catch { /* try the next form */ }
+  }
+  return null;
 }
