@@ -390,7 +390,9 @@ export async function saveAnswers(a: Answers): Promise<string | null> {
 export async function getDemo(leadId: string): Promise<DemoContent | null> {
   const { data, error } = await db().from('profile').select('skills').eq('id', `demo-${leadId}`).maybeSingle();
   if (error) { console.error('[supabase] getDemo:', error.message); return null; }
-  return (data?.skills as DemoContent | null) ?? null;
+  const demo = (data?.skills as DemoContent | null) ?? null;
+  // Demos saved before a field existed still open: fill what is missing with empty values.
+  return demo ? { ...demo, problem: demo.problem ?? { badge: 'The problem', title: '', body: '', points: [], bridge: '' } } : null;
 }
 
 export async function saveDemo(leadId: string, demo: DemoContent): Promise<string | null> {

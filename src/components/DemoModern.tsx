@@ -143,7 +143,7 @@ export function DemoModern({ c, yesHref, waHref }: { c: DemoContent; yesHref: st
       )}
 
       {/* The problem: what the customer is up against, three plain points, then a line that leads into the services */}
-      {c.problem.points.length > 0 && c.problem.title && (
+      {c.problem?.points.length > 0 && c.problem.title && (
         <section className="mm-sec">
           <div className="mm-wrap">
             <div className="mm-center"><Badge icon={CircleAlert}>{c.problem.badge}</Badge></div>
