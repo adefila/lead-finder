@@ -554,6 +554,29 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     }
   }
 
+  // An email needs its "Subject:" line first (the app reads it). If the model put it after the greeting, move it up; if it
+  // left it out, write that one message again (up to twice) rather than send something without a subject.
+  const hasSubjectFirst = (m: string) => /^\s*Subject:/i.test(m);
+  for (const l of leads) {
+    if (!l.contactEmail || isJobLead(l) || l.source === 'website' || l.source === 'visitor') continue;
+    let d = drafts.get(l.id);
+    if (!d) continue;
+    const found = d.message.match(/^\s*Subject:.*$/im)?.[0];
+    if (!hasSubjectFirst(d.message) && found) {
+      d.message = `${found.trim()}
+
+${d.message.replace(found, '').replace(/
+{3,}/g, '
+
+').trim()}`;
+    }
+    for (let tries = 0; tries < 2 && !hasSubjectFirst(d.message); tries++) {
+      const again = await draftBatch([l], draftKind(l)).catch(() => null);
+      const next = again?.get(l.id);
+      if (next && hasSubjectFirst(next.message)) { d = next; drafts.set(l.id, next); }
+    }
+  }
+
   // Dutch drafts must use "u" throughout; the model sometimes slips into "je".
   for (const l of leads) {
     const d = drafts.get(l.id);
