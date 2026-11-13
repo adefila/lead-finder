@@ -574,6 +574,11 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
       const next = again?.get(l.id);
       if (next && hasSubjectFirst(next.message) && !slipped(next.message)) { d = next; drafts.set(l.id, next); }
     }
+    // Still no subject: a plain one in their language is better than an email that cannot be sent.
+    if (!hasSubjectFirst(d.message)) {
+      const plain: Record<string, string> = { en: 'An idea for', nl: 'Een idee voor', no: 'En idé for', fr: 'Une idée pour', de: 'Eine Idee für', es: 'Una idea para', pt: 'Uma ideia para', it: 'Un\'idea per' };
+      d.message = `Subject: ${plain[leadLanguage(l)] ?? plain.en} ${l.title}\n\n${d.message.trim()}`;
+    }
   }
 
   // Dutch drafts must use "u" throughout; the model sometimes slips into "je".
