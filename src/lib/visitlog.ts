@@ -13,6 +13,18 @@ export interface VisitEvent { at: number; kind: VisitKind; leadId: string; net: 
 
 const BURST_WINDOW_MS = 5 * 60_000;
 const BURST_LEADS = 3; // this many different leads within the window = a scanner
+export const DOUBLE_CLICK_MS = 3000;
+
+// Towns where the big clouds run their data centres. A click from one of them, in a different country from the
+// business, is a security scanner (Amazon in Ohio or Virginia, Microsoft in Ireland, and so on).
+const CLOUD_TOWNS = /^(Columbus|Ashburn|Boardman|The Dalles|Council Bluffs|Quincy|Moses Lake|Des Moines|San Jose|Santa Clara|Hillsboro|Frankfurt|Dublin|Singapore|Tokyo)\b/i;
+const COUNTRY: Record<string, string> = { uk: 'GB', 'united kingdom': 'GB', australia: 'AU', ireland: 'IE', 'new zealand': 'NZ', norway: 'NO', netherlands: 'NL', luxembourg: 'LU', singapore: 'SG', canada: 'CA', us: 'US', usa: 'US', 'united states': 'US' };
+export function cloudMismatch(where: string, lead: Pick<Lead, 'company'>): boolean {
+  const town = where.replace(/\s+[A-Z]{2}$/, '');
+  const visitor = where.match(/\s([A-Z]{2})$/)?.[1];
+  const home = COUNTRY[(lead.company.split(',').pop() ?? '').trim().toLowerCase()];
+  return !!visitor && !!home && visitor !== home && CLOUD_TOWNS.test(town);
+}
 
 const clean = (s: string, max: number) => s.replace(/[|\s]+/g, ' ').trim().slice(0, max);
 
@@ -51,6 +63,21 @@ export async function logVisitAndCheckBurst(lead: Lead, kind: VisitKind, ctx?: {
   await logVisitEvent(encode(event), new Date(now)).catch(() => undefined);
   console.log(`[visit-log] ${kind} ${lead.title} from ${c.where} net ${c.net} ua ${clean(c.ua, 60)}`);
 
+  // From a data-centre town in another country than the business: a scanner running on a cloud, not the owner.
+  if (cloudMismatch(c.where, lead)) {
+    console.log(`[visit-log] ${lead.title}: click from ${c.where} is a cloud scanner, not counted`);
+    return true;
+  }
+  // Two clicks on one lead's links within 3 seconds (the site link and the note together, or one link twice) cannot be a
+  // person: a scanner is opening everything in the email. Take back the click it already got counted.
+  const mine = earlier.filter(e => e.leadId === lead.id && now - e.at <= DOUBLE_CLICK_MS);
+  if (mine.length) {
+    console.log(`[visit-log] ${lead.title}: two clicks within ${DOUBLE_CLICK_MS / 1000}s, treated as a scanner`);
+    const fresh = await getLeadById(lead.id).catch(() => null);
+    if (fresh) await undoSingleVisit(fresh, mine.map(e => e.kind));
+    return true;
+  }
+
   const others = burstLeads(earlier, lead.id, now);
   if (!others.length) return false;
   console.log(`[visit-log] burst: ${others.length + 1} different leads clicked within 5 minutes, treated as a scanner`);
@@ -63,7 +90,7 @@ export async function logVisitAndCheckBurst(lead: Lead, kind: VisitKind, ctx?: {
 
 // Takes back a click that only exists because of the burst: a lead with exactly one counted
 // visit goes back to "not visited"; one with several keeps them (a person came back later).
-async function undoSingleVisit(lead: Lead, kinds: VisitKind[]): Promise<void> {
+export async function undoSingleVisit(lead: Lead, kinds: VisitKind[]): Promise<void> {
   if (kinds.includes('site') && (lead.contactLinks?.siteVisits ?? 0) <= 1 && lead.contactLinks?.siteVisitedAt) {
     const { siteVisitedAt: _a, siteVisits: _b, sitePages: _c, ...rest } = lead.contactLinks;
     void _a; void _b; void _c;
