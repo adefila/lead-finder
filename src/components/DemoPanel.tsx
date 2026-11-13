@@ -23,10 +23,11 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
   }, [lead.id]);
   useEffect(() => { void load(); }, [load]);
 
-  const setLinks = (demo: 'draft' | 'approved' | undefined, look?: string) => {
+  const setLinks = (demo: 'draft' | 'approved' | undefined, look?: string, emailUrl?: string | null) => {
     const links = { ...lead.contactLinks };
     if (demo) { links.demo = demo; if (look) links.demoLook = look; } else { delete links.demo; delete links.demoLook; }
-    onUpdate({ contactLinks: links });
+    // checkUrl is the link the email carries: keeping it current is what puts an approved demo into the message preview.
+    onUpdate(emailUrl === undefined ? { contactLinks: links } : { contactLinks: links, checkUrl: emailUrl ?? undefined });
   };
 
   const build = async (kind?: 'reminders') => {
@@ -47,8 +48,9 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
     try {
       const res = await fetch('/api/demo', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, approve: yes }) });
       if (!res.ok) { toast('Could not save that', { tone: 'error' }); return; }
+      const data = await res.json() as { emailUrl?: string | null };
       setState(s => (s ? { ...s, status: yes ? 'approved' : 'draft' } : s));
-      setLinks(yes ? 'approved' : 'draft');
+      setLinks(yes ? 'approved' : 'draft', undefined, data.emailUrl ?? null);
       toast(yes ? 'Approved. Their email will link to this demo' : 'Taken back to a draft. Their email links to the note again', { tone: 'success' });
     } finally { setBusy(''); }
   };
@@ -57,9 +59,10 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
     if (!await confirm({ title: 'Remove this demo?', body: 'The email goes back to linking the one-page note.', confirmLabel: 'Remove', danger: true })) return;
     setBusy('remove');
     try {
-      await fetch('/api/demo', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) });
+      const res = await fetch('/api/demo', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) });
+      const data = await res.json().catch(() => ({})) as { emailUrl?: string | null };
       setState(s => (s ? { ...s, status: null, url: null, look: null } : s));
-      setLinks(undefined);
+      setLinks(undefined, undefined, data.emailUrl ?? null);
     } finally { setBusy(''); }
   };
 
