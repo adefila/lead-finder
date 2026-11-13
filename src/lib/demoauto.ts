@@ -12,6 +12,8 @@ const AHEAD = 25;
 const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export function wantsDemo(l: Lead): boolean {
+  // Off unless AUTO_DEMOS=true is set in Vercel: until then demos are built only with the button in a lead's page.
+  if (process.env.AUTO_DEMOS !== 'true') return false;
   if (isJobLead(l) || l.source === 'website' || l.source === 'visitor') return false;
   if (!(isBusinessPitch(l) || isB2B(l))) return false;
   if (!l.contactEmail) return false;
