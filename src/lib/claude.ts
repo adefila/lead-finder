@@ -565,10 +565,14 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     if (!hasSubjectFirst(d.message) && found) {
       d.message = `${found.trim()}\n\n${d.message.replace(found, '').replace(/\n{3,}/g, '\n\n').trim()}`;
     }
-    for (let tries = 0; tries < 2 && !hasSubjectFirst(d.message); tries++) {
+    // A message for a business in another language must be written wholly in that language: the model sometimes slips back
+    // into English in the middle. Count words that only English uses, and write the message again if there are several.
+    const slipped = (m: string) => leadLanguage(l) !== 'en'
+      && (m.replace(/^\s*Subject:.*\n/i, '').replace(new RegExp(l.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').match(/\b(the|your|you|that|this|their|from|small|with|would|could|have|are)\b/gi) ?? []).length >= 4;
+    for (let tries = 0; tries < 2 && (!hasSubjectFirst(d.message) || slipped(d.message)); tries++) {
       const again = await draftBatch([l], draftKind(l)).catch(() => null);
       const next = again?.get(l.id);
-      if (next && hasSubjectFirst(next.message)) { d = next; drafts.set(l.id, next); }
+      if (next && hasSubjectFirst(next.message) && !slipped(next.message)) { d = next; drafts.set(l.id, next); }
     }
   }
 
