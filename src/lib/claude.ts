@@ -563,12 +563,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     if (!d) continue;
     const found = d.message.match(/^\s*Subject:.*$/im)?.[0];
     if (!hasSubjectFirst(d.message) && found) {
-      d.message = `${found.trim()}
-
-${d.message.replace(found, '').replace(/
-{3,}/g, '
-
-').trim()}`;
+      d.message = `${found.trim()}\n\n${d.message.replace(found, '').replace(/\n{3,}/g, '\n\n').trim()}`;
     }
     for (let tries = 0; tries < 2 && !hasSubjectFirst(d.message); tries++) {
       const again = await draftBatch([l], draftKind(l)).catch(() => null);
