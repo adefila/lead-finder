@@ -15,22 +15,30 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
-  const demo = lead.contactLinks?.demo ? await getDemo(id) : null;
-  return NextResponse.json({ status: demo ? lead.contactLinks?.demo : null, look: demo?.look ?? null, url: demo ? previewUrl(lead) : null, hasWebsite: !!lead.contactLinks?.website, source: lead.contactLinks?.demoSource ?? null });
+  const reminders = lead.contactLinks?.demoKind === 'reminders';
+  const demo = lead.contactLinks?.demo && !reminders ? await getDemo(id) : null;
+  const has = !!demo || (reminders && !!lead.contactLinks?.demo);
+  return NextResponse.json({ status: has ? lead.contactLinks?.demo : null, look: reminders ? 'reminders' : demo?.look ?? null, url: has ? previewUrl(lead) : null, hasWebsite: !!lead.contactLinks?.website, source: lead.contactLinks?.demoSource ?? null, kind: reminders ? 'reminders' : null });
 }
 
 // Build (or rebuild) the demo from the lead's own website. It starts as a draft: nothing goes in an email until you approve it.
 export async function POST(req: NextRequest) {
-  const { id } = await req.json() as { id?: string };
+  const { id, kind } = await req.json() as { id?: string; kind?: string };
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+  // The appointment-reminders demo is built from the lead's name and kind of business: no model, instant, free.
+  if (kind === 'reminders') {
+    await deleteDemo(id);
+    const error = await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: 'reminders', demoKind: 'reminders' } });
+    return error ? NextResponse.json({ error }, { status: 500 }) : NextResponse.json({ status: 'draft', look: 'reminders', url: previewUrl(lead), kind: 'reminders' });
+  }
   try {
     const result = await generateDemo(lead, { generic: true });
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: 422 });
     const error = await saveDemo(id, result.demo);
     if (error) return NextResponse.json({ error }, { status: 500 });
-    await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: result.demo.look, demoSource: result.generic ? 'generic' : 'site' } });
+    await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: result.demo.look, demoSource: result.generic ? 'generic' : 'site', demoKind: undefined } });
     return NextResponse.json({ status: 'draft', look: result.demo.look, url: previewUrl(lead) });
   } catch (e) {
     console.error('[demo] build failed:', e);
@@ -54,8 +62,8 @@ export async function DELETE(req: NextRequest) {
   const lead = await getLeadById(id);
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   await deleteDemo(id);
-  const { demo: _demo, demoLook: _look, ...rest } = lead.contactLinks ?? {};
-  void _demo; void _look;
+  const { demo: _demo, demoLook: _look, demoKind: _kind, ...rest } = lead.contactLinks ?? {};
+  void _demo; void _look; void _kind;
   await updateLead(id, { contact_links: Object.keys(rest).length ? rest : null });
   return NextResponse.json({ ok: true });
 }

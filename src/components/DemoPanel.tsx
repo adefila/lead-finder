@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ExternalLink, LayoutTemplate, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarCheck, Check, ExternalLink, LayoutTemplate, RefreshCw, Trash2 } from 'lucide-react';
 import type { Lead } from '@/types/lead';
 import { useFeedback } from '@/components/feedback';
 
-interface State { status: 'draft' | 'approved' | null; look: string | null; url: string | null; hasWebsite: boolean; source?: string | null }
-const LOOK: Record<string, string> = { modern: 'Modern', console: 'Console', blueprint: 'Blueprint' };
+interface State { status: 'draft' | 'approved' | null; look: string | null; url: string | null; hasWebsite: boolean; source?: string | null; kind?: string | null }
+const LOOK: Record<string, string> = { modern: 'Modern', console: 'Console', blueprint: 'Blueprint', reminders: 'Appointment reminders' };
 
 // In a lead's page: build a website demo from their own site, look at it, and approve it. Only an approved demo
 // replaces the one-page note in the email.
@@ -29,13 +29,13 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
     onUpdate({ contactLinks: links });
   };
 
-  const build = async () => {
+  const build = async (kind?: 'reminders') => {
     setBusy('build');
     try {
-      const res = await fetch('/api/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) });
-      const data = await res.json() as { status?: 'draft'; look?: string; url?: string; error?: string };
+      const res = await fetch('/api/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, kind }) });
+      const data = await res.json() as { status?: 'draft'; look?: string; url?: string; error?: string; kind?: string };
       if (!res.ok || !data.url) { toast(data.error ?? 'Could not build the demo', { tone: 'error' }); return; }
-      setState({ status: 'draft', look: data.look ?? null, url: data.url, hasWebsite: true });
+      setState({ status: 'draft', look: data.look ?? null, url: data.url, hasWebsite: true, kind: data.kind ?? null });
       setLinks('draft', data.look);
       toast('Demo built. Open it and check it before you approve', { tone: 'success' });
     } catch { toast('Could not build the demo', { tone: 'error' }); }
@@ -70,9 +70,10 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
       <h3 className="dsec-title"><LayoutTemplate size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Website demo</h3>
       {!state.status ? (
         <>
-          <p className="check-hint"><span>Built automatically before the email goes out. You can also build one now: it reads their site, or writes a generic concept when they have none. It takes about half a minute.</span></p>
+          <p className="check-hint"><span>Two kinds. The reminders demo shows their kind of business booking an appointment and getting the reminder texts (instant, free, nothing invented). The website concept reads their site and costs a little. Nothing is sent until you approve it.</span></p>
           <div className="actions">
-            <button className="btn btn-primary" onClick={() => void build()} disabled={working}><LayoutTemplate size={14} />{busy === 'build' ? 'Reading their site and building…' : 'Create demo'}</button>
+            <button className="btn btn-primary" onClick={() => void build('reminders')} disabled={working}><CalendarCheck size={14} />{busy === 'build' ? 'Building…' : 'Create reminders demo'}</button>
+            <button className="btn" onClick={() => void build()} disabled={working}><LayoutTemplate size={14} />Website concept</button>
           </div>
         </>
       ) : (
@@ -87,7 +88,7 @@ export function DemoPanel({ lead, onUpdate }: { lead: Lead; onUpdate: (patch: Pa
             {state.status === 'draft'
               ? <button className="btn btn-primary" onClick={() => void approve(true)} disabled={working}><Check size={14} />Approve for the email</button>
               : <button className="btn" onClick={() => void approve(false)} disabled={working}>Use the note instead</button>}
-            <button className="btn btn-quiet" onClick={() => void build()} disabled={working}><RefreshCw size={14} />{busy === 'build' ? 'Building…' : 'Rebuild'}</button>
+            <button className="btn btn-quiet" onClick={() => void build(state.kind === 'reminders' ? 'reminders' : undefined)} disabled={working}><RefreshCw size={14} />{busy === 'build' ? 'Building…' : 'Rebuild'}</button>
             <button className="btn btn-quiet" onClick={() => void remove()} disabled={working}><Trash2 size={14} />Remove</button>
           </div>
         </>

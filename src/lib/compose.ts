@@ -35,6 +35,7 @@ const NOTE_INTRO: Record<Lang, { line: string; linkText: string; before: string 
 };
 
 // The same, for a website demo. English for every language: demos are only built for English-speaking B2B companies.
+const DEMO_INTRO_REMINDERS = { line: 'I made a small demo of how appointment reminders would work for you. Try booking one:', before: 'I made a small demo of how appointment reminders would work for you.', linkText: 'Try booking one' };
 const DEMO_INTRO_NOSITE = { line: "You don't seem to have a website yet, so I put together a quick concept of what one could look like:", before: "You don't seem to have a website yet, so I put together a", linkText: 'quick concept of what one could look like' };
 const DEMO_INTRO = { line: 'I put together a quick concept of what your website could look like:', before: 'I put together a', linkText: 'quick concept of what your website could look like' };
 
@@ -42,9 +43,9 @@ const DEMO_INTRO = { line: 'I put together a quick concept of what your website 
 // and the sign-off. Safe to call twice.
 const OPT_OUT_LINE = /not something you need|just say so|won't follow up|will not follow up|not for you|no worries|not the right time|let me know if not|geen probleem|laat het (me|mij) (gerust )?weten|niet voor u|ikke noe problem|bare si fra|ikke for dere|pas de souci|aucun (souci|problème)|dites-le-moi|n'hésitez pas à me le dire|je ne vous relancerai pas|niets voor u|niet iets voor u|mail ik u niet meer|noe for (deg|dere)|si fra|ikke å svare|sender jeg ikke mer|ne vous intéresse pas|pas utile pour vous|pas besoin de répondre/i;
 
-export function withCheckLink(body: string, link?: string, lang: Lang = 'en', noSite = false): string {
+export function withCheckLink(body: string, link?: string, lang: Lang = 'en', noSite = false, kind?: string): string {
   if (!link || body.includes(link) || /\/(check|n|d)\/[\w-]/.test(body)) return body;
-  const line = `${/\/d\/[\w-]+$/.test(link) ? (noSite ? DEMO_INTRO_NOSITE.line : DEMO_INTRO.line) : NOTE_INTRO[lang].line}\n${link}`;
+  const line = `${/\/d\/[\w-]+$/.test(link) ? (kind === 'reminders' ? DEMO_INTRO_REMINDERS.line : noSite ? DEMO_INTRO_NOSITE.line : DEMO_INTRO.line) : NOTE_INTRO[lang].line}\n${link}`;
   const paras = body.trimEnd().split(/\n\s*\n/);
   let at = paras.findIndex(p => /^Samuel\b/.test(p.trim()));
   if (at < 0) at = paras.length;
@@ -105,7 +106,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // siteUrl: a tracked link to use for "adefilasamuel.com", so a visit from this email is recorded.
 export function toHtml(text: string, siteUrl = 'https://adefilasamuel.com'): string {
   const paras = text.trim().split(/\n\s*\n/).map(p => {
-    for (const intro of [...Object.values(NOTE_INTRO), DEMO_INTRO, DEMO_INTRO_NOSITE]) {
+    for (const intro of [...Object.values(NOTE_INTRO), DEMO_INTRO, DEMO_INTRO_NOSITE, DEMO_INTRO_REMINDERS]) {
       if (!p.startsWith(intro.line)) continue;
       const url = p.slice(intro.line.length).trim();
       if (/^https?:\/\/\S+$/.test(url)) return `${esc(intro.before)} <a href="${esc(url)}">${esc(intro.linkText)}</a>.`;

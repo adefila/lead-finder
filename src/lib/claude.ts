@@ -268,7 +268,7 @@ const APPROACH = `Approach (a pitch, short and direct, applies to every cold mes
   2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "Right now bookings are by phone only."). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
   3. The offer: what he would set up for them, in one or two sentences, with "fixed price" and "live in two weeks" where they fit. Who he is can come here as a short clause at most (e.g. "I set these up for small clinics").
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small and specific (seeing a short demo or an example made for their business), then in the same paragraph a short line saying that if not, he won't follow up. E.g. "Shall I show you a short demo of how it would work for Bright Smile? If not, no problem, I won't follow up." Never write the words "yes or no" (or "ja of nee", "ja eller nei", "oui ou non"), and never an open question ("What do you think?", "When are you free?").
+  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small and specific (seeing a short demo or an example made for their business), then in the same paragraph a short, honest way out. E.g. "Want me to set this up for Bright Smile? Just reply YES and I'll show you exactly how it would work. If it's not for you, say so and I'll leave you alone." Never write the words "yes or no" (or "ja of nee", "ja eller nei", "oui ou non"), and never an open question ("What do you think?", "When are you free?").
 - Confident and friendly, never apologetic or salesy. Never explain at length why something matters, never lecture, no statistics, no "a lot of people...", no "did you know".
 - Never sound like a template: no "I can help you grow", "increase your revenue", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
@@ -283,7 +283,7 @@ Right now bookings are by phone only. I set up online booking for small clinics,
 
 I also designed BookedEZ, a booking app that paid out over $10K in its first month.
 
-Shall I show you a short demo of how it would work for Bright Smile? If not, no problem, I won't follow up."`;
+Want me to set this up for Bright Smile? Just reply YES and I'll show you exactly how it would work. If it's not for you, say so and I'll leave you alone."`;
 
 // How every B2B message is built: a short introduction of Samuel with one offer and one proof point, to a founder or owner.
 const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every message):
@@ -294,7 +294,7 @@ const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every mess
   2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
   3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present what they sell. Then, in the same paragraph, a short line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
+  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present what they sell. Then, in the same paragraph, a short honest way out (say so and he will leave them alone) instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
 - Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
 - Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
@@ -309,7 +309,7 @@ Right now the first screen leads with the company story. I rebuild B2B websites 
 
 I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
 
-Shall I send a one-page sketch of how Northwind's homepage could lead with the product? If not, no problem, I won't follow up."`;
+Want me to send a one-page sketch of how Northwind's homepage could lead with the product? Just reply YES. If it's not for you, say so and I'll leave you alone."`;
 
 const PROMPTS: Record<DraftKind, string> = {
   b2b: `Write outreach from Samuel Adefila to the founder or owner of each B2B company below. He found them on Google Maps and looked at their website. "Findings" lists what was noticed. "Site text" is text scraped from their site.
@@ -423,10 +423,11 @@ Step 1, find the person. Look in the business name and site text for the owner, 
 
 Step 2, write the message.
 - Greeting: "Hi [FirstName]," when you found a person (use "Hi Dr. [LastName]," for doctors and dentists). If no person but it's clearly a team, "Hi [Business name] team,". Otherwise "Hi there,".
-- If Channel is EMAIL: line 1 is "Subject: ..." (under 6 words, naming what he would set up for them, e.g. "Online booking for Bright Smile", no clickbait), blank line, then body under 80 words.
+- If Channel is EMAIL: line 1 is "Subject: ..." (under 7 words, naming the specific problem he would fix for them, e.g. "Appointment reminders for Bright Smile" or "Quote requests that arrive with photos attached". Never the words homepage, website or concept, and never a bare tool name like "Intake form for X". No clickbait), blank line, then body under 80 words.
 - If Channel is DM: no subject line, under 50 words. It goes out as an Instagram, Facebook or LinkedIn message.
 - Follow the Approach below. The "Angle" line picks the one fact used for "why them". Every business gets a different angle on purpose, so the batch never reads like one template.
 - Do not mention star ratings or review counts unless the angle is REPUTATION. Never open with "X reviews at Y stars".
+- Lead with the PROBLEM the owner lives with (missed appointments, quote requests that arrive with no details, enquiries that go cold), then the fix. Messages that name a real problem get answered; messages about a website or a page do not.
 - The idea in the message is the "Idea to offer": a simple system that saves them time or brings in customers, described in plain words and tied to their kind of business. Not every business needs a new website, so do not pitch a website first.
 - Never use words like HTTPS, SEO, viewport, load time, optimisation or automation. A website issue from the findings can be the "why them" fact, in plain words, but only if the angle points there.
 - Vary what the closing question offers between messages: a short demo for their business, a short example made for them, or a ten-minute call. It is always a question they can answer in one word.
@@ -583,7 +584,7 @@ function humanRules(facts: string[]): string {
 - 35 to 65 words, two or three short paragraphs. Shorter beats longer.
 - Open with something specific to THEM (their business, their town, one real thought about how their day works), never about emails or about Samuel. Never open with "just following up", "hope you're well", "wanted to check in", "quick question", or any line that could be sent to a hundred businesses.
 - One idea only, said the way you would to a friend: what actually changes for them day to day (who stops doing what). No list of services and no pitch for several things.
-- Offer one small thing Samuel will do himself (for example a short video of how it would look for them, or a rough sketch of the page) and ask a plain question in your own words. Do NOT end with "Yes or no is fine", "let me know" or "I'd love to hear your thoughts".
+- Offer one small thing Samuel will do himself (for example a short working demo of the fix with their business name on it, or a short video of how it would look for them) and ask a plain question in your own words. Do NOT end with "Yes or no is fine", "let me know" or "I'd love to hear your thoughts".
 - Sound like a person: vary sentence length, you may start a sentence with "And" or "But", and it can be a little informal. Not sloppy, no slang, no jokes, no emojis.
 - Do not repeat the first email's wording or its offer. Do not apologise for writing again.${draw}`;
 }
@@ -636,8 +637,8 @@ Rules:
 - Plain words only: never technical terms such as HTTPS, SSL, certificate, SEO, viewport, load time or automation.
 - Never ask whether they read, saw or had time for the earlier message, in any language (not "did you see my email", "je me demandais si vous aviez eu le temps de lire", "heeft u mijn bericht gezien", "fikk du lest"). Go straight to the new useful point.
 - If you ask a question, end it with a question mark.
-${warm ? humanRules(facts) : `- Follow-up 1: under 60 words. Don't repeat the first message. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to their business, or a second idea), then offer to help. End with a yes/no question.
-- Follow-up 2: under 45 words. Polite last check-in. Say you won't keep emailing, and leave the door open.`}
+${warm ? humanRules(facts) : `- Follow-up 1: under 60 words. Don't repeat the first message. Stay on the problem, not on a website. Give them one new, genuinely useful thing they can use even if they never hire Samuel (a small tip tied to the problem, or what a similar business ended up doing), then offer to help. End with a question they can answer in one word.
+- Follow-up 2: under 45 words. A calm last note. Say this is the last one, and leave the door open with one line they could reply to.`}
 - Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
 - Sign off "Samuel".${leadLanguage(lead) !== 'en' ? `
 - Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, as a native speaker would, with the same form of address as his first message${leadLanguage(lead) === 'nl' ? ' ("u", never "je" or "jij")' : leadLanguage(lead) === 'fr' ? ' ("vous", never "tu")' : ''}.` : ''}

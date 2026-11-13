@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { cache } from 'react';
 import { DemoSite } from '@/components/DemoSite';
 import { DemoModern } from '@/components/DemoModern';
+import { DemoReminders } from '@/components/DemoReminders';
+import { reminderContent } from '@/lib/remind';
 import { SAMPLE_DEMOS } from '@/lib/demo';
 import { findLeadByCode } from '@/lib/leadlookup';
 import { getDemo } from '@/lib/supabase';
@@ -21,24 +23,34 @@ const load = cache(async (key: string, me: boolean) => {
   const lead = await findLeadByCode('note', code);
   if (!lead || !lead.contactLinks?.demo) return null;
   if (lead.contactLinks.demo !== 'approved' && !me) return null;
+  if (lead.contactLinks.demoKind === 'reminders') return { demo: null, lead };
   const demo = await getDemo(lead.id);
   return demo ? { demo, lead } : null;
 });
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const found = await load((await params).key, (await searchParams).me === '1');
-  return { title: found ? `A concept for ${found.demo.brand.name}` : 'Concept', robots: { index: false, follow: false } };
+  return { title: found ? (found.demo ? `A concept for ${found.demo.brand.name}` : `Appointment reminders for ${found.lead?.title ?? ''}`) : 'Concept', robots: { index: false, follow: false } };
 }
 
 export default async function DemoPage({ params, searchParams }: Props) {
   const me = (await searchParams).me === '1';
+  // Development only: a sample reminders demo to look at without a lead.
+  if (process.env.NODE_ENV !== 'production' && (await params).key === 'sample-reminders') {
+    return <DemoReminders c={reminderContent({ title: 'Dr. Chiro Pte. Ltd.', company: 'Chiropractor · Singapore' })} yesHref="mailto:samuel@adefilasamuel.com" waHref="https://wa.me/2348109841877" />;
+  }
   const found = await load((await params).key, me);
   if (!found) notFound();
   const { demo, lead } = found;
   if (lead) await recordNoteView(lead, me);
-  const sender = (process.env.MAIL_USER ?? process.env.GMAIL_USER ?? 'samuel@adefilasamuel.com').trim();
-  const yes = `mailto:${sender}?subject=${encodeURIComponent(`Your concept for ${demo.brand.name}`)}&body=${encodeURIComponent(`Yes please, send me the short video for ${demo.brand.name}.`)}`;
+  const sender0 = (process.env.MAIL_USER ?? process.env.GMAIL_USER ?? 'samuel@adefilasamuel.com').trim();
+  const sender = sender0;
+  const name = demo ? demo.brand.name : (lead?.title ?? '');
+  const yes = demo
+    ? `mailto:${sender}?subject=${encodeURIComponent(`Your concept for ${name}`)}&body=${encodeURIComponent(`Yes please, send me the short video for ${name}.`)}`
+    : `mailto:${sender}?subject=${encodeURIComponent(`Appointment reminders for ${name}`)}&body=${encodeURIComponent(`Yes please, let's set up appointment reminders for ${name}.`)}`;
   const wa = (process.env.WHATSAPP_NUMBER ?? '2348109841877').replace(/\D/g, '');
   const wa2 = wa ? `https://wa.me/${wa}` : null;
+  if (!demo) return lead ? <DemoReminders c={reminderContent(lead)} yesHref={yes} waHref={wa2} /> : notFound();
   return demo.look === 'modern' ? <DemoModern c={demo} yesHref={yes} waHref={wa2} /> : <DemoSite c={demo} yesHref={yes} waHref={wa2} />;
 }

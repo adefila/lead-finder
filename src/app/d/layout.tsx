@@ -3,6 +3,7 @@ import { Anybody, Instrument_Sans, Instrument_Serif, Martian_Mono, Inter } from 
 import './demo.css';
 import './modern.css';
 import './modern-sections.css';
+import './remind.css';
 
 // The same three faces as the Datum concept: a wide heavy display face, a plain body face and a mono for labels.
 const display = Anybody({ subsets: ['latin'], axes: ['wdth'], variable: '--font-anybody', display: 'swap' });

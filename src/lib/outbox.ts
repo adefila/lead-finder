@@ -238,7 +238,7 @@ export async function runOutbox(): Promise<OutboxResult> {
     const next = [...queued].sort((a, b) => (a.queuedAt ?? '').localeCompare(b.queuedAt ?? ''))[0];
     if (!next) return { ...result, skipped: 'Test mode: queue at least one lead first' };
     const { subject, body } = splitDraft(next.proposal ?? '');
-    const testText = withSignature(emailLink(next) ? withCheckLink(body, emailLink(next), leadLanguage(next), !next.contactLinks?.website) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
+    const testText = withSignature(emailLink(next) ? withCheckLink(body, emailLink(next), leadLanguage(next), !next.contactLinks?.website, next.contactLinks?.demoKind) : body, leadLanguage(next), isJobLead(next), isBusinessPitch(next));
     // Exactly the email the business would get (link and signature included), so you can see
     // how it lands. MAIL_TEST_TO sends it to another inbox, e.g. your personal Gmail.
     await sendMail(cfg, {
@@ -345,7 +345,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title}: email domain can't receive mail, moved back to To contact` };
       }
       const finalSubject = subject || `${lead.title} website`;
-      const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
+      const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website, lead.contactLinks?.demoKind) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
       const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
