@@ -24,7 +24,7 @@ export function humanize(text: string): string {
     .trim();
 }
 
-type Lang = 'en' | 'nl' | 'no' | 'fr';
+type Lang = 'en' | 'nl' | 'no' | 'fr' | 'de' | 'es' | 'pt' | 'it';
 
 // The line that introduces the one-page note, and the words its link hides behind in HTML.
 const NOTE_INTRO: Record<Lang, { line: string; linkText: string; before: string }> = {
@@ -32,10 +32,25 @@ const NOTE_INTRO: Record<Lang, { line: string; linkText: string; before: string 
   nl: { line: 'Ik heb een korte notitie van één pagina met een paar ideeën voor u gemaakt:', before: 'Ik heb een', linkText: 'korte notitie van één pagina met een paar ideeën voor u gemaakt' },
   no: { line: 'Jeg har laget et kort notat på én side med noen ideer til dere:', before: 'Jeg har laget et', linkText: 'kort notat på én side med noen ideer til dere' },
   fr: { line: "J'ai préparé une courte note d'une page avec quelques idées pour vous :", before: "J'ai préparé une", linkText: "courte note d'une page avec quelques idées pour vous" },
+  de: { line: 'Ich habe eine kurze Notiz auf einer Seite mit ein paar Ideen für Sie erstellt:', before: 'Ich habe eine', linkText: 'kurze Notiz auf einer Seite mit ein paar Ideen für Sie erstellt' },
+  es: { line: 'He preparado una breve nota de una página con algunas ideas para usted:', before: 'He preparado una', linkText: 'breve nota de una página con algunas ideas para usted' },
+  pt: { line: 'Preparei uma breve nota de uma página com algumas ideias para si:', before: 'Preparei uma', linkText: 'breve nota de uma página com algumas ideias para si' },
+  it: { line: 'Ho preparato una breve nota di una pagina con alcune idee per Lei:', before: 'Ho preparato una', linkText: 'breve nota di una pagina con alcune idee per Lei' },
+};
+
+// The line for the appointment-reminders demo, in each language.
+const REMINDERS_INTRO: Record<Lang, { line: string; linkText: string; before: string }> = {
+  en: { before: 'I made a small demo of how appointment reminders would work for you.', linkText: 'Try booking one', line: 'I made a small demo of how appointment reminders would work for you. Try booking one:' },
+  nl: { before: 'Ik heb een kleine demo gemaakt van hoe afspraakherinneringen voor u zouden werken.', linkText: 'Probeer een afspraak te boeken', line: 'Ik heb een kleine demo gemaakt van hoe afspraakherinneringen voor u zouden werken. Probeer een afspraak te boeken:' },
+  no: { before: 'Jeg har laget en liten demo av hvordan timepåminnelser ville fungert for dere.', linkText: 'Prøv å bestille en time', line: 'Jeg har laget en liten demo av hvordan timepåminnelser ville fungert for dere. Prøv å bestille en time:' },
+  fr: { before: "J'ai préparé une petite démo de ce que seraient les rappels de rendez-vous pour vous.", linkText: 'Essayez de réserver un rendez-vous', line: "J'ai préparé une petite démo de ce que seraient les rappels de rendez-vous pour vous. Essayez de réserver un rendez-vous :" },
+  de: { before: 'Ich habe eine kleine Demo erstellt, wie Terminerinnerungen für Sie funktionieren würden.', linkText: 'Probieren Sie eine Buchung aus', line: 'Ich habe eine kleine Demo erstellt, wie Terminerinnerungen für Sie funktionieren würden. Probieren Sie eine Buchung aus:' },
+  es: { before: 'He preparado una pequeña demo de cómo funcionarían los recordatorios de citas para usted.', linkText: 'Pruebe a reservar una cita', line: 'He preparado una pequeña demo de cómo funcionarían los recordatorios de citas para usted. Pruebe a reservar una cita:' },
+  pt: { before: 'Preparei uma pequena demonstração de como os lembretes de marcações funcionariam para si.', linkText: 'Experimente marcar uma', line: 'Preparei uma pequena demonstração de como os lembretes de marcações funcionariam para si. Experimente marcar uma:' },
+  it: { before: 'Ho preparato una piccola demo di come funzionerebbero i promemoria degli appuntamenti per Lei.', linkText: 'Provi a prenotarne uno', line: 'Ho preparato una piccola demo di come funzionerebbero i promemoria degli appuntamenti per Lei. Provi a prenotarne uno:' },
 };
 
 // The same, for a website demo. English for every language: demos are only built for English-speaking B2B companies.
-const DEMO_INTRO_REMINDERS = { line: 'I made a small demo of how appointment reminders would work for you. Try booking one:', before: 'I made a small demo of how appointment reminders would work for you.', linkText: 'Try booking one' };
 const DEMO_INTRO_NOSITE = { line: "You don't seem to have a website yet, so I put together a quick concept of what one could look like:", before: "You don't seem to have a website yet, so I put together a", linkText: 'quick concept of what one could look like' };
 const DEMO_INTRO = { line: 'I put together a quick concept of what your website could look like:', before: 'I put together a', linkText: 'quick concept of what your website could look like' };
 
@@ -45,11 +60,12 @@ const OPT_OUT_LINE = /not something you need|just say so|won't follow up|will no
 
 export function withCheckLink(body: string, link?: string, lang: Lang = 'en', noSite = false, kind?: string): string {
   if (!link || body.includes(link) || /\/(check|n|d)\/[\w-]/.test(body)) return body;
-  const line = `${/\/d\/[\w-]+$/.test(link) ? (kind === 'reminders' ? DEMO_INTRO_REMINDERS.line : noSite ? DEMO_INTRO_NOSITE.line : DEMO_INTRO.line) : NOTE_INTRO[lang].line}\n${link}`;
+  const line = `${/\/d\/[\w-]+$/.test(link) ? (kind === 'reminders' ? REMINDERS_INTRO[lang].line : noSite ? DEMO_INTRO_NOSITE.line : DEMO_INTRO.line) : NOTE_INTRO[lang].line}\n${link}`;
   const paras = body.trimEnd().split(/\n\s*\n/);
   let at = paras.findIndex(p => /^Samuel\b/.test(p.trim()));
   if (at < 0) at = paras.length;
-  if (at > 0 && OPT_OUT_LINE.test(paras[at - 1])) at -= 1;
+  // The last paragraph before the sign-off is the close (a question and a way out): the link line goes just above it.
+  if (at > 1 && (OPT_OUT_LINE.test(paras[at - 1]) || /[?？]/.test(paras[at - 1]))) at -= 1;
   paras.splice(at, 0, line);
   return paras.join('\n\n');
 }
@@ -61,6 +77,10 @@ const TAGLINE: Record<Lang, string> = {
   nl: 'Websites en eenvoudige systemen voor kleine bedrijven',
   no: 'Nettsider og enkle systemer for små bedrifter',
   fr: 'Sites web et systèmes simples pour les petites entreprises',
+  de: 'Websites und einfache Systeme für kleine Unternehmen',
+  es: 'Sitios web y sistemas sencillos para pequeñas empresas',
+  pt: 'Sites e sistemas simples para pequenas empresas',
+  it: 'Siti web e sistemi semplici per piccole imprese',
 };
 // Job applications and emails to hiring managers are signed with a job title instead.
 const JOB_TAGLINE = 'Web Developer & Framer Designer';
@@ -106,7 +126,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // siteUrl: a tracked link to use for "adefilasamuel.com", so a visit from this email is recorded.
 export function toHtml(text: string, siteUrl = 'https://adefilasamuel.com'): string {
   const paras = text.trim().split(/\n\s*\n/).map(p => {
-    for (const intro of [...Object.values(NOTE_INTRO), DEMO_INTRO, DEMO_INTRO_NOSITE, DEMO_INTRO_REMINDERS]) {
+    for (const intro of [...Object.values(NOTE_INTRO), ...Object.values(REMINDERS_INTRO), DEMO_INTRO, DEMO_INTRO_NOSITE]) {
       if (!p.startsWith(intro.line)) continue;
       const url = p.slice(intro.line.length).trim();
       if (/^https?:\/\/\S+$/.test(url)) return `${esc(intro.before)} <a href="${esc(url)}">${esc(intro.linkText)}</a>.`;

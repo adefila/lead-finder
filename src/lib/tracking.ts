@@ -73,7 +73,8 @@ export function siteDestination(lead: Lead, via: 'email' | 'note' = 'email'): st
   const business = isBusinessPitch(lead);
   const params = new URLSearchParams();
   const lang = leadLanguage(lead);
-  if (business && lang !== 'en') params.set('lang', lang);
+  // The portfolio's business page is translated into these; the others see English there.
+  if (business && ['nl', 'no', 'fr', 'de', 'es', 'pt'].includes(lang)) params.set('lang', lang);
   params.set('utm_source', via === 'note' ? 'outreach_note' : 'outreach_email');
   params.set('utm_medium', 'email');
   params.set('utm_campaign', business ? 'local-business' : isB2B(lead) ? 'b2b' : isJobLead(lead) ? 'job-application' : 'general');

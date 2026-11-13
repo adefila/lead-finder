@@ -440,11 +440,15 @@ Step 2, write the message.
 Language (strict):
 - Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
 - Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
-- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,").
-- The close is the question, then "if not, I won't email again". Natural examples (vary the wording, keep the meaning):
-  Dutch: "Zal ik u een korte demo laten zien van hoe het voor X zou werken? Zo niet, geen probleem, dan mail ik u niet meer."
-  Norwegian: "Skal jeg vise deg en kort demo av hvordan det kan fungere for X? Hvis ikke, helt greit, da sender jeg ikke mer."
-  French: "Voulez-vous que je vous montre une courte démo de ce que cela donnerait pour X ? Sinon, pas de souci, je ne vous relancerai pas."
+- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. German: "Guten Tag [Vorname]," or "Hallo [Vorname],", "Sie" throughout. Spanish: "Hola [Nombre],", "usted" throughout. Portuguese: "Olá [Nome],", formal register, never "tu". Italian: "Buongiorno [Nome],", "Lei" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,", "Guten Tag,", "Hola,", "Olá,", "Buongiorno,").
+- The close is the question, then an honest way out (if it is not for them, they say so and he leaves them alone). Natural examples (vary the wording, keep the meaning):
+  Dutch: "Zal ik dit voor X voor u opzetten? Antwoord gewoon JA, dan laat ik u precies zien hoe het zou werken. Is het niets voor u, laat het me weten en ik laat u met rust."
+  Norwegian: "Skal jeg sette dette opp for X? Svar bare JA, så viser jeg nøyaktig hvordan det ville fungert. Er det ikke noe for dere, si fra, så lar jeg dere være."
+  French: "Voulez-vous que je mette cela en place pour X ? Répondez simplement OUI et je vous montrerai exactement comment cela fonctionnerait. Si ce n'est pas pour vous, dites-le-moi et je vous laisse tranquille."
+  German: "Soll ich das für X einrichten? Antworten Sie einfach mit JA, dann zeige ich Ihnen genau, wie es funktionieren würde. Falls es nichts für Sie ist, sagen Sie es kurz und ich lasse Sie in Ruhe."
+  Spanish: "¿Quiere que lo configure para X? Responda simplemente SÍ y le mostraré exactamente cómo funcionaría. Si no es para usted, dígamelo y no le molesto más."
+  Portuguese: "Quer que eu configure isto para X? Responda apenas SIM e mostro-lhe exatamente como funcionaria. Se não for para si, diga-me e deixo-o em paz."
+  Italian: "Vuole che lo configuri per X? Risponda semplicemente SÌ e Le mostrerò esattamente come funzionerebbe. Se non fa per Lei, me lo dica e La lascio in pace."
 - The rules below about banned words and phrasing apply to their equivalents in that language too.
 - Questions must be grammatical and natural for a native speaker. French: "Voulez-vous que je vous envoie…?", "Est-ce que cela vous aiderait…?", never "Aimerais-je…?". Dutch: "Zou het u helpen als…?". Norwegian: "Vil det hjelpe om…?".
 
@@ -641,7 +645,7 @@ ${warm ? humanRules(facts) : `- Follow-up 1: under 60 words. Don't repeat the fi
 - Follow-up 2: under 45 words. A calm last note. Say this is the last one, and leave the door open with one line they could reply to.`}
 - Never guilt-trip ("just bumping this", "did you see my email", "following up on my last email"). No fake urgency. It should read like a helpful note, not a chase.
 - Sign off "Samuel".${leadLanguage(lead) !== 'en' ? `
-- Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, as a native speaker would, with the same form of address as his first message${leadLanguage(lead) === 'nl' ? ' ("u", never "je" or "jij")' : leadLanguage(lead) === 'fr' ? ' ("vous", never "tu")' : ''}.` : ''}
+- Write it entirely in ${LANGUAGE_NAME[leadLanguage(lead)]}, as a native speaker would, with the same form of address as his first message${leadLanguage(lead) === 'nl' ? ' ("u", never "je" or "jij")' : leadLanguage(lead) === 'fr' ? ' ("vous", never "tu")' : leadLanguage(lead) === 'de' ? ' ("Sie")' : leadLanguage(lead) === 'es' ? ' ("usted")' : leadLanguage(lead) === 'it' ? ' ("Lei")' : leadLanguage(lead) === 'pt' ? ' (formal, never "tu")' : ''}.` : ''}
 
 ${VOICE}
 

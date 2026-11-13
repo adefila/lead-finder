@@ -27,7 +27,7 @@ async function load({ params }: Props) {
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const lead = await load(props);
   // The tab title in the reader's language, like the note itself.
-  const forName = { en: 'A few ideas for', nl: 'Een paar ideeën voor', no: 'Noen ideer for', fr: 'Quelques idées pour' };
+  const forName = { en: 'A few ideas for', nl: 'Een paar ideeën voor', no: 'Noen ideer for', fr: 'Quelques idées pour', de: 'Ein paar Ideen für', es: 'Algunas ideas para', pt: 'Algumas ideias para', it: 'Alcune idee per' };
   return { title: lead ? `${forName[leadLanguage(lead)]} ${displayName(lead)}` : 'A few ideas', robots: { index: false, follow: false } };
 }
 

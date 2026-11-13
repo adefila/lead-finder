@@ -33,7 +33,7 @@ export interface NoteCopy {
   whatsappText: string;
 }
 
-const LOCALE: Record<LeadLang, string> = { en: 'en-GB', nl: 'nl-NL', no: 'nb-NO', fr: 'fr-LU' };
+const LOCALE: Record<LeadLang, string> = { en: 'en-GB', nl: 'nl-NL', no: 'nb-NO', fr: 'fr-LU', de: 'de-DE', es: 'es-ES', pt: 'pt-PT', it: 'it-IT' };
 
 export function englishNoteCopy(lead: Lead): NoteCopy {
   const name = displayName(lead);
@@ -74,7 +74,7 @@ async function translate(copy: NoteCopy, lang: LeadLang): Promise<NoteCopy> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return copy;
   const client = new Anthropic({ apiKey: key });
-  const register = lang === 'nl' ? 'Use "u" (polite form).' : lang === 'fr' ? 'Use "vous".' : 'Use "du/dere" as is normal in Norwegian business writing.';
+  const register = ({ nl: 'Use "u" (polite form).', fr: 'Use "vous".', de: 'Use "Sie" (formal).', es: 'Use "usted" (formal).', pt: 'Use a formal register (never "tu").', it: 'Use "Lei" (formal).', no: 'Use "du/dere" as is normal in Norwegian business writing.', en: '' } as Record<LeadLang, string>)[lang];
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 3000,

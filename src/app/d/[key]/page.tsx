@@ -5,6 +5,8 @@ import { DemoSite } from '@/components/DemoSite';
 import { DemoModern } from '@/components/DemoModern';
 import { DemoReminders } from '@/components/DemoReminders';
 import { reminderContent } from '@/lib/remind';
+import { EN_COPY, getReminderCopy } from '@/lib/remindcopy';
+import { leadLanguage } from '@/lib/leadview';
 import { SAMPLE_DEMOS } from '@/lib/demo';
 import { findLeadByCode } from '@/lib/leadlookup';
 import { getDemo } from '@/lib/supabase';
@@ -37,7 +39,7 @@ export default async function DemoPage({ params, searchParams }: Props) {
   const me = (await searchParams).me === '1';
   // Development only: a sample reminders demo to look at without a lead.
   if (process.env.NODE_ENV !== 'production' && (await params).key === 'sample-reminders') {
-    return <DemoReminders c={reminderContent({ title: 'Dr. Chiro Pte. Ltd.', company: 'Chiropractor · Singapore' })} yesHref="mailto:samuel@adefilasamuel.com" waHref="https://wa.me/2348109841877" />;
+    return <DemoReminders c={reminderContent({ title: 'Dr. Chiro Pte. Ltd.', company: 'Chiropractor · Singapore' })} copy={EN_COPY} lang="en" yesHref="mailto:samuel@adefilasamuel.com" waHref="https://wa.me/2348109841877" />;
   }
   const found = await load((await params).key, me);
   if (!found) notFound();
@@ -51,6 +53,10 @@ export default async function DemoPage({ params, searchParams }: Props) {
     : `mailto:${sender}?subject=${encodeURIComponent(`Appointment reminders for ${name}`)}&body=${encodeURIComponent(`Yes please, let's set up appointment reminders for ${name}.`)}`;
   const wa = (process.env.WHATSAPP_NUMBER ?? '2348109841877').replace(/\D/g, '');
   const wa2 = wa ? `https://wa.me/${wa}` : null;
-  if (!demo) return lead ? <DemoReminders c={reminderContent(lead)} yesHref={yes} waHref={wa2} /> : notFound();
+  if (!demo) {
+    if (!lead) notFound();
+    const lang = leadLanguage(lead);
+    return <DemoReminders c={reminderContent(lead)} copy={await getReminderCopy(lang)} lang={lang} yesHref={yes} waHref={wa2} />;
+  }
   return demo.look === 'modern' ? <DemoModern c={demo} yesHref={yes} waHref={wa2} /> : <DemoSite c={demo} yesHref={yes} waHref={wa2} />;
 }

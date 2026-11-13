@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { deleteDemo, getDemo, getLeadById, saveDemo, updateLead } from '@/lib/supabase';
 import { generateDemo } from '@/lib/demogen';
 import { demoLink } from '@/lib/tracking';
+import { getReminderCopy } from '@/lib/remindcopy';
+import { leadLanguage } from '@/lib/leadview';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -30,6 +32,8 @@ export async function POST(req: NextRequest) {
   // The appointment-reminders demo is built from the lead's name and kind of business: no model, instant, free.
   if (kind === 'reminders') {
     await deleteDemo(id);
+    // Translate the page's words now (once per language, kept), so it opens at once for the lead.
+    await getReminderCopy(leadLanguage(lead)).catch(() => undefined);
     const error = await updateLead(id, { contact_links: { ...lead.contactLinks, demo: 'draft', demoLook: 'reminders', demoKind: 'reminders' } });
     return error ? NextResponse.json({ error }, { status: 500 }) : NextResponse.json({ status: 'draft', look: 'reminders', url: previewUrl(lead), kind: 'reminders' });
   }

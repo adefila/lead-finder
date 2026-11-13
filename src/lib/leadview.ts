@@ -93,18 +93,22 @@ export const needsEmailDraft = (l: Lead) => ['new', 'queued'].includes(statusOf(
 export const readyToSchedule = (l: Lead) => statusOf(l) === 'new'
   && !!l.contactEmail && !l.optedOut && !l.lastSentAt && /^\s*Subject:/i.test(l.proposal ?? '');
 
-// Businesses in the Netherlands, Norway and Luxembourg are written to in their own language
+// Businesses in the Netherlands, Norway, Luxembourg, France, Germany, Austria, Spain, Latin America, Portugal, Brazil and Italy are written to in their own language
 // (emails, follow-ups and the one-page note). Everyone else, and every job lead, in English.
-export type LeadLang = 'en' | 'nl' | 'no' | 'fr';
+export type LeadLang = 'en' | 'nl' | 'no' | 'fr' | 'de' | 'es' | 'pt' | 'it';
 export const LANGUAGE_NAME: Record<LeadLang, string> = {
-  en: 'English', nl: 'Dutch', no: 'Norwegian (Bokmål)', fr: 'French',
+  en: 'English', nl: 'Dutch', no: 'Norwegian (Bokmål)', fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese', it: 'Italian',
 };
 export function leadLanguage(l: Lead): LeadLang {
   if (isJobLead(l)) return 'en';
   const where = `${l.company} ${l.description.slice(0, 300)}`;
   if (/\b(Netherlands|Nederland|Amsterdam|Rotterdam|Utrecht|The Hague|Den Haag|Eindhoven)\b/i.test(where)) return 'nl';
   if (/\b(Norway|Norge|Oslo|Bergen|Trondheim|Stavanger)\b/i.test(where)) return 'no';
-  if (/\b(Luxembourg|Luxemburg)\b/i.test(where)) return 'fr';
+  if (/\b(Luxembourg|Luxemburg|France|Paris|Lyon|Marseille|Toulouse|Nice|Bordeaux|Lille|Nantes|Strasbourg)\b/i.test(where)) return 'fr';
+  if (/\b(Germany|Deutschland|Berlin|Munich|München|Hamburg|Frankfurt|Cologne|Köln|Stuttgart|Düsseldorf|Austria|Österreich|Vienna|Wien|Graz|Salzburg)\b/i.test(where)) return 'de';
+  if (/\b(Spain|España|Madrid|Barcelona|Valencia|Seville|Sevilla|Málaga|Malaga|Bilbao|Mexico|México|Argentina|Buenos Aires|Chile|Colombia|Bogotá)\b/i.test(where)) return 'es';
+  if (/\b(Portugal|Lisbon|Lisboa|Porto|Brazil|Brasil|São Paulo|Rio de Janeiro)\b/i.test(where)) return 'pt';
+  if (/\b(Italy|Italia|Rome|Roma|Milan|Milano|Naples|Napoli|Turin|Torino|Florence|Firenze|Bologna)\b/i.test(where)) return 'it';
   return 'en';
 }
 

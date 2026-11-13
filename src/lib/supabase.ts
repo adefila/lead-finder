@@ -400,6 +400,18 @@ export async function saveDemo(leadId: string, demo: DemoContent): Promise<strin
   return error ? explain(error.message) : null;
 }
 
+// The translated words of the appointment-reminders demo, one row per language (see remindcopy.ts).
+export async function getRemindCopy(lang: string): Promise<unknown | null> {
+  const { data, error } = await db().from('profile').select('skills').eq('id', `remindcopy-${lang}`).maybeSingle();
+  if (error) { console.error('[supabase] getRemindCopy:', error.message); return null; }
+  return data?.skills ?? null;
+}
+
+export async function saveRemindCopy(lang: string, copy: unknown): Promise<string | null> {
+  const { error } = await db().from('profile').upsert({ id: `remindcopy-${lang}`, text: '', skills: copy, titles: [], years: null, source: 'remindcopy', updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  return error ? explain(error.message) : null;
+}
+
 export async function deleteDemo(leadId: string): Promise<void> {
   await db().from('profile').delete().eq('id', `demo-${leadId}`);
 }
