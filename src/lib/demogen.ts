@@ -6,7 +6,7 @@ import { brandColours, finishDemo, type DemoContent } from '@/lib/demo';
 // Builds a lead's demo page: read their site, ask the model to write the demo as data (only from what the site says),
 // then clean it up (finishDemo: no dashes, safe lengths, readable colours). Used by the "Create demo" button.
 
-const MODEL = process.env.DEMO_MODEL ?? 'claude-sonnet-5-5';
+const MODEL = process.env.DEMO_MODEL ?? 'claude-haiku-5-5';
 
 const SCHEMA = `{
   "look": "modern" | "console" | "blueprint",
