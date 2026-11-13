@@ -458,20 +458,20 @@ ${VOICE}
 
 Return ONLY valid JSON: {"ID": {"name": "First Last or empty string", "role": "Owner / Founder / Dentist etc, or empty string", "message": "..."}, ...}`,
 
-  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel rebuilds and builds websites for B2B companies and gives new ones a credible website from day one.
+  newco: `Write a short, warm note from Samuel Adefila to the director of each newly registered UK company below. They set the company up in the last few weeks. Samuel sets up simple systems and websites for small businesses, so a new company can take its first customers properly from day one.
 
 Rules:
 - Greet the director by first name ("Hi Sarah,"). If Director is unknown, use "Hi there,".
 - Open by congratulating them on starting the company, naturally and briefly. Don't say how you found them beyond "saw you recently set up [Company]".
-- Then follow the Approach below. The offer is a launch website (a landing page in 5 to 7 days, or a full site in about 4 weeks) that makes the new company look established to its first buyers.
+- Then follow the Approach below. The offer is the "Idea to offer" line (a simple system such as online booking with reminders, or an enquiry form that arrives with the details attached), set up at a fixed price and live in about two weeks. Lead with the problem a new business has taking its first customers, then the fix. Only mention a launch website when there is no idea to offer.
 - If they have a website with issues: mention ONE issue from the findings in plain words.
 - Offer one easy next step: a short note of ideas for their business, or a short call.
-- If Channel is EMAIL: line 1 "Subject: ..." (under 7 words), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
+- If Channel is EMAIL: line 1 "Subject: ..." (under 7 words, naming the specific problem he would fix for them, e.g. "Booking and reminders for Broad St Hair". Never the words website, homepage or concept), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
 - If Channel is LINKEDIN: no subject, under 280 characters in total (LinkedIn connection note limit), sign off "Samuel".
-- Close with one short opt-out line when Channel is EMAIL.
+- When Channel is EMAIL, end the body with one question they can answer with a single word (reply YES) and an honest way out (if it is not for them, they say so and he leaves them alone), in one short paragraph.
 - Never state anything that isn't in the findings.
 
-${APPROACH_B2B}
+${APPROACH}
 
 ${VOICE}
 
