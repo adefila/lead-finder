@@ -15,6 +15,7 @@ import { LeadTable } from '@/components/LeadTable';
 import type { EmptyKind } from '@/components/EmptyState';
 import { JobMatch } from '@/components/JobMatch';
 import { Scholarships } from '@/components/Scholarships';
+import { Launch } from '@/components/Launch';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { Btn, Dropdown, Icon, Menu } from '@/components/ui';
 import { useFeedback } from '@/components/feedback';
@@ -56,7 +57,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('all');
   const [sub, setSub] = useState<Sub>('all');
-  const [mode, setMode] = useState<'table' | 'history' | 'scholarships'>('table');
+  const [mode, setMode] = useState<'table' | 'history' | 'scholarships' | 'launch'>('table');
   const [source, setSource] = useState<Lead['source'] | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortOverride, setSortOverride] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
@@ -667,8 +668,12 @@ export default function Home() {
                 onClick={() => { keepTabsInView(); setMode('scholarships'); setSelection(new Set()); }}>
                 Scholarships
               </button>
+              <button className="tab" role="tab" aria-selected={mode === 'launch'} title="Where to launch Baton and which investors and accelerators to approach"
+                onClick={() => { keepTabsInView(); setMode('launch'); setSelection(new Set()); }}>
+                Baton launch
+              </button>
             </div>
-            {mode !== 'scholarships' && <>
+            {mode !== 'scholarships' && mode !== 'launch' && <>
             <div className="view-head">
               {mode === 'table' && view === 'done' && sub === 'lost' && (
                 <Btn className="btn btn-sm view-action" onClick={recoverBounced} disabled={recovering}
@@ -773,6 +778,8 @@ export default function Home() {
 
           {mode === 'scholarships' ? (
             <Scholarships />
+          ) : mode === 'launch' ? (
+            <Launch />
           ) : loading ? (
             <div className="empty">Loading leads…</div>
           ) : mode === 'history' ? (

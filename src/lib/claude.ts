@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
+import { fixGreeting } from '@/lib/greeting';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -140,10 +141,10 @@ const PLACES_ANGLES = [
 // How the first line grabs them. Rotated separately from the angle, so pairs never repeat.
 // None of them opens with "I'm a web developer": the reader cares about their business first.
 const HOOKS = [
-  'OUTCOME: open with what would change for their customers, using the business name. A statement, not a question. E.g. "Bright Smile\'s patients could book a check-up at 10pm and get a reminder text the day before."',
+  'NOTICED (REVIEWS OR RESULTS): open with one specific, true good thing from the findings or site text: a rating and review count, years in business, a service they are clearly known for. One plain sentence, stated as a fact, only what the text supports. If the findings hold no reviews or rating, use a detail from the site text instead. E.g. "Bright Smile has a 4.9 rating across 120 Google reviews."',
   'PROOF: open with the proof point most relevant to them, then connect it to them in the next sentence. E.g. "The last booking app I designed paid out over $10K to its users in its first month. I\'d like to set up something simpler for Bright Smile." Do not repeat a proof point later in the message.',
+  'NOTICED (WHAT THEY DO): open with one specific thing from their site text about how they work or who they serve, as a fact that shows you read it. One plain sentence, no praise words, nothing the text does not say. E.g. "Bright Smile runs evening check-ups for people who work days."',
   'OFFER: open with the offer itself in one plain line. E.g. "I\'d like to set up online booking for Bright Smile, at a fixed price and live in two weeks."',
-  'CUSTOMER MOMENT: open with one short, concrete moment from a customer\'s day, in two short sentences at most. E.g. "It\'s 10pm and someone nearby wants a check-up next week. Right now they have to wait until morning to call Bright Smile."',
 ];
 
 // B2B: the fact used for "why them", and how the first line grabs a founder or owner.
@@ -154,10 +155,10 @@ const B2B_ANGLES = [
   'GROWTH: where the company seems to be heading (a new product, hiring, a new market), tied to one thing on the site.',
 ];
 const B2B_HOOKS = [
-  'OUTCOME: open with what a sharper website would do for THEIR buyers, using the company name. A statement, not a question. E.g. "Northwind\'s homepage could tell a logistics lead in one line what the platform does."',
-  'PROOF: open with the proof point most relevant to them, then connect it to them in the next sentence. E.g. "I rebuilt 12 pages for a telecom company in Ghana in four weeks. I\'d like to do the same for Northwind." Do not repeat a proof point later in the message.',
+  'NOTICED (WHAT THEY SELL): open with one specific, true fact from the site text: a real product or service name and who it is for. One plain sentence, no praise words, nothing the text does not say. E.g. "Northwind sells route planning software to regional freight carriers."',
+  'NOTICED (THEIR WORDS): open by quoting a short phrase exactly as it appears on their homepage, stated neutrally and without comment on whether it works. E.g. "Northwind\'s homepage opens with "Logistics, rethought"." Only quote words that are in the site text.',
   'OFFER: open with the offer itself in one plain line. E.g. "I\'d like to rebuild Northwind\'s website, at a fixed price and live in about four weeks."',
-  'BUYER MOMENT: open with one short, concrete moment from a prospective customer\'s day, in two short sentences at most. E.g. "A buyer lands on Northwind\'s site from a search and has ten seconds to decide whether it is for them."',
+  'NOTICED (WHO IT IS FOR): open with one specific fact from the site text about the customers they serve or the problem they solve. One plain sentence, stated as fact. E.g. "Northwind\'s customers are freight carriers that plan routes by hand today."',
 ];
 
 function angleFor(l: Lead, slot: number): string {
@@ -264,7 +265,7 @@ const APPROACH = `Approach (a pitch, short and direct, applies to every cold mes
 - This is Samuel introducing himself and making one clear offer. It is not an essay about their business and not free advice.
 - Body under 80 words (DMs under 50). Three or four very short paragraphs.
 - Build it in this order:
-  1. The hook: the first line after the greeting, written in the style on the "Hook" line (OUTCOME when there is no Hook line). Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
+  1. The hook: the first line after the greeting, written in the style on the "Hook" line (NOTICED when there is no Hook line). Everything in the hook must be true and come from the findings or site text: never invent what their customers do, want or say, and never write "a lot of businesses tell me" or any statistic. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
   2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (e.g. "Right now bookings are by phone only."). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
   3. The offer: what he would set up for them, in one or two sentences, with "fixed price" and "live in two weeks" where they fit. Who he is can come here as a short clause at most (e.g. "I set these up for small clinics").
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
@@ -277,7 +278,7 @@ ${PROOF}
 Example of the shape (for a dentist with no online booking). Do not copy its wording or topic:
 "Hi Dr. Okafor,
 
-Bright Smile's patients could book a check-up at 10pm and get a reminder text the day before.
+Bright Smile has a 4.9 rating across 120 Google reviews.
 
 Right now bookings are by phone only. I set up online booking for small clinics, at a fixed price and live in two weeks.
 
@@ -290,8 +291,8 @@ const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every mess
 - This is Samuel introducing himself and making one clear offer to a founder or business owner. It is not an essay about their company and not free advice.
 - Body under 80 words. Three or four very short paragraphs.
 - Build it in this order:
-  1. The hook: the first line after the greeting, written in the style on the "Hook" line. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
-  2. Why them: ONE short sentence with one concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it. Skip it if the hook already used that fact.
+  1. The hook: the first line after the greeting, written in the style on the "Hook" line. Everything in it must be true and come from the site text: never invent what their buyers do or want, and never open with a claim about a gap. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
+  2. Why them: ONE short sentence with a different concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it, and never say what it "doesn't" do. Skip it if the hook already used that fact.
   3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
   5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present what they sell. Then, in the same paragraph, a short honest way out (say so and he will leave them alone) instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
@@ -303,9 +304,9 @@ ${PROOF}
 Example of the shape (for a B2B software company). Do not copy its wording or topic:
 "Hi Maria,
 
-Northwind's homepage could tell a logistics lead in one line what the platform does.
+Northwind sells route planning software to regional freight carriers.
 
-Right now the first screen leads with the company story. I rebuild B2B websites at a fixed price: a landing page in 5 to 7 days, a full site in about 4 weeks.
+Its homepage opens with the company story and the product comes second. I rebuild B2B websites at a fixed price: a landing page in 5 to 7 days, a full site in about 4 weeks.
 
 I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
 
@@ -325,7 +326,7 @@ Step 2, write the message.
 - Vary what the closing question offers a little between messages (a one-page sketch of their homepage, a short example for their site), always answerable in one word.
 - Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
-- End the body with the close from the Approach (the question plus "if not, I won't follow up" in one paragraph), right before the sign-off.
+- End the body with the close from the Approach (the question plus a short "just say so" opt-out in one paragraph, never a promise not to follow up), right before the sign-off.
 - Never state anything that isn't in the findings or site text.
 
 ${APPROACH_B2B}
@@ -349,7 +350,7 @@ If Channel is EMAIL, it is a direct pitch to the company, sent to the address sh
 - Greeting: "Hi [FirstName]," when you found a person, else "Hi [Company] team,".
 - Open by saying he saw they are hiring for the role. Then be useful before asking for anything: name what the role is really there to fix for them (for example, a marketing site that the team can't update quickly, or design that can't keep up with the product), and how Samuel would approach the first few weeks, in one or two sentences. If the company site text shows something specific related to the role, mention it as an observation, never as criticism.
 - Then the offer, plainly: he can take on that work now, as a hire or on a contract basis so they can start sooner.
-- Under 120 words. Close with one short opt-out line before the sign-off, e.g. "If the role is already filled, just say so and I won't follow up."
+- Under 120 words. Close with one short opt-out line before the sign-off, e.g. "If the role is already filled, just say so."
 - Offer one easy next step (a short call, or a small paid test task).
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 
@@ -434,7 +435,7 @@ Step 2, write the message.
 - A link to a one-page note of ideas for them is added under your message automatically. Never offer to send a note and never mention it yourself.
 - Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
-- End the body with the close from the Approach (the question plus "if not, I won't follow up" in one paragraph), right before the sign-off.
+- End the body with the close from the Approach (the question plus a short "just say so" opt-out in one paragraph, never a promise not to follow up), right before the sign-off.
 - Never state anything that isn't in the findings or site text.
 
 Language (strict):
@@ -502,7 +503,7 @@ async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, D
         const parsed = JSON.parse(match[0]) as Record<string, string | Draft>;
         for (const [id, value] of Object.entries(parsed)) {
           const draft = typeof value === 'string' ? { message: value } : value;
-          if (draft?.message) result.set(id, { ...draft, message: humanize(draft.message) });
+          if (draft?.message) result.set(id, { ...draft, message: fixGreeting(humanize(draft.message)) });
         }
       }
     }
