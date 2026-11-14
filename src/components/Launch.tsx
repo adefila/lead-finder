@@ -30,7 +30,8 @@ const CSS = `
   .bl-sec { margin-bottom: 32px; }
   .bl-sec h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--fg); }
   .bl-sec > p { margin: 0 0 14px; font-size: 13px; color: var(--fg-3); }
-  .bl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .bl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 1000px) { .bl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .bl-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); min-width: 0; }
   .bl-card.done { opacity: 0.55; }
   .bl-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
