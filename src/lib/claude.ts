@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { fixGreeting } from '@/lib/greeting';
+import { ensureGreeting, fixCurrency, fixGreeting } from '@/lib/greeting';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -505,7 +505,10 @@ async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, D
         const parsed = JSON.parse(match[0]) as Record<string, string | Draft>;
         for (const [id, value] of Object.entries(parsed)) {
           const draft = typeof value === 'string' ? { message: value } : value;
-          if (draft?.message) result.set(id, { ...draft, message: fixGreeting(humanize(draft.message)) });
+          if (draft?.message) {
+            const lead = batch.find(l => l.id === id);
+            result.set(id, { ...draft, message: ensureGreeting(fixCurrency(fixGreeting(humanize(draft.message))), lead ? leadLanguage(lead) : 'en') });
+          }
         }
       }
     }
