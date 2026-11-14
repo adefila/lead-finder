@@ -12,6 +12,8 @@ const LAUNCH: Spot[] = [
   { id: 'showhn', name: 'Show HN', kind: 'Hacker News', why: 'Developers and agencies read it, which is who Baton is for.', tip: 'Post a working demo link and a plain description. Expect hard questions and answer fast.', url: 'https://news.ycombinator.com/showhn.html', checked: true },
   { id: 'ph', name: 'Product Hunt', kind: 'Launch day', why: 'Broad launch-day exposure and a developer tools category.', tip: 'Needs a demo video and a real launch plan. A bare listing gets little.', url: 'https://www.producthunt.com/', checked: true },
   { id: 'ih', name: 'Indie Hackers', kind: 'Community', why: 'Founders trade feedback on positioning before a launch.', tip: 'Post before you launch and ask what is unclear.', url: 'https://www.indiehackers.com/', checked: true },
+  { id: 'devhunt', name: 'DevHunt', kind: 'Launch board for dev tools', why: 'A weekly launch board only for developer tools, voted on by developers who sign in with GitHub or Google.', tip: 'Reported as free. Confirm the current terms on the site.', url: 'https://devhunt.org/', checked: true },
+  { id: 'peerlist', name: 'Peerlist Launchpad', kind: 'Launch board', why: 'Reported as free to launch with a verified personal profile. Paid featured launches start at $29.', tip: 'Fill in your profile first. Confirm the current terms on the site.', url: 'https://peerlist.io/launchpad', checked: true },
 ];
 
 const INVEST: Spot[] = [
@@ -20,6 +22,11 @@ const INVEST: Spot[] = [
   { id: 'yc', name: 'Y Combinator', kind: 'Accelerator', why: 'Biggest name for developer tools, and solo founders can apply.', tip: 'Current batch dates not checked. Traction from a launch helps.', url: 'https://www.ycombinator.com/apply', checked: false },
   { id: 'antler', name: 'Antler', kind: 'Accelerator', why: 'Invests at the earliest stage and has an Africa presence.', tip: 'Current programme and location not checked.', url: 'https://www.antler.co/', checked: false },
   { id: 'techstars', name: 'Techstars', kind: 'Accelerator', why: 'Programmes by region and theme.', tip: 'Current programmes not checked.', url: 'https://www.techstars.com/', checked: false },
+  { id: 'tinyseed', name: 'TinySeed', kind: 'Fund for bootstrapped SaaS', why: 'Backs small SaaS companies that stay independent, which suits a solo founder.', tip: 'It just raised a fourth fund. Application terms not checked.', url: 'https://tinyseed.com/', checked: false },
+  { id: 'ng350', name: 'Nigeria $350,000 programme', kind: 'Funding, Nigeria', why: 'A funding programme for early-stage tech startups in Nigeria.', tip: 'Dates and whether software products qualify not checked.', url: 'https://www.techinafrica.com/nigeria-opens-350000-funding-programme-for-early-stage-tech-startups/', checked: false },
+  { id: 'seedinvest', name: 'SEEDINVEST 2026', kind: 'Accelerator, Nigeria', why: 'Grants, training, mentorship and investor readiness for young Nigerian entrepreneurs.', tip: 'Reported as open for 2026. Deadline and whether SaaS qualifies not checked.', url: 'https://www.wearetech.africa/en/fils-uk/brief/brief-one/nigeria-s-seedinvest-accelerator-opens-applications-for-2026-cohort', checked: false },
+  { id: 'ffvs', name: 'Fast Forward Venture Studio', kind: 'Pre-seed accelerator', why: 'Listed as offering up to $25,000 in equity-free funding at pre-seed.', tip: 'Listing is from an aggregator and has no dates. Check the programme itself.', url: 'https://incubatorlist.com/top-startup-accelerators-incubators-and-vcs-in-nigeria', checked: false },
+  { id: 'freshmango', name: 'Freshmango', kind: 'Remote pre-seed accelerator', why: 'Fully remote, for founders with an idea or a minimal product.', tip: 'No 2026 window found. Check the programme itself.', url: 'https://techbuild.africa/freshmango-accelerator-remote-stage-founders/', checked: false },
 ];
 
 const CSS = `
@@ -43,6 +50,7 @@ const CSS = `
   .bl-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-3); }
   .bl-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--fg-2); }
   .bl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .bl-empty { margin: 0 !important; font-size: 13px; color: var(--fg-3); }
   .bl-foot { margin: 0; padding: 4px 0 20px; font-size: 12px; color: var(--fg-3); }
   @media (max-width: 720px) { .bl { padding: 16px 12px 4px; } .bl-start { flex-direction: column; align-items: flex-start; } .bl-grid { grid-template-columns: minmax(0, 1fr); } }
 `;
@@ -54,7 +62,10 @@ function load(): Record<string, Mark> {
 // Where to put Baton in front of people: launch venues first, investors and accelerators second.
 export function Launch() {
   const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [showDone, setShowDone] = useState(false);
   useEffect(() => { setMarks(load()); }, []);
+  const doneCount = [...LAUNCH, ...INVEST].filter(s => marks[s.id] === 'done').length;
+  const visible = (list: Spot[]) => showDone ? list : list.filter(s => marks[s.id] !== 'done');
 
   const mark = (id: string, m: Mark) => setMarks(prev => {
     const next = { ...prev };
@@ -94,24 +105,30 @@ export function Launch() {
   return (
     <div className="bl">
       <style>{CSS}</style>
-      <div className="bl-start">
-        <div>
-          <b>Start with Show HN</b>
-          <span>It needs no application and no equity, and the traction it brings is what the accelerators below ask for.</span>
+      {marks.showhn !== 'done' && (
+        <div className="bl-start">
+          <div>
+            <b>Start with Show HN</b>
+            <span>It needs no application and no equity, and the traction it brings is what the accelerators below ask for.</span>
+          </div>
         </div>
-      </div>
+      )}
 
       <section className="bl-sec">
         <h3>Get Baton noticed</h3>
         <p>Places to launch, in the order I would use them.</p>
-        <div className="bl-grid">{LAUNCH.map(card)}</div>
+        {visible(LAUNCH).length ? <div className="bl-grid">{visible(LAUNCH).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
       </section>
 
       <section className="bl-sec">
         <h3>Investors and accelerators</h3>
         <p>Approach these after a launch, once there is some traction to show.</p>
-        <div className="bl-grid">{INVEST.map(card)}</div>
+        {visible(INVEST).length ? <div className="bl-grid">{visible(INVEST).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
       </section>
+
+      {doneCount > 0 && (
+        <p className="bl-foot"><button className="link-btn" onClick={() => setShowDone(v => !v)}>{showDone ? 'Hide' : 'Show'} the {doneCount} you marked done</button></p>
+      )}
 
       <p className="bl-foot">Dates, terms and deadlines change. Confirm everything on each official page before you apply.</p>
     </div>
