@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
 
   const [drafted] = await generateColdEmails([lead]);
   if (!drafted?.proposal) return NextResponse.json({ error: 'Could not write a new draft' }, { status: 500 });
+  // When the model call fails, generateColdEmails hands the lead back unchanged: say so instead of reporting success.
+  if (drafted.proposal === lead.proposal) return NextResponse.json({ error: 'The model did not write a new draft. Check your Anthropic usage limit.' }, { status: 502 });
 
   const patch = {
     draft_email: drafted.proposal,
