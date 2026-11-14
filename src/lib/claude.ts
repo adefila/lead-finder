@@ -248,6 +248,8 @@ const VOICE = `Voice (strict, applies to every message):
 - No semicolons, no exclamation marks, no bullet points, no bold, no emojis, no ALL CAPS.
 - Never use: elevate, leverage, seamless, streamline, boost, unlock, transform, stunning, top-notch, cutting-edge, game-changer, delighted, reach out, touch base, circle back, synergy, I hope this finds you well, I came across, I wanted to, quick question.
 - Be specific and honest. Never exaggerate or promise results you can't know.
+- Never say or imply that their website, brand or business looks old, dated, tired, unchanged, plain, weak or in need of a rebuild or fix, in the subject or the body ("looks like it hasn't changed in years", "needs a rebuild", "outdated"). State only neutral facts and what Samuel would set up.
+- Keep every amount exactly as written in the facts, with its currency. BookedEZ paid out over $10K in US dollars: in any language write dollars or $10,000, never euros or another currency.
 - No flattery formulas ("says a lot about", "clearly passionate", "impressive work"). If you compliment, make it concrete and brief, and skip it entirely when there's nothing real to say.
 - Vary how each message opens. No two messages in this batch may start their second sentence the same way.`;
 
