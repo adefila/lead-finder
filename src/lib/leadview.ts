@@ -101,8 +101,13 @@ export const LANGUAGE_NAME: Record<LeadLang, string> = {
 };
 export function leadLanguage(l: Lead): LeadLang {
   if (isJobLead(l)) return 'en';
+  // The company's own city and country ("Consultant · Auckland, New Zealand") decide first: a street called "France Street" in an
+  // address must not make an Auckland company French.
+  if (ENGLISH_PLACE.test(l.company)) return 'en';
   return languageOfPlace(`${l.company} ${l.description.slice(0, 300)}`);
 }
+
+const ENGLISH_PLACE = /\b(UK|United Kingdom|England|Scotland|Wales|Ireland|Australia|New Zealand|Singapore|USA|United States|UAE|South Africa|Nigeria|Kenya|Ghana|Malaysia|India|Canada)\b|, (TX|CO|GA|IL|MA|WA|FL|TN|NY|CA|NC|MN|AZ)$/
 
 // The language written to businesses in a place (a city or country name, or an address). Also used to pick search terms in that language.
 export function languageOfPlace(where: string): LeadLang {
