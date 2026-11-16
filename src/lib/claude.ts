@@ -297,7 +297,7 @@ const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every mess
   2. Why them: ONE short sentence with a different concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it, and never say what it "doesn't" do. Skip it if the hook already used that fact.
   3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present what they sell. Then, in the same paragraph, a short honest way out (say so and he will leave them alone) instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
+  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present ONE specific thing taken from their own site text or findings: a named product, a named service line, a named audience or a named page (for example "how Northwind's homepage could put route planning first", "how the managed IT page could show pricing and availability"). Never fill that gap with a generic phrase: "your core services", "your main offer", "what you do", "what you sell", "your strongest service", "the client problem you solve best", "what makes you different". If the text gives no specific thing, name the one product or service the hook used. Then, in the same paragraph, a short honest way out (say so and he will leave them alone) instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
 - Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
 - Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
@@ -312,7 +312,7 @@ Its homepage opens with the company story and the product comes second. I rebuil
 
 I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
 
-Want me to send a one-page sketch of how Northwind's homepage could lead with the product? Just reply YES. If it's not for you, say so and I'll leave you alone."`;
+Want me to send a one-page sketch of how Northwind's homepage could put route planning first? Just reply YES. If it's not for you, say so and I'll leave you alone."`;
 
 const PROMPTS: Record<DraftKind, string> = {
   b2b: `Write outreach from Samuel Adefila to the founder or owner of each B2B company below. He found them on Google Maps and looked at their website. "Findings" lists what was noticed. "Site text" is text scraped from their site.
@@ -483,7 +483,11 @@ Return ONLY valid JSON: {"ID": {"name": "", "role": "", "message": "..."}, ...}`
 
 type Draft = { message: string; name?: string; role?: string };
 
-async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, Draft>> {
+// A close that names nothing specific ("lead with your core services", "the client problem you solve best") says the model had nothing to point at.
+const GENERIC_CLOSE = /(could\s+(?:lead|open|start)\s+with|could\s+(?:show|present|put|frame))\s+(?:your\s+|the\s+)?(?:(?:core|main|key|strongest|primary|best|top)\s+)?(?:services?|offers?|offerings?|what you (?:do|sell|offer)|client problem|business|value|what makes you different)\b|you solve best|what you do and who/i;
+export const hasGenericClose = (message: string): boolean => GENERIC_CLOSE.test(message);
+
+async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Promise<Map<string, Draft>> {
   // Random start per batch: neighbours differ, and a rewrite gets a fresh angle.
   const angleBase = Math.floor(Math.random() * PLACES_ANGLES.length);
   const hookBase = Math.floor(Math.random() * HOOKS.length);
@@ -514,6 +518,14 @@ async function draftBatch(batch: Lead[], kind: DraftKind): Promise<Map<string, D
     }
   } catch (e) {
     console.error(`[claude] ${kind} draft parse error:`, e);
+  }
+  // Write again, once, any draft whose close names nothing specific. A rewrite that is still generic is kept rather than lost.
+  if (!retried) {
+    const weak = batch.filter(l => { const d = result.get(l.id); return d && hasGenericClose(d.message); });
+    if (weak.length) {
+      const again = await draftBatch(weak, kind, true).catch(() => new Map<string, Draft>());
+      for (const [id, d] of again) if (!hasGenericClose(d.message)) result.set(id, d);
+    }
   }
   return result;
 }
