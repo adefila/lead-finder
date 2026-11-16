@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLeadById, updateLead } from '@/lib/supabase';
 import { generateColdEmails } from '@/lib/claude';
+import { dedupeGreeting } from '@/lib/greeting';
 import { analyzeWebsite } from '@/lib/enrich';
 
 export const dynamic = 'force-dynamic';
@@ -29,12 +30,12 @@ export async function POST(req: NextRequest) {
   if (drafted.proposal === lead.proposal) return NextResponse.json({ error: 'The model did not write a new draft. Check your Anthropic usage limit.' }, { status: 502 });
 
   const patch = {
-    draft_email: drafted.proposal,
+    draft_email: dedupeGreeting(drafted.proposal),
     contact_name: drafted.contactName ?? null,
     contact_title: drafted.contactTitle ?? null,
   };
   const error = await updateLead(id, patch);
   if (error) return NextResponse.json({ error }, { status: 500 });
 
-  return NextResponse.json({ proposal: drafted.proposal, contactName: drafted.contactName, contactTitle: drafted.contactTitle });
+  return NextResponse.json({ proposal: dedupeGreeting(drafted.proposal), contactName: drafted.contactName, contactTitle: drafted.contactTitle });
 }

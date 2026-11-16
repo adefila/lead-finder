@@ -630,7 +630,7 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     if (!d) return l;
     return {
       ...l,
-      proposal: d.message,
+      proposal: dedupeGreeting(d.message),
       contactName: d.name?.trim() || l.contactName,
       contactTitle: d.role?.trim() || l.contactTitle,
     };
