@@ -39,9 +39,9 @@ export function softenOptOut(message: string): string {
 // "there's no way to book" becomes "I couldn't find a way to book". English only. Safe to call twice.
 export function softenAbsolutes(message: string): string {
   return message
-    .replace(/([Tt])here(?:'s| is) no way/g, "I couldn't find a way")
-    .replace(/[Tt]here(?:'s| is) no/g, "I couldn't find any")
-    .replace(/has no way to/g, "can't find a way to");
+    .replace(/\b([Tt])here(?:'s| is) no way\b/g, "I couldn't find a way")
+    .replace(/\b[Tt]here(?:'s| is) no\b/g, "I couldn't find any")
+    .replace(/\bhas no way to\b/g, "can't find a way to");
 }
 
 // A greeting that appears twice in a row ("Hi there," then "Hi there,") keeps one. Safe to call twice.

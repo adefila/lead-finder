@@ -498,7 +498,7 @@ type Draft = { message: string; name?: string; role?: string };
 // A close that names nothing specific ("lead with your core services", "the client problem you solve best") says the model had nothing to point at.
 const GENERIC_CLOSE = /(could\s+(?:lead|open|start)\s+with|could\s+(?:show|present|put|frame))\s+(?:your\s+|the\s+)?(?:(?:core|main|key|strongest|primary|best|top)\s+)?(?:services?|offers?|offerings?|what you (?:do|sell|offer)|client problem|business|value|what makes you different)\b|you solve best|what you do and who/i;
 // A B2B offer that is only "rebuild your website" is what every designer sends: such a draft is written again once.
-const PLAIN_REBUILD = /\b(?:rebuild|redesign|revamp|refresh|overhaul)\b[^.\n]{0,30}\b(?:website|site|homepage|web presence)\b|\b(?:homepage|site|website)\s+(?:refresh|redesign|revamp|overhaul)\b|\brefresh\b|\b(?:new|fresh|modern)\s+(?:website|site)\b|\bfresh look\b|digital presence|online presence|there(?:'s| is) no|no way to|hasn'?t been (?:touched|updated)|(?:still )?shows 20\d\d|copyright|out of date|outdated|looks? (?:old|dated)/i;
+const PLAIN_REBUILD = /\b(?:rebuild|redesign|revamp|refresh|overhaul)\b[^.\n]{0,30}\b(?:website|site|homepage|web presence)\b|\b(?:homepage|site|website)\s+(?:refresh|redesign|revamp|overhaul)\b|\brefresh\b|\b(?:new|fresh|modern)\s+(?:website|site)\b|\bfresh look\b|digital presence|online presence|\bthere(?:'s| is) no\b|\bno way to\b|hasn'?t been (?:touched|updated)|(?:still )?shows 20\d\d|copyright|out of date|outdated|looks? (?:old|dated)/i;
 export const hasGenericClose = (message: string): boolean => GENERIC_CLOSE.test(message);
 export const hasPlainRebuild = (message: string): boolean => PLAIN_REBUILD.test(message);
 
