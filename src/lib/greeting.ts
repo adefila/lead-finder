@@ -30,6 +30,8 @@ export function softenOptOut(message: string): string {
     .replace(/,?\s+and I['’]ll leave you (?:alone|be)\s*\./gi, '.')
     .replace(/,?\s+laat het (?:me|mij) (?:gerust )?weten en ik laat u met rust\b\.?/gi, ', laat het me gerust weten.')
     .replace(/,?\s+en ik laat u met rust\b\.?/gi, '.')
+    .replace(/,?\s+så lar jeg deg (?:være|i fred)\s*\./gi, '.')
+    .replace(/,?\s+et je vous laisse tranquille\s*\./gi, '.')
     .replace(/\.\./g, '.');
 }
 
