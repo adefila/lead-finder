@@ -12,7 +12,7 @@ export const maxDuration = 60;
 // ?dry=1 only reports.
 export async function POST(req: Request) {
   const dry = new URL(req.url).searchParams.get('dry') === '1';
-  const leads = (await getLeads()).filter(l => (l.status === 'queued' || l.status === 'approved') && l.proposal && l.contactEmail && ['places', 'osm', 'companies_house'].includes(l.source));
+  const leads = (await getLeads()).filter(l => (l.status === 'queued' || l.status === 'approved' || l.status === 'new') && l.proposal && l.contactEmail && ['places', 'osm', 'companies_house'].includes(l.source));
   let changed = 0, greeting = 0, currency = 0, failed = 0;
   for (const l of leads) {
     const before = l.proposal!;
