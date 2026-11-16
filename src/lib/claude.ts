@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
 import { dedupeGreeting, ensureGreeting, fixCurrency, fixGreeting, softenAbsolutes, softenOptOut } from '@/lib/greeting';
+import { templateDraft, templateFollowUp } from '@/lib/templatedraft';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -38,12 +39,21 @@ export async function scoreJobs(jobs: Lead[]): Promise<Lead[]> {
   const batches: Lead[][] = [];
   for (let i = 0; i < jobs.length; i += SCORE_BATCH) batches.push(jobs.slice(i, i + SCORE_BATCH));
   const scores = new Map<string, number>();
+  let failedBatches = 0;
   for (let i = 0; i < batches.length; i += 3) {
     const results = await Promise.all(batches.slice(i, i + 3).map(b => scoreBatch(b).catch(e => {
+      failedBatches++;
       console.error('[claude] scoring batch failed:', (e as Error).message);
       return new Map<string, number>();
     })));
     results.forEach(m => m.forEach((v, k) => scores.set(k, v)));
+  }
+  // The model could not be reached: a lead the app can write a true template email for is kept at just above the bar, so searches
+  // keep bringing in leads. Roles and leads with nothing to say are left unscored and tried again next search.
+  if (failedBatches) {
+    let kept = 0;
+    for (const j of jobs) if (!scores.has(j.id) && templateDraft(j)) { scores.set(j.id, minFitFor(j) + 5); kept++; }
+    if (kept) console.warn(`[claude] ${kept} leads kept with a plain score because the model could not be reached`);
   }
   const unscored = jobs.filter(j => !scores.has(j.id)).length;
   if (unscored) console.warn(`[claude] ${unscored} leads got no score; they will be tried again next search`);
@@ -587,6 +597,16 @@ export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
     }
   }
 
+  // The model could not be reached (no credit, an outage) or wrote nothing: a lead with no email at all gets a plain template draft
+  // instead of being saved empty. A lead that already has an email draft is never touched.
+  let templated = 0;
+  for (const l of leads) {
+    if (drafts.has(l.id) || /^\s*Subject:/i.test(l.proposal ?? '')) continue;
+    const t = templateDraft(l);
+    if (t) { drafts.set(l.id, { message: t }); templated++; }
+  }
+  if (templated) console.log(`[claude] ${templated} leads got a template draft because the model wrote nothing`);
+
   // An email needs its "Subject:" line first (the app reads it). If the model put it after the greeting, move it up; if it
   // left it out, write that one message again (up to twice) rather than send something without a subject.
   const hasSubjectFirst = (m: string) => /^\s*Subject:/i.test(m);
@@ -711,11 +731,19 @@ ${VOICE}
 
 Return ONLY the message text.`;
 
-  const msg = await getClient().messages.create({
-    model: MODEL,
-    max_tokens: 600,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let msg;
+  try {
+    msg = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (e) {
+    // Automatic follow-ups keep going with a plain template when the model cannot be reached; the personal-note button reports the error.
+    const t = opts.personal ? null : templateFollowUp(lead, number);
+    if (t) return t;
+    throw e;
+  }
   const c = msg.content[0];
   const text = c.type === 'text' ? humanize(c.text.replace(/^"""|"""$/g, '')) : '';
   const polite = leadLanguage(lead) === 'nl' && INFORMAL_DUTCH.test(text) ? await politeDutch(text).catch(() => text) : text;
