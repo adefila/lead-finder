@@ -16,6 +16,30 @@ const LAUNCH: Spot[] = [
   { id: 'peerlist', name: 'Peerlist Launchpad', kind: 'Launch board', why: 'Reported as free to launch with a verified personal profile. Paid featured launches start at $29.', tip: 'Fill in your profile first. Confirm the current terms on the site.', url: 'https://peerlist.io/launchpad', checked: true },
 ];
 
+const POST: Spot[] = [
+  { id: 'betalist', name: 'BetaList', kind: 'Directory for early products', why: 'Reported as a free place to list a product before launch and collect early sign-ups.', tip: 'Have a one-line description and a landing page with an email form ready. Confirm current terms on the site.', url: 'https://betalist.com/', checked: true },
+  { id: 'saashub', name: 'SaaSHub', kind: 'Software directory', why: 'A software directory where people compare alternatives. Reported as slow but steady for organic leads.', tip: 'List Baton against the tools clients use now, such as page builders with editors.', url: 'https://www.saashub.com/', checked: true },
+  { id: 'microlaunch', name: 'Microlaunch', kind: 'Launch board for small products', why: 'Reported as a free launch board aimed at indie and micro-SaaS products.', tip: 'Not checked in detail. Read the current rules before you submit.', url: 'https://microlaunch.net/', checked: false },
+  { id: 'fazier', name: 'Fazier', kind: 'Launch board', why: 'A launch board in the same style as Product Hunt.', tip: 'Reported as free only if you put its badge on your site. Confirm before you submit.', url: 'https://fazier.com/', checked: false },
+  { id: 'uneed', name: 'Uneed', kind: 'Launch board', why: 'A launch board for tools made by small teams and solo makers.', tip: 'Not checked. Read the current terms before you submit.', url: 'https://www.uneed.best/', checked: false },
+  { id: 'stackshare', name: 'StackShare', kind: 'Developer tool directory', why: 'Developers look here to see which tools teams use.', tip: 'Add Baton as a tool and list the stack it sits on.', url: 'https://stackshare.io/', checked: false },
+  { id: 'altto', name: 'AlternativeTo', kind: 'Software directory', why: 'People searching for an alternative to a tool find it here.', tip: 'Pick the closest tools, and word the listing around what clients can edit without a developer.', url: 'https://alternativeto.net/', checked: false },
+  { id: 'sideproject', name: 'r/SideProject', kind: 'Reddit community', why: 'People share what they built and give direct feedback.', tip: 'Read the subreddit rules first. Show what it does, do not just link it.', url: 'https://www.reddit.com/r/SideProject/', checked: false },
+  { id: 'saasreddit', name: 'r/SaaS', kind: 'Reddit community', why: 'Founders compare notes on pricing, launches and early customers.', tip: 'Read the rules on self-promotion before you post.', url: 'https://www.reddit.com/r/SaaS/', checked: false },
+  { id: 'devto', name: 'DEV Community', kind: 'Write-up', why: 'Developers read build stories here, and agencies are among them.', tip: 'Write how Baton works under the hood, not a sales post. Link to the site at the end.', url: 'https://dev.to/', checked: false },
+  { id: 'hashnode', name: 'Hashnode', kind: 'Write-up', why: 'Another developer blogging platform with its own audience.', tip: 'Post the same story as DEV with a different opening, so the two do not read as copies.', url: 'https://hashnode.com/', checked: false },
+];
+
+const EVENTS: Spot[] = [
+  { id: 'devpost', name: 'Devpost hackathons', kind: 'Hackathon listings', why: 'The main place to find online hackathons you can enter alone or with a team.', tip: 'Filter for online and for open dates. Judges and sponsors see your project page.', url: 'https://devpost.com/hackathons', checked: true },
+  { id: 'devweek', name: 'DeveloperWeek 2027 Hackathon', kind: 'Online hackathon', why: 'Reported as online from 25 January to 11 February 2027, with awards in Santa Clara.', tip: 'You must register on Devpost before it starts. Check the challenges to see if Baton fits one.', url: 'https://developerweek-2027-hackathon.devpost.com/', checked: true },
+  { id: 'lablab', name: 'lablab.ai', kind: 'AI hackathons', why: 'Runs online AI hackathons with sponsor credits. Useful if you add an AI feature to Baton.', tip: 'Not checked. Look at what is open now and what the prizes require.', url: 'https://lablab.ai/', checked: false },
+  { id: 'gitexng', name: 'GITEX Nigeria 2027', kind: 'Tech and startup show, Lagos', why: 'A large technology and startup show in Lagos, with a startup area and investor meetings.', tip: 'Sources disagree on the dates: 28 to 30 September 2027 and 5 to 7 October 2027 both appear. Check the official site.', url: 'https://gitexnigeria.ng/', checked: false },
+  { id: 'websummit', name: 'Web Summit', kind: 'Conference, Lisbon', why: 'One of the biggest tech conferences, with a startup programme and many investors.', tip: 'Dates and startup ticket terms not checked. Tickets are costly, so ask about startup rates.', url: 'https://websummit.com/', checked: false },
+  { id: 'slush', name: 'Slush', kind: 'Startup event, Helsinki', why: 'A startup and investor event with a founder-to-investor meeting app.', tip: 'Dates and startup ticket terms not checked.', url: 'https://slush.org/', checked: false },
+  { id: 'disrupt', name: 'TechCrunch events', kind: 'Startup conferences', why: 'Includes a startup pitch competition and a large press audience.', tip: 'Current event list and application windows not checked.', url: 'https://techcrunch.com/events/', checked: false },
+];
+
 const INVEST: Spot[] = [
   { id: 'fi', name: 'Founder Institute', kind: 'Accelerator, Africa', why: 'Takes solo founders and small teams at idea or pre-seed stage.', tip: 'Takes 4% equity to its shared pool. Read the terms first.', url: 'https://allbusiness.africa/programs/founder-institute-africa', checked: true },
   { id: 'swg', name: 'Startup Wise Guys', kind: 'Accelerator, Africa', why: 'B2B SaaS programme for East and West Africa.', tip: 'Wants a strong team and early traction, so launch first.', url: 'https://startupwiseguys.com/location/africa/', checked: true },
@@ -64,7 +88,7 @@ export function Launch() {
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [showDone, setShowDone] = useState(false);
   useEffect(() => { setMarks(load()); }, []);
-  const doneCount = [...LAUNCH, ...INVEST].filter(s => marks[s.id] === 'done').length;
+  const doneCount = [...LAUNCH, ...POST, ...EVENTS, ...INVEST].filter(s => marks[s.id] === 'done').length;
   const visible = (list: Spot[]) => showDone ? list : list.filter(s => marks[s.id] !== 'done');
 
   const mark = (id: string, m: Mark) => setMarks(prev => {
@@ -118,6 +142,18 @@ export function Launch() {
         <h3>Get Baton noticed</h3>
         <p>Places to launch, in the order I would use them.</p>
         {visible(LAUNCH).length ? <div className="bl-grid">{visible(LAUNCH).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
+      </section>
+
+      <section className="bl-sec">
+        <h3>More places to post</h3>
+        <p>Directories, communities and write-ups. Most take an hour or less each.</p>
+        {visible(POST).length ? <div className="bl-grid">{visible(POST).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
+      </section>
+
+      <section className="bl-sec">
+        <h3>Hackathons and events</h3>
+        <p>Places where developers, founders and investors are in the same room, online or in person.</p>
+        {visible(EVENTS).length ? <div className="bl-grid">{visible(EVENTS).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
       </section>
 
       <section className="bl-sec">
