@@ -22,6 +22,17 @@ export function ensureGreeting(message: string, lang = 'en'): string {
   return lines.join('\n');
 }
 
+// Samuel does not want "I'll leave you alone" in his emails. The prompt no longer asks for it, and this turns it into a plain way out
+// for English and Dutch drafts ("If it's not for you, just say so."). Other languages are handled in the prompt. Safe to call twice.
+export function softenOptOut(message: string): string {
+  return message
+    .replace(/,?\s+(?:just\s+)?say so and I['’]ll leave you (?:alone|be)\b\.?/gi, ', just say so.')
+    .replace(/,?\s+and I['’]ll leave you (?:alone|be)\b\.?/gi, '.')
+    .replace(/,?\s+laat het (?:me|mij) (?:gerust )?weten en ik laat u met rust\b\.?/gi, ', laat het me gerust weten.')
+    .replace(/,?\s+en ik laat u met rust\b\.?/gi, '.')
+    .replace(/\.\./g, '.');
+}
+
 // BookedEZ paid out US dollars. Translated drafts sometimes turn "$10K" into "10.000 euro": put it back.
 export function fixCurrency(message: string): string {
   return message.replace(/(?:10[.,\s  ]?000|tienduizend|dix mille|zehntausend|diez mil|dez mil|diecimila|ti tusen)\s*(?:euros?|€)/gi, '$10,000');

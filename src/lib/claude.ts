@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { ensureGreeting, fixCurrency, fixGreeting } from '@/lib/greeting';
+import { ensureGreeting, fixCurrency, fixGreeting, softenOptOut } from '@/lib/greeting';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -286,7 +286,7 @@ Right now bookings are by phone only. I set up online booking for small clinics,
 
 I also designed BookedEZ, a booking app that paid out over $10K in its first month.
 
-Want me to set this up for Bright Smile? Just reply YES and I'll show you exactly how it would work. If it's not for you, say so and I'll leave you alone."`;
+Want me to set this up for Bright Smile? Just reply YES and I'll show you exactly how it would work. If it's not for you, just say so."`;
 
 // How every B2B message is built: a short introduction of Samuel with one offer and one proof point, to a founder or owner.
 const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every message):
@@ -297,7 +297,7 @@ const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every mess
   2. Why them: ONE short sentence with a different concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it, and never say what it "doesn't" do. Skip it if the hook already used that fact.
   3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
   4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present ONE specific thing taken from their own site text or findings: a named product, a named service line, a named audience or a named page (for example "how Northwind's homepage could put route planning first", "how the managed IT page could show pricing and availability"). Never fill that gap with a generic phrase: "your core services", "your main offer", "what you do", "what you sell", "your strongest service", "the client problem you solve best", "what makes you different". If the text gives no specific thing, name the one product or service the hook used. Then, in the same paragraph, a short honest way out (say so and he will leave them alone) instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
+  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present ONE specific thing taken from their own site text or findings: a named product, a named service line, a named audience or a named page (for example "how Northwind's homepage could put route planning first", "how the managed IT page could show pricing and availability"). Never fill that gap with a generic phrase: "your core services", "your main offer", "what you do", "what you sell", "your strongest service", "the client problem you solve best", "what makes you different". If the text gives no specific thing, name the one product or service the hook used. Then, in the same paragraph, a short, plain way out ("If it's not for you, just say so."; never "leave you alone", "leave you be" or "won't bother you") instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
 - Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
 - Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
@@ -312,7 +312,7 @@ Its homepage opens with the company story and the product comes second. I rebuil
 
 I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
 
-Want me to send a one-page sketch of how Northwind's homepage could put route planning first? Just reply YES. If it's not for you, say so and I'll leave you alone."`;
+Want me to send a one-page sketch of how Northwind's homepage could put route planning first? Just reply YES. If it's not for you, just say so."`;
 
 const PROMPTS: Record<DraftKind, string> = {
   b2b: `Write outreach from Samuel Adefila to the founder or owner of each B2B company below. He found them on Google Maps and looked at their website. "Findings" lists what was noticed. "Site text" is text scraped from their site.
@@ -444,8 +444,8 @@ Language (strict):
 - Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
 - Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
 - Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. German: "Guten Tag [Vorname]," or "Hallo [Vorname],", "Sie" throughout. Spanish: "Hola [Nombre],", "usted" throughout. Portuguese: "Olá [Nome],", formal register, never "tu". Italian: "Buongiorno [Nome],", "Lei" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,", "Guten Tag,", "Hola,", "Olá,", "Buongiorno,").
-- The close is the question, then an honest way out (if it is not for them, they say so and he leaves them alone). Natural examples (vary the wording, keep the meaning):
-  Dutch: "Zal ik dit voor X voor u opzetten? Antwoord gewoon JA, dan laat ik u precies zien hoe het zou werken. Is het niets voor u, laat het me weten en ik laat u met rust."
+- The close is the question, then a short, plain way out (if it is not for them, they just say so). Never write "leave you alone", "leave you be", "won't bother you", "won't follow up" or an equivalent in any language. Natural examples (vary the wording, keep the meaning):
+  Dutch: "Zal ik dit voor X voor u opzetten? Antwoord gewoon JA, dan laat ik u precies zien hoe het zou werken. Is het niets voor u, laat het me gerust weten."
   Norwegian: "Skal jeg sette dette opp for X? Svar bare JA, så viser jeg nøyaktig hvordan det ville fungert. Er det ikke noe for dere, si fra, så lar jeg dere være."
   French: "Voulez-vous que je mette cela en place pour X ? Répondez simplement OUI et je vous montrerai exactement comment cela fonctionnerait. Si ce n'est pas pour vous, dites-le-moi et je vous laisse tranquille."
   German: "Soll ich das für X einrichten? Antworten Sie einfach mit JA, dann zeige ich Ihnen genau, wie es funktionieren würde. Falls es nichts für Sie ist, sagen Sie es kurz und ich lasse Sie in Ruhe."
@@ -471,7 +471,7 @@ Rules:
 - Offer one easy next step: a short note of ideas for their business, or a short call.
 - If Channel is EMAIL: line 1 "Subject: ..." (under 7 words, naming the specific problem he would fix for them, e.g. "Booking and reminders for Broad St Hair". Never the words website, homepage or concept), blank line, body under 100 words, sign off "Samuel" then "adefilasamuel.com".
 - If Channel is LINKEDIN: no subject, under 280 characters in total (LinkedIn connection note limit), sign off "Samuel".
-- When Channel is EMAIL, end the body with one question they can answer with a single word (reply YES) and an honest way out (if it is not for them, they say so and he leaves them alone), in one short paragraph.
+- When Channel is EMAIL, end the body with one question they can answer with a single word (reply YES) and a short, plain way out (if it is not for them, they just say so; never "leave you alone" or an equivalent in any language), in one short paragraph.
 - Never state anything that isn't in the findings.
 
 ${APPROACH}
@@ -511,7 +511,7 @@ async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Prom
           const draft = typeof value === 'string' ? { message: value } : value;
           if (draft?.message) {
             const lead = batch.find(l => l.id === id);
-            result.set(id, { ...draft, message: ensureGreeting(fixCurrency(fixGreeting(humanize(draft.message))), lead ? leadLanguage(lead) : 'en') });
+            result.set(id, { ...draft, message: ensureGreeting(fixCurrency(softenOptOut(fixGreeting(humanize(draft.message)))), lead ? leadLanguage(lead) : 'en') });
           }
         }
       }
