@@ -27,7 +27,7 @@ export function ensureGreeting(message: string, lang = 'en'): string {
 export function softenOptOut(message: string): string {
   return message
     .replace(/,?\s+(?:just\s+)?say so and I['’]ll leave you (?:alone|be)\b\.?/gi, ', just say so.')
-    .replace(/,?\s+and I['’]ll leave you (?:alone|be)\b\.?/gi, '.')
+    .replace(/,?\s+and I['’]ll leave you (?:alone|be)\s*\./gi, '.')
     .replace(/,?\s+laat het (?:me|mij) (?:gerust )?weten en ik laat u met rust\b\.?/gi, ', laat het me gerust weten.')
     .replace(/,?\s+en ik laat u met rust\b\.?/gi, '.')
     .replace(/\.\./g, '.');
