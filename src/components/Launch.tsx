@@ -13,15 +13,31 @@ const LAUNCH: Spot[] = [
   { id: 'ph', name: 'Product Hunt', kind: 'Launch day', why: 'Broad launch-day exposure and a developer tools category.', tip: 'Needs a demo video and a real launch plan. A bare listing gets little.', url: 'https://www.producthunt.com/', checked: true },
   { id: 'ih', name: 'Indie Hackers', kind: 'Community', why: 'Founders trade feedback on positioning before a launch.', tip: 'Post before you launch and ask what is unclear.', url: 'https://www.indiehackers.com/', checked: true },
   { id: 'devhunt', name: 'DevHunt', kind: 'Launch board for dev tools', why: 'A weekly launch board only for developer tools, voted on by developers who sign in with GitHub or Google.', tip: 'Reported as free. Confirm the current terms on the site.', url: 'https://devhunt.org/', checked: true },
-  { id: 'peerlist', name: 'Peerlist Launchpad', kind: 'Launch board', why: 'Reported as free to launch with a verified personal profile. Paid featured launches start at $29.', tip: 'Fill in your profile first. Confirm the current terms on the site.', url: 'https://peerlist.io/launchpad', checked: true },
+  { id: 'peerlist', name: 'Peerlist Launchpad', kind: 'Launch board', why: 'Reported as free to launch with a verified personal profile. Paid featured launches start at $29.', tip: 'Use the free launch only and skip the paid featured slot. Fill in your profile first.', url: 'https://peerlist.io/launchpad', checked: true },
+];
+
+const PITCH: Spot[] = [
+  { id: 'framerexperts', name: 'Framer Experts directory', kind: 'Freelancers and agencies', why: 'Framer lists freelancers and agencies that build client sites in Framer. Handover to a client is exactly their problem.', tip: 'Free to browse. Pick ones with several client sites, email them, and ask them to try Baton on one site and tell you what breaks.', url: 'https://www.framer.com/community/experts/', checked: false },
+  { id: 'clutch', name: 'Clutch web developer directory', kind: 'Agencies that build custom sites', why: 'Agencies that build custom sites for clients, with their size, clients and a link to their own site.', tip: 'Free to browse. Look for small agencies, find the owner on their own site, and offer them a free trial on one client project.', url: 'https://clutch.co/web-developers', checked: false },
+  { id: 'rframer', name: 'r/Framer', kind: 'Reddit, Framer builders', why: 'People who build client sites in Framer, often asking how to let clients edit them.', tip: 'Answer a real question first. Mention Baton only where it solves what they asked, and read the rules on promotion.', url: 'https://www.reddit.com/r/Framer/', checked: false },
+  { id: 'rwebflow', name: 'r/webflow', kind: 'Reddit, Webflow builders', why: 'Webflow freelancers and agencies, who deal with client editing all the time.', tip: 'Same approach as r/Framer: help first, mention Baton where it fits. Read the rules first.', url: 'https://www.reddit.com/r/webflow/', checked: false },
+  { id: 'rnocode', name: 'r/nocode', kind: 'Reddit, no-code builders', why: 'People who build sites and apps without much code, and the agencies that sell that work.', tip: 'Read the rules on promotion before you post anything.', url: 'https://www.reddit.com/r/nocode/', checked: false },
+  { id: 'cursorforum', name: 'Cursor forum', kind: 'Developers who build with AI', why: 'Developers building client sites with AI tools. A site built with AI still needs a way for the client to edit it.', tip: 'Free to join. Ask a question or share a lesson before you mention Baton.', url: 'https://forum.cursor.com/', checked: false },
+  { id: 'linkedinagency', name: 'LinkedIn, agency owners', kind: 'Direct outreach', why: 'Owners of small web and design agencies, found by searching, who can say yes without a committee.', tip: 'Searching and a connection request with a short note are free. Offer a free trial on one client site, not a pitch.', url: 'https://www.linkedin.com/search/results/people/?keywords=web%20agency%20founder', checked: false },
+];
+
+const SHOUT: Spot[] = [
+  { id: 'hnworking', name: 'Ask HN: What are you working on?', kind: 'Hacker News thread', why: 'A monthly thread where people post what they are building, and one comment is enough.', tip: 'Free. Find the current month\'s thread with the link, then add one plain comment with what Baton does and the link.', url: 'https://hn.algolia.com/?dateRange=pastMonth&query=%22what%20are%20you%20working%20on%22&sort=byDate&type=story', checked: false },
+  { id: 'ihworking', name: 'Indie Hackers: what are you working on', kind: 'Community thread', why: 'Founders post what they are working on in recurring threads and reply to each other.', tip: 'Free. Find the latest "What are you working on" thread on the site and leave a comment.', url: 'https://www.indiehackers.com/', checked: false },
+  { id: 'showoffsat', name: 'r/webdev Showoff Saturday', kind: 'Reddit weekly thread', why: 'Developers share what they made in a weekly thread.', tip: 'Free. Post only in the weekly thread. Sources disagree on whether commercial tools are allowed, so read the sidebar first.', url: 'https://www.reddit.com/r/webdev/', checked: false },
+  { id: 'rstartups', name: 'r/startups share thread', kind: 'Reddit thread', why: 'A thread for founders to share what they are building.', tip: 'Free. New accounts may be blocked, so check the rules and the age and karma limits first.', url: 'https://www.reddit.com/r/startups/', checked: false },
+  { id: 'buildinpublic', name: '#buildinpublic on X', kind: 'Social, replies', why: 'Founders reply to each other\'s updates under the tag, and a useful reply gets noticed.', tip: 'Free. Reply to builders with something helpful, and post your own short update with a clip of the editor.', url: 'https://x.com/search?q=%23buildinpublic&f=live', checked: false },
 ];
 
 const POST: Spot[] = [
-  { id: 'betalist', name: 'BetaList', kind: 'Directory for early products', why: 'Reported as a free place to list a product before launch and collect early sign-ups.', tip: 'Have a one-line description and a landing page with an email form ready. Confirm current terms on the site.', url: 'https://betalist.com/', checked: true },
-  { id: 'saashub', name: 'SaaSHub', kind: 'Software directory', why: 'A software directory where people compare alternatives. Reported as slow but steady for organic leads.', tip: 'List Baton against the tools clients use now, such as page builders with editors.', url: 'https://www.saashub.com/', checked: true },
+  { id: 'betalist', name: 'BetaList', kind: 'Directory for early products', why: 'Reported as a free place to list a product before launch and collect early sign-ups.', tip: 'Use the free submission only. It is slower, and the paid fast lane is not needed.', url: 'https://betalist.com/', checked: true },
+  { id: 'saashub', name: 'SaaSHub', kind: 'Software directory', why: 'A software directory where people compare alternatives. Reported as slow but steady for organic leads.', tip: 'Use the free listing only. List Baton against the tools clients use now, such as page builders with editors.', url: 'https://www.saashub.com/', checked: true },
   { id: 'microlaunch', name: 'Microlaunch', kind: 'Launch board for small products', why: 'Reported as a free launch board aimed at indie and micro-SaaS products.', tip: 'Not checked in detail. Read the current rules before you submit.', url: 'https://microlaunch.net/', checked: false },
-  { id: 'fazier', name: 'Fazier', kind: 'Launch board', why: 'A launch board in the same style as Product Hunt.', tip: 'Reported as free only if you put its badge on your site. Confirm before you submit.', url: 'https://fazier.com/', checked: false },
-  { id: 'uneed', name: 'Uneed', kind: 'Launch board', why: 'A launch board for tools made by small teams and solo makers.', tip: 'Not checked. Read the current terms before you submit.', url: 'https://www.uneed.best/', checked: false },
   { id: 'stackshare', name: 'StackShare', kind: 'Developer tool directory', why: 'Developers look here to see which tools teams use.', tip: 'Add Baton as a tool and list the stack it sits on.', url: 'https://stackshare.io/', checked: false },
   { id: 'altto', name: 'AlternativeTo', kind: 'Software directory', why: 'People searching for an alternative to a tool find it here.', tip: 'Pick the closest tools, and word the listing around what clients can edit without a developer.', url: 'https://alternativeto.net/', checked: false },
   { id: 'sideproject', name: 'r/SideProject', kind: 'Reddit community', why: 'People share what they built and give direct feedback.', tip: 'Read the subreddit rules first. Show what it does, do not just link it.', url: 'https://www.reddit.com/r/SideProject/', checked: false },
@@ -31,17 +47,12 @@ const POST: Spot[] = [
 ];
 
 const EVENTS: Spot[] = [
-  { id: 'devpost', name: 'Devpost hackathons', kind: 'Hackathon listings', why: 'The main place to find online hackathons you can enter alone or with a team.', tip: 'Filter for online and for open dates. Judges and sponsors see your project page.', url: 'https://devpost.com/hackathons', checked: true },
+  { id: 'devpost', name: 'Devpost hackathons', kind: 'Hackathon listings, free to enter', why: 'The main place to find online hackathons you can enter alone or with a team.', tip: 'Filter for online and for open dates. Judges and sponsors see your project page.', url: 'https://devpost.com/hackathons', checked: true },
   { id: 'devweek', name: 'DeveloperWeek 2027 Hackathon', kind: 'Online hackathon', why: 'Reported as online from 25 January to 11 February 2027, with awards in Santa Clara.', tip: 'You must register on Devpost before it starts. Check the challenges to see if Baton fits one.', url: 'https://developerweek-2027-hackathon.devpost.com/', checked: true },
-  { id: 'lablab', name: 'lablab.ai', kind: 'AI hackathons', why: 'Runs online AI hackathons with sponsor credits. Useful if you add an AI feature to Baton.', tip: 'Not checked. Look at what is open now and what the prizes require.', url: 'https://lablab.ai/', checked: false },
-  { id: 'gitexng', name: 'GITEX Nigeria 2027', kind: 'Tech and startup show, Lagos', why: 'A large technology and startup show in Lagos, with a startup area and investor meetings.', tip: 'Sources disagree on the dates: 28 to 30 September 2027 and 5 to 7 October 2027 both appear. Check the official site.', url: 'https://gitexnigeria.ng/', checked: false },
-  { id: 'websummit', name: 'Web Summit', kind: 'Conference, Lisbon', why: 'One of the biggest tech conferences, with a startup programme and many investors.', tip: 'Dates and startup ticket terms not checked. Tickets are costly, so ask about startup rates.', url: 'https://websummit.com/', checked: false },
-  { id: 'slush', name: 'Slush', kind: 'Startup event, Helsinki', why: 'A startup and investor event with a founder-to-investor meeting app.', tip: 'Dates and startup ticket terms not checked.', url: 'https://slush.org/', checked: false },
-  { id: 'disrupt', name: 'TechCrunch events', kind: 'Startup conferences', why: 'Includes a startup pitch competition and a large press audience.', tip: 'Current event list and application windows not checked.', url: 'https://techcrunch.com/events/', checked: false },
+  { id: 'lablab', name: 'lablab.ai', kind: 'AI hackathons', why: 'Runs online AI hackathons with sponsor credits. Useful if you add an AI feature to Baton.', tip: 'Not checked. Confirm each hackathon is free to enter before you join.', url: 'https://lablab.ai/', checked: false },
 ];
 
 const INVEST: Spot[] = [
-  { id: 'fi', name: 'Founder Institute', kind: 'Accelerator, Africa', why: 'Takes solo founders and small teams at idea or pre-seed stage.', tip: 'Takes 4% equity to its shared pool. Read the terms first.', url: 'https://allbusiness.africa/programs/founder-institute-africa', checked: true },
   { id: 'swg', name: 'Startup Wise Guys', kind: 'Accelerator, Africa', why: 'B2B SaaS programme for East and West Africa.', tip: 'Wants a strong team and early traction, so launch first.', url: 'https://startupwiseguys.com/location/africa/', checked: true },
   { id: 'yc', name: 'Y Combinator', kind: 'Accelerator', why: 'Biggest name for developer tools, and solo founders can apply.', tip: 'Current batch dates not checked. Traction from a launch helps.', url: 'https://www.ycombinator.com/apply', checked: false },
   { id: 'antler', name: 'Antler', kind: 'Accelerator', why: 'Invests at the earliest stage and has an Africa presence.', tip: 'Current programme and location not checked.', url: 'https://www.antler.co/', checked: false },
@@ -88,7 +99,7 @@ export function Launch() {
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [showDone, setShowDone] = useState(false);
   useEffect(() => { setMarks(load()); }, []);
-  const doneCount = [...LAUNCH, ...POST, ...EVENTS, ...INVEST].filter(s => marks[s.id] === 'done').length;
+  const doneCount = [...LAUNCH, ...PITCH, ...SHOUT, ...POST, ...EVENTS, ...INVEST].filter(s => marks[s.id] === 'done').length;
   const visible = (list: Spot[]) => showDone ? list : list.filter(s => marks[s.id] !== 'done');
 
   const mark = (id: string, m: Mark) => setMarks(prev => {
@@ -145,14 +156,26 @@ export function Launch() {
       </section>
 
       <section className="bl-sec">
+        <h3>Developers and agencies to pitch</h3>
+        <p>People who build custom client sites or use AI to do it. Ask them to try Baton on one real site and tell you what breaks.</p>
+        {visible(PITCH).length ? <div className="bl-grid">{visible(PITCH).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
+      </section>
+
+      <section className="bl-sec">
+        <h3>Put it out there</h3>
+        <p>Threads and tags where a short comment or reply is enough. All free.</p>
+        {visible(SHOUT).length ? <div className="bl-grid">{visible(SHOUT).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
+      </section>
+
+      <section className="bl-sec">
         <h3>More places to post</h3>
         <p>Directories, communities and write-ups. Most take an hour or less each.</p>
         {visible(POST).length ? <div className="bl-grid">{visible(POST).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
       </section>
 
       <section className="bl-sec">
-        <h3>Hackathons and events</h3>
-        <p>Places where developers, founders and investors are in the same room, online or in person.</p>
+        <h3>Hackathons</h3>
+        <p>Online hackathons that are free to enter. Check each one before you join.</p>
         {visible(EVENTS).length ? <div className="bl-grid">{visible(EVENTS).map(card)}</div> : <p className="bl-empty">All of these are done.</p>}
       </section>
 
@@ -166,7 +189,7 @@ export function Launch() {
         <p className="bl-foot"><button className="link-btn" onClick={() => setShowDone(v => !v)}>{showDone ? 'Hide' : 'Show'} the {doneCount} you marked done</button></p>
       )}
 
-      <p className="bl-foot">Dates, terms and deadlines change. Confirm everything on each official page before you apply.</p>
+      <p className="bl-foot">Everything here is meant to cost nothing. Terms change, so confirm that on each page before you submit, and skip any paid option it offers.</p>
     </div>
   );
 }
