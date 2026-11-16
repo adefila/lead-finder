@@ -35,6 +35,11 @@ export function softenOptOut(message: string): string {
     .replace(/\.\./g, '.');
 }
 
+// A greeting that appears twice in a row ("Hi there," then "Hi there,") keeps one. Safe to call twice.
+export function dedupeGreeting(message: string): string {
+  return message.replace(/^([^\n]{2,60},)[ \t]*\n+(?:[ \t]*\n)*\1[ \t]*$/m, '$1');
+}
+
 // BookedEZ paid out US dollars. Translated drafts sometimes turn "$10K" into "10.000 euro": put it back.
 export function fixCurrency(message: string): string {
   return message.replace(/(?:10[.,\s  ]?000|tienduizend|dix mille|zehntausend|diez mil|dez mil|diecimila|ti tusen)\s*(?:euros?|€)/gi, '$10,000');

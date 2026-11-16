@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { ensureGreeting, fixCurrency, fixGreeting, softenOptOut } from '@/lib/greeting';
+import { dedupeGreeting, ensureGreeting, fixCurrency, fixGreeting, softenOptOut } from '@/lib/greeting';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -297,9 +297,9 @@ const APPROACH_B2B = `Approach (a pitch about ONE specific problem and its fix, 
 - Body under 90 words. Three or four very short paragraphs.
 - Build it in this order:
   1. The hook: the first line after the greeting, written in the style on the "Hook" line. Everything in it must be true and come from the site text: never invent what their buyers do or want. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
-  2. The problem: one or two short sentences. Use the "Problem found" line when there is one. Otherwise use something plainly visible in the site text: what a buyer who arrives cannot do or cannot find (book a demo, see pricing, tell which product is for them, see proof from their own industry, reach a person). Say WHERE it happens and state it as a plain observation about the page ("On the managed IT page the only way in is the general contact form."), then add in a few words what that costs them ("so a buyer who is ready has to go looking for a way to start"). Only say what the Findings or Site text support. Never criticise the design, never call the site old, dated or outdated, never blame whoever built it, and never guess what their buyers do.
+  2. The problem: one or two short sentences. Use the "Problem found" line when there is one. Otherwise use something plainly visible in the site text: what a buyer who arrives cannot do or cannot find (book a demo, see pricing, tell which product is for them, see proof from their own industry, reach a person). Say WHERE it happens and state it as a plain observation about the page ("On the managed IT page the only way in is the general contact form."), then add in a few words what that costs them ("so a buyer who is ready has to go looking for a way to start"). Only say what the Findings or Site text support, and you have only seen part of their site: say what you could not find ("I couldn't find a pricing page for managed IT", "the case studies aren't sorted by industry on the page I saw"), never "there is no way to..." or "nothing on the site". Never criticise the design, never blame whoever built it, and never guess what their buyers do. If the "Problem found" line is about the age of the site (a copyright year, an out-of-date footer, "not updated") or says the site looks old, do NOT use it: pick a different, plainly visible problem from the site text. The email must never suggest the site is old, untouched or out of date.
   3. The fix: ONE specific fix, named, with how it works and how long it takes. Use the "Fix to offer" line when there is one. Examples of the right level: "A demo-request page for freight carriers that asks fleet size and sends the request straight to your CRM, live in 5 to 7 days." / "A pricing and availability block on the managed IT page, so a buyer sees what it costs before they call." / "Case-study pages sorted by industry, so a law firm sees work for law firms first." If the real fix is a rebuild of a section or of the whole site, say exactly what it changes for the buyer ("rebuild the product pages so each one says who it is for and what it costs"). Never write just "rebuild your website", "a new website" or "a fresh look". A fixed price goes in once, with the timeline: a focused page takes 5 to 7 days and a full site about 4 weeks.
-  4. One proof point from the list below that matches THIS fix, in one short sentence, unless the hook was PROOF.
+  4. One proof point from the list below that matches THIS fix, in one short sentence, unless the hook was PROOF. Copy it from the list as it stands: never add numbers, "dozens of sites", "many clients" or any other claim that is not in the list, and never combine two.
   5. The close, as the last paragraph of the body: one question answerable with a single word, offering to show the fix itself, naming it ("Want me to send a one-page sketch of that demo-request page for Northwind? Just reply YES."), then in the same paragraph a short, plain way out ("If it's not for you, just say so."; never "leave you alone", "leave you be" or "won't bother you"). Never write "yes or no", never an open question ("What do you think?", "When are you free?"), and never a generic phrase for the fix ("your core services", "what you do", "your homepage" on its own).
 - The subject line names the problem or the fix for them ("Demo requests from the managed IT page", "Pricing on the freight page"), never "A website for X" or "A clearer homepage".
 - Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
@@ -498,7 +498,7 @@ type Draft = { message: string; name?: string; role?: string };
 // A close that names nothing specific ("lead with your core services", "the client problem you solve best") says the model had nothing to point at.
 const GENERIC_CLOSE = /(could\s+(?:lead|open|start)\s+with|could\s+(?:show|present|put|frame))\s+(?:your\s+|the\s+)?(?:(?:core|main|key|strongest|primary|best|top)\s+)?(?:services?|offers?|offerings?|what you (?:do|sell|offer)|client problem|business|value|what makes you different)\b|you solve best|what you do and who/i;
 // A B2B offer that is only "rebuild your website" is what every designer sends: such a draft is written again once.
-const PLAIN_REBUILD = /\b(?:rebuild|redesign|revamp|refresh|overhaul)\b[^.\n]{0,30}\b(?:website|site|homepage|web presence)\b|\b(?:new|fresh|modern)\s+(?:website|site)\b|\bfresh look\b|digital presence|online presence/i;
+const PLAIN_REBUILD = /\b(?:rebuild|redesign|revamp|refresh|overhaul)\b[^.\n]{0,30}\b(?:website|site|homepage|web presence)\b|\b(?:homepage|site|website)\s+(?:refresh|redesign|revamp|overhaul)\b|\brefresh\b|\b(?:new|fresh|modern)\s+(?:website|site)\b|\bfresh look\b|digital presence|online presence|hasn'?t been (?:touched|updated)|(?:still )?shows 20\d\d|copyright|out of date|outdated|looks? (?:old|dated)/i;
 export const hasGenericClose = (message: string): boolean => GENERIC_CLOSE.test(message);
 export const hasPlainRebuild = (message: string): boolean => PLAIN_REBUILD.test(message);
 
@@ -526,7 +526,7 @@ async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Prom
           const draft = typeof value === 'string' ? { message: value } : value;
           if (draft?.message) {
             const lead = batch.find(l => l.id === id);
-            result.set(id, { ...draft, message: ensureGreeting(fixCurrency(softenOptOut(fixGreeting(humanize(draft.message)))), lead ? leadLanguage(lead) : 'en') });
+            result.set(id, { ...draft, message: ensureGreeting(fixCurrency(softenOptOut(dedupeGreeting(fixGreeting(humanize(draft.message))))), lead ? leadLanguage(lead) : 'en') });
           }
         }
       }

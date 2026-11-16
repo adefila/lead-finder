@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLeads, updateLead } from '@/lib/supabase';
-import { ensureGreeting, fixCurrency, softenOptOut } from '@/lib/greeting';
+import { dedupeGreeting, ensureGreeting, fixCurrency, softenOptOut } from '@/lib/greeting';
 import { leadLanguage } from '@/lib/leadview';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   let changed = 0, greeting = 0, currency = 0, failed = 0;
   for (const l of leads) {
     const before = l.proposal!;
-    const afterCurrency = softenOptOut(fixCurrency(before));
+    const afterCurrency = dedupeGreeting(softenOptOut(fixCurrency(before)));
     const after = ensureGreeting(afterCurrency, leadLanguage(l));
     if (after === before) continue;
     changed++;
