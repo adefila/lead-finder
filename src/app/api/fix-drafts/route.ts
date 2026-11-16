@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   for (const l of leads) {
     const before = l.proposal!;
     const afterCurrency = dedupeGreeting(softenOptOut(fixCurrency(before)));
-    const after = ensureGreeting(afterCurrency, leadLanguage(l));
+    const after = dedupeGreeting(ensureGreeting(afterCurrency, leadLanguage(l)));
     if (after === before) continue;
     changed++;
     if (afterCurrency !== before) currency++;
