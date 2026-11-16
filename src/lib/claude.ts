@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead } from '@/types/lead';
 import { humanize } from '@/lib/compose';
-import { dedupeGreeting, ensureGreeting, fixCurrency, fixGreeting, softenOptOut } from '@/lib/greeting';
+import { dedupeGreeting, ensureGreeting, fixCurrency, fixGreeting, softenAbsolutes, softenOptOut } from '@/lib/greeting';
 import { systemsFor, hasCheck, isJobLead, isB2B, leadLanguage, leadStory, LANGUAGE_NAME } from '@/lib/leadview';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -526,7 +526,7 @@ async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Prom
           const draft = typeof value === 'string' ? { message: value } : value;
           if (draft?.message) {
             const lead = batch.find(l => l.id === id);
-            result.set(id, { ...draft, message: dedupeGreeting(ensureGreeting(fixCurrency(softenOptOut(dedupeGreeting(fixGreeting(humanize(draft.message))))), lead ? leadLanguage(lead) : 'en')) });
+            result.set(id, { ...draft, message: dedupeGreeting(ensureGreeting(fixCurrency(softenOptOut(dedupeGreeting(fixGreeting(kind === 'b2b' ? softenAbsolutes(humanize(draft.message)) : humanize(draft.message))))), lead ? leadLanguage(lead) : 'en')) });
           }
         }
       }

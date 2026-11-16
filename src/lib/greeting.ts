@@ -35,6 +35,15 @@ export function softenOptOut(message: string): string {
     .replace(/\.\./g, '.');
 }
 
+// An email can only say what Samuel saw on the page he looked at, so "there's no pricing" becomes "I couldn't find pricing" and
+// "there's no way to book" becomes "I couldn't find a way to book". English only. Safe to call twice.
+export function softenAbsolutes(message: string): string {
+  return message
+    .replace(/([Tt])here(?:'s| is) no way/g, "I couldn't find a way")
+    .replace(/[Tt]here(?:'s| is) no/g, "I couldn't find any")
+    .replace(/has no way to/g, "can't find a way to");
+}
+
 // A greeting that appears twice in a row ("Hi there," then "Hi there,") keeps one. Safe to call twice.
 export function dedupeGreeting(message: string): string {
   return message.replace(/^([^\n]{2,60},)[ \t]*\n+(?:[ \t]*\n)*\1[ \t]*$/m, '$1');
