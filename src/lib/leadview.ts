@@ -101,7 +101,11 @@ export const LANGUAGE_NAME: Record<LeadLang, string> = {
 };
 export function leadLanguage(l: Lead): LeadLang {
   if (isJobLead(l)) return 'en';
-  const where = `${l.company} ${l.description.slice(0, 300)}`;
+  return languageOfPlace(`${l.company} ${l.description.slice(0, 300)}`);
+}
+
+// The language written to businesses in a place (a city or country name, or an address). Also used to pick search terms in that language.
+export function languageOfPlace(where: string): LeadLang {
   if (/\b(Netherlands|Nederland|Amsterdam|Rotterdam|Utrecht|The Hague|Den Haag|Eindhoven)\b/i.test(where)) return 'nl';
   if (/\b(Norway|Norge|Oslo|Bergen|Trondheim|Stavanger)\b/i.test(where)) return 'no';
   if (/\b(Luxembourg|Luxemburg|France|Paris|Lyon|Marseille|Toulouse|Nice|Bordeaux|Lille|Nantes|Strasbourg)\b/i.test(where)) return 'fr';

@@ -157,7 +157,7 @@ const B2B_ANGLES = [
 const B2B_HOOKS = [
   'NOTICED (WHAT THEY SELL): open with one specific, true fact from the site text: a real product or service name and who it is for. One plain sentence, no praise words, nothing the text does not say. E.g. "Northwind sells route planning software to regional freight carriers."',
   'NOTICED (THEIR WORDS): open by quoting a short phrase exactly as it appears on their homepage, stated neutrally and without comment on whether it works. E.g. "Northwind\'s homepage opens with "Logistics, rethought"." Only quote words that are in the site text.',
-  'OFFER: open with the offer itself in one plain line. E.g. "I\'d like to rebuild Northwind\'s website, at a fixed price and live in about four weeks."',
+  'FIX: open with the one thing you would fix, in one plain line, tied to a real page or product in the site text. E.g. "Northwind\'s pricing page has no way to book a demo, and I\'d add one." Only if the site text supports it.',
   'NOTICED (WHO IT IS FOR): open with one specific fact from the site text about the customers they serve or the problem they solve. One plain sentence, stated as fact. E.g. "Northwind\'s customers are freight carriers that plan routes by hand today."',
 ];
 
@@ -188,11 +188,14 @@ function describe(l: Lead, i: number, kind: DraftKind, angleBase = 0, hookBase =
     return [
       `COMPANY ${i + 1} (ID: ${l.id}):`,
       `Channel: EMAIL`,
+      `Language: ${LANGUAGE_NAME[leadLanguage(l)]}`,
       `Hook: ${B2B_HOOKS[(hookBase + i) % B2B_HOOKS.length]}`,
       `Angle: ${B2B_ANGLES[(angleBase + i) % B2B_ANGLES.length]}`,
       `Company: ${l.title}`,
       `Type and city: ${l.company}`,
       `Website: ${l.contactLinks?.website ?? 'none'}`,
+      `Problem found: ${leadStory(l).ownerProblems[0] ?? 'none recorded: find a plain, visible one in the site text'}`,
+      `Fix to offer: ${leadStory(l).fixes[0] ?? 'none recorded: name one concrete fix for the problem you state'}`,
       `Findings: ${l.description.slice(0, 400)}`,
       `Site text: ${(l.siteText ?? 'none').slice(0, 1800)}`,
     ].join('\n');
@@ -289,17 +292,18 @@ I also designed BookedEZ, a booking app that paid out over $10K in its first mon
 Want me to set this up for Bright Smile? Just reply YES and I'll show you exactly how it would work. If it's not for you, just say so."`;
 
 // How every B2B message is built: a short introduction of Samuel with one offer and one proof point, to a founder or owner.
-const APPROACH_B2B = `Approach (a pitch, short and direct, applies to every message):
-- This is Samuel introducing himself and making one clear offer to a founder or business owner. It is not an essay about their company and not free advice.
-- Body under 80 words. Three or four very short paragraphs.
+const APPROACH_B2B = `Approach (a pitch about ONE specific problem and its fix, short and direct, applies to every message):
+- Samuel is a developer who fixes the specific things that cost B2B companies leads. He is not selling a redesign. Every web designer writes "I'd like to rebuild your website" or "I can give your site a fresh look", and nobody answers those. This message names ONE problem a buyer runs into on THIS company's site, says what it costs them in plain business terms, and offers ONE concrete fix.
+- Body under 90 words. Three or four very short paragraphs.
 - Build it in this order:
-  1. The hook: the first line after the greeting, written in the style on the "Hook" line. Everything in it must be true and come from the site text: never invent what their buyers do or want, and never open with a claim about a gap. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
-  2. Why them: ONE short sentence with a different concrete fact from the findings or site text, stated neutrally (what they sell and to whom, or how the homepage presents it). Never criticise their site or whoever built it, and never say what it "doesn't" do. Skip it if the hook already used that fact.
-  3. The offer, in one or two sentences: Samuel rebuilds B2B company websites, in Framer or custom code, at a fixed price. A focused landing page takes 5 to 7 days and a full site about 4 weeks, with a CMS their team can edit and forms that report to their analytics.
-  4. One proof point from the list below, in one short sentence, unless the hook was PROOF.
-  5. The close, as the last paragraph of the body: one question they can answer with a single word, asking for something small: a one-page sketch of how their homepage could present ONE specific thing taken from their own site text or findings: a named product, a named service line, a named audience or a named page (for example "how Northwind's homepage could put route planning first", "how the managed IT page could show pricing and availability"). Never fill that gap with a generic phrase: "your core services", "your main offer", "what you do", "what you sell", "your strongest service", "the client problem you solve best", "what makes you different". If the text gives no specific thing, name the one product or service the hook used. Then, in the same paragraph, a short, plain way out ("If it's not for you, just say so."; never "leave you alone", "leave you be" or "won't bother you") instead of a line saying that if not, he won't follow up. Never write the words "yes or no", and never an open question ("What do you think?", "When are you free?").
+  1. The hook: the first line after the greeting, written in the style on the "Hook" line. Everything in it must be true and come from the site text: never invent what their buyers do or want. Never open with who Samuel is ("I'm a web developer", "My name is") and never write his name in the body: it is already on the email address and the sign-off.
+  2. The problem: one or two short sentences. Use the "Problem found" line when there is one. Otherwise use something plainly visible in the site text: what a buyer who arrives cannot do or cannot find (book a demo, see pricing, tell which product is for them, see proof from their own industry, reach a person). Say WHERE it happens and state it as a plain observation about the page ("On the managed IT page the only way in is the general contact form."), then add in a few words what that costs them ("so a buyer who is ready has to go looking for a way to start"). Only say what the Findings or Site text support. Never criticise the design, never call the site old, dated or outdated, never blame whoever built it, and never guess what their buyers do.
+  3. The fix: ONE specific fix, named, with how it works and how long it takes. Use the "Fix to offer" line when there is one. Examples of the right level: "A demo-request page for freight carriers that asks fleet size and sends the request straight to your CRM, live in 5 to 7 days." / "A pricing and availability block on the managed IT page, so a buyer sees what it costs before they call." / "Case-study pages sorted by industry, so a law firm sees work for law firms first." If the real fix is a rebuild of a section or of the whole site, say exactly what it changes for the buyer ("rebuild the product pages so each one says who it is for and what it costs"). Never write just "rebuild your website", "a new website" or "a fresh look". A fixed price goes in once, with the timeline: a focused page takes 5 to 7 days and a full site about 4 weeks.
+  4. One proof point from the list below that matches THIS fix, in one short sentence, unless the hook was PROOF.
+  5. The close, as the last paragraph of the body: one question answerable with a single word, offering to show the fix itself, naming it ("Want me to send a one-page sketch of that demo-request page for Northwind? Just reply YES."), then in the same paragraph a short, plain way out ("If it's not for you, just say so."; never "leave you alone", "leave you be" or "won't bother you"). Never write "yes or no", never an open question ("What do you think?", "When are you free?"), and never a generic phrase for the fix ("your core services", "what you do", "your homepage" on its own).
+- The subject line names the problem or the fix for them ("Demo requests from the managed IT page", "Pricing on the freight page"), never "A website for X" or "A clearer homepage".
 - Confident and friendly, never apologetic or salesy. No statistics, no "a lot of companies...", no "did you know".
-- Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
+- Never: "I can help you grow", "increase your revenue", "generate more leads", "take your business to the next level", "stand out", "digital presence", "online presence", "modern", "refresh", "fresh look", "revamp", "my services", "packages", "affordable", "free consultation", "limited time", "I'd love to", "hop on a call", "let me know your thoughts", and no lists of services.
 
 ${PROOF}
 
@@ -308,11 +312,29 @@ Example of the shape (for a B2B software company). Do not copy its wording or to
 
 Northwind sells route planning software to regional freight carriers.
 
-Its homepage opens with the company story and the product comes second. I rebuild B2B websites at a fixed price: a landing page in 5 to 7 days, a full site in about 4 weeks.
+On the pricing page the only way in is the general contact form, so a carrier who is ready to see a demo has to go looking for a way to start.
 
-I recently rebuilt 12 pages for DLP Africa, a telecom company in Ghana, in four weeks, with a CMS for seven products.
+I'd add a demo-request page for carriers that asks fleet size and sends the request straight to your CRM, at a fixed price and live in 5 to 7 days.
 
-Want me to send a one-page sketch of how Northwind's homepage could put route planning first? Just reply YES. If it's not for you, just say so."`;
+I recently rebuilt 12 pages for DLP Africa with custom forms tracked on every page.
+
+Want me to send a one-page sketch of that demo-request page for Northwind? Just reply YES. If it's not for you, just say so."`;
+
+// How a message is written for a business outside the English-speaking markets. Used by the local-business and the B2B drafts.
+const LANGUAGE_RULES = `Language (strict):
+- Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
+- Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
+- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. German: "Guten Tag [Vorname]," or "Hallo [Vorname],", "Sie" throughout. Spanish: "Hola [Nombre],", "usted" throughout. Portuguese: "Olá [Nome],", formal register, never "tu". Italian: "Buongiorno [Nome],", "Lei" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,", "Guten Tag,", "Hola,", "Olá,", "Buongiorno,").
+- The close is the question, then a short, plain way out (if it is not for them, they just say so). Never write "leave you alone", "leave you be", "won't bother you", "won't follow up" or an equivalent in any language. Natural examples (vary the wording, keep the meaning):
+  Dutch: "Zal ik dit voor X voor u opzetten? Antwoord gewoon JA, dan laat ik u precies zien hoe het zou werken. Is het niets voor u, laat het me gerust weten."
+  Norwegian: "Skal jeg sette dette opp for X? Svar bare JA, så viser jeg nøyaktig hvordan det ville fungert. Er det ikke noe for dere, si fra, så lar jeg dere være."
+  French: "Voulez-vous que je mette cela en place pour X ? Répondez simplement OUI et je vous montrerai exactement comment cela fonctionnerait. Si ce n'est pas pour vous, dites-le-moi et je vous laisse tranquille."
+  German: "Soll ich das für X einrichten? Antworten Sie einfach mit JA, dann zeige ich Ihnen genau, wie es funktionieren würde. Falls es nichts für Sie ist, sagen Sie es kurz und ich lasse Sie in Ruhe."
+  Spanish: "¿Quiere que lo configure para X? Responda simplemente SÍ y le mostraré exactamente cómo funcionaría. Si no es para usted, dígamelo y no le molesto más."
+  Portuguese: "Quer que eu configure isto para X? Responda apenas SIM e mostro-lhe exatamente como funcionaria. Se não for para si, diga-me e deixo-o em paz."
+  Italian: "Vuole che lo configuri per X? Risponda semplicemente SÌ e Le mostrerò esattamente come funzionerebbe. Se non fa per Lei, me lo dica e La lascio in pace."
+- The rules below about banned words and phrasing apply to their equivalents in that language too.
+- Questions must be grammatical and natural for a native speaker. French: "Voulez-vous que je vous envoie…?", "Est-ce que cela vous aiderait…?", never "Aimerais-je…?". Dutch: "Zou het u helpen als…?". Norwegian: "Vil det hjelpe om…?".`;
 
 const PROMPTS: Record<DraftKind, string> = {
   b2b: `Write outreach from Samuel Adefila to the founder or owner of each B2B company below. He found them on Google Maps and looked at their website. "Findings" lists what was noticed. "Site text" is text scraped from their site.
@@ -322,14 +344,17 @@ Step 1, find the person. Look in the company name and site text for a founder, c
 
 Step 2, write the message.
 - Greeting: "Hi [FirstName]," when you found a person. If there is no person but it is clearly a small team, "Hi [Company] team,". Otherwise "Hi there,".
-- Line 1 is "Subject: ..." (under 6 words, about their website, e.g. "A clearer homepage for Northwind", no clickbait), blank line, then the body under 80 words.
+- Line 1 is "Subject: ..." (under 7 words, naming the problem or the fix for them, e.g. "Demo requests from the pricing page", no clickbait), blank line, then the body under 80 words.
 - Follow the Approach below. The "Angle" line picks the one fact used for "why them" and the "Hook" line picks how the first line grabs them. They differ between companies on purpose, so the batch never reads like one template.
 - Never mention Google Maps, star ratings or reviews. Never use words like HTTPS, SEO, viewport, load time, optimisation or automation.
-- Vary what the closing question offers a little between messages (a one-page sketch of their homepage, a short example for their site), always answerable in one word.
+- The closing question always names the specific fix (a one-page sketch of that page or block, a short example of it for their site), always answerable in one word.
 - Vary length (some messages 50 words, some closer to 80) and sentence rhythm. Write it the way Samuel would type it himself.
 - Sign off "Samuel" and on the next line "adefilasamuel.com".
 - End the body with the close from the Approach (the question plus a short "just say so" opt-out in one paragraph, never a promise not to follow up), right before the sign-off.
 - Never state anything that isn't in the findings or site text.
+
+${LANGUAGE_RULES}
+- In every language the close still names the specific fix, as the Approach below says; the examples above only show how to word the question and the way out. The subject names the problem or the fix in that language.
 
 ${APPROACH_B2B}
 
@@ -440,20 +465,7 @@ Step 2, write the message.
 - End the body with the close from the Approach (the question plus a short "just say so" opt-out in one paragraph, never a promise not to follow up), right before the sign-off.
 - Never state anything that isn't in the findings or site text.
 
-Language (strict):
-- Write the whole message, including the subject text, greeting, opt-out line and sign-off, in the language on the business's "Language" line, as a native speaker would write a short business email. Not a word-for-word translation of English.
-- Keep the literal "Subject:" prefix in English (the app reads it), then the subject text in the business's language.
-- Dutch: greet with "Hallo [FirstName]," or "Beste [FirstName],", and use "u" throughout. Norwegian (Bokmål): "Hei [FirstName],", use "du/dere". French: "Bonjour [FirstName]," when you found a first name, otherwise just "Bonjour,". Never write "Madame, Monsieur" together or guess someone's gender. Use "vous" throughout. German: "Guten Tag [Vorname]," or "Hallo [Vorname],", "Sie" throughout. Spanish: "Hola [Nombre],", "usted" throughout. Portuguese: "Olá [Nome],", formal register, never "tu". Italian: "Buongiorno [Nome],", "Lei" throughout. With no person, greet the team in that language (e.g. "Hallo team van X,", "Hei,", "Bonjour,", "Guten Tag,", "Hola,", "Olá,", "Buongiorno,").
-- The close is the question, then a short, plain way out (if it is not for them, they just say so). Never write "leave you alone", "leave you be", "won't bother you", "won't follow up" or an equivalent in any language. Natural examples (vary the wording, keep the meaning):
-  Dutch: "Zal ik dit voor X voor u opzetten? Antwoord gewoon JA, dan laat ik u precies zien hoe het zou werken. Is het niets voor u, laat het me gerust weten."
-  Norwegian: "Skal jeg sette dette opp for X? Svar bare JA, så viser jeg nøyaktig hvordan det ville fungert. Er det ikke noe for dere, si fra, så lar jeg dere være."
-  French: "Voulez-vous que je mette cela en place pour X ? Répondez simplement OUI et je vous montrerai exactement comment cela fonctionnerait. Si ce n'est pas pour vous, dites-le-moi et je vous laisse tranquille."
-  German: "Soll ich das für X einrichten? Antworten Sie einfach mit JA, dann zeige ich Ihnen genau, wie es funktionieren würde. Falls es nichts für Sie ist, sagen Sie es kurz und ich lasse Sie in Ruhe."
-  Spanish: "¿Quiere que lo configure para X? Responda simplemente SÍ y le mostraré exactamente cómo funcionaría. Si no es para usted, dígamelo y no le molesto más."
-  Portuguese: "Quer que eu configure isto para X? Responda apenas SIM e mostro-lhe exatamente como funcionaria. Se não for para si, diga-me e deixo-o em paz."
-  Italian: "Vuole che lo configuri per X? Risponda semplicemente SÌ e Le mostrerò esattamente come funzionerebbe. Se non fa per Lei, me lo dica e La lascio in pace."
-- The rules below about banned words and phrasing apply to their equivalents in that language too.
-- Questions must be grammatical and natural for a native speaker. French: "Voulez-vous que je vous envoie…?", "Est-ce que cela vous aiderait…?", never "Aimerais-je…?". Dutch: "Zou het u helpen als…?". Norwegian: "Vil det hjelpe om…?".
+${LANGUAGE_RULES}
 
 ${APPROACH}
 
@@ -485,7 +497,10 @@ type Draft = { message: string; name?: string; role?: string };
 
 // A close that names nothing specific ("lead with your core services", "the client problem you solve best") says the model had nothing to point at.
 const GENERIC_CLOSE = /(could\s+(?:lead|open|start)\s+with|could\s+(?:show|present|put|frame))\s+(?:your\s+|the\s+)?(?:(?:core|main|key|strongest|primary|best|top)\s+)?(?:services?|offers?|offerings?|what you (?:do|sell|offer)|client problem|business|value|what makes you different)\b|you solve best|what you do and who/i;
+// A B2B offer that is only "rebuild your website" is what every designer sends: such a draft is written again once.
+const PLAIN_REBUILD = /\b(?:rebuild|redesign|revamp|refresh|overhaul)\b[^.\n]{0,30}\b(?:website|site|homepage|web presence)\b|\b(?:new|fresh|modern)\s+(?:website|site)\b|\bfresh look\b|digital presence|online presence/i;
 export const hasGenericClose = (message: string): boolean => GENERIC_CLOSE.test(message);
+export const hasPlainRebuild = (message: string): boolean => PLAIN_REBUILD.test(message);
 
 async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Promise<Map<string, Draft>> {
   // Random start per batch: neighbours differ, and a rewrite gets a fresh angle.
@@ -521,10 +536,10 @@ async function draftBatch(batch: Lead[], kind: DraftKind, retried = false): Prom
   }
   // Write again, once, any draft whose close names nothing specific. A rewrite that is still generic is kept rather than lost.
   if (!retried) {
-    const weak = batch.filter(l => { const d = result.get(l.id); return d && hasGenericClose(d.message); });
+    const weak = batch.filter(l => { const d = result.get(l.id); return d && (hasGenericClose(d.message) || (kind === 'b2b' && hasPlainRebuild(d.message))); });
     if (weak.length) {
       const again = await draftBatch(weak, kind, true).catch(() => new Map<string, Draft>());
-      for (const [id, d] of again) if (!hasGenericClose(d.message)) result.set(id, d);
+      for (const [id, d] of again) if (!hasGenericClose(d.message) && !(kind === 'b2b' && hasPlainRebuild(d.message))) result.set(id, d);
     }
   }
   return result;
