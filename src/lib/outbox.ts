@@ -11,9 +11,11 @@ import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/maile
 import { emailDomainAccepts } from '@/lib/verify';
 import { planNewSend } from '@/lib/pacing';
 
-// Limits count first emails only. Follow-ups to people already contacted go out on top.
+// DAILY_LIMIT and WEEKLY_LIMIT count first emails only. Follow-ups have their own daily limit (FOLLOWUP_DAILY_LIMIT).
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
 export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
+// Follow-ups to people already contacted are limited separately: at most this many a day, so they cannot crowd out new emails.
+export const FOLLOWUP_DAILY_LIMIT = Number(process.env.MAIL_FOLLOWUP_DAILY_LIMIT ?? 20);
 // At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
 // so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
 const MIN_GAP_MIN = Number(process.env.MAIL_MIN_GAP_MINUTES ?? 10);
@@ -226,8 +228,8 @@ export async function runOutbox(): Promise<OutboxResult> {
 
   if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
 
-  // 2. Limits count new (first) emails only: your calendar day (restarts at midnight in MAIL_TIMEZONE), and the week since Sunday
-  // 00:00 UTC. Follow-ups are counted separately, never limited, and keep going out.
+  // 2. DAILY_LIMIT counts new (first) emails on your calendar day (restarts at midnight in MAIL_TIMEZONE), WEEKLY_LIMIT the week since
+  // Sunday 00:00 UTC. Follow-ups are counted separately and have their own daily limit.
   const capReason = result.sentWeek >= WEEKLY_LIMIT
     ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
     : result.sentToday >= DAILY_LIMIT ? `Today's ${DAILY_LIMIT} new emails are done. The count restarts at midnight`
@@ -268,7 +270,8 @@ export async function runOutbox(): Promise<OutboxResult> {
   if (!(await claimOutboxRun())) return { ...result, skipped: 'Another send run started this minute' };
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
-  const followUp = inboxChecked && leads.find(l =>
+  const followUpsToday = await countFollowUpsSince(todayStart());
+  const followUp = inboxChecked && followUpsToday < FOLLOWUP_DAILY_LIMIT && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
   // New emails: DAILY_LIMIT on every working day of your calendar, spread over every hour in which someone in the queue is
   // inside their own business hours, and caught up automatically if the day falls behind (see pacing.ts).
@@ -297,7 +300,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   // Follow-ups normally go first, but when the day is behind every send slot is needed for a new email.
   const lead = plan?.behind && first ? first : followUp || first;
   if (!lead) {
-    const why = capReason ? `${capReason}, no follow-ups due`
+    const why = capReason ? `${capReason}, ${followUpsToday >= FOLLOWUP_DAILY_LIMIT ? `and today's ${FOLLOWUP_DAILY_LIMIT} follow-ups are done` : 'no follow-ups due'}`
       : `${plan?.reason ?? 'Nothing due inside business hours right now'}${backoff.slowed ? ' (slowed after Gmail pushed back)' : ''}`;
     return { ...result, skipped: why };
   }
