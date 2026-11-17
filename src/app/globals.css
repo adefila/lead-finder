@@ -833,6 +833,14 @@ textarea.field { resize: vertical; line-height: 1.6; min-height: 200px; }
 .sc-sub { font-size: 12px; font-weight: 400; color: var(--fg-3); }
 .sc-fund { font-size: 11px; font-weight: 600; padding: 0 7px; line-height: 20px; border-radius: 4px; white-space: nowrap; background: #f1f1f1; color: var(--fg-2); }
 .sc-fund.full { background: var(--green-tint); color: var(--green-ink); }
+.sc-trust { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 0 7px; line-height: 20px; border-radius: 4px; white-space: nowrap; background: #eef3fb; color: #2a4b8d; }
+.sc-trusted { display: flex; align-items: center; gap: 6px; color: var(--fg-3); font-size: 12px; }
+.sc-steps h5 { margin: 4px 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--fg); }
+.sc-steps ol { margin: 0; padding: 0 0 0 20px; display: grid; gap: 6px; max-width: 700px; }
+.sc-steps li { line-height: 1.55; padding-left: 2px; }
+.sc-fee { padding: 8px 10px; border-radius: 6px; background: #fff7e6; color: #7a5200; font-size: 12px; }
+.sc-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); font-size: 12px; line-height: 1.55; color: var(--fg-2); }
+.sc-warn svg { flex-shrink: 0; margin-top: 2px; }
 .sc-mark { font-size: 11px; font-weight: 600; color: var(--fg-2); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 6px; line-height: 18px; }
 .sc-chev { color: var(--fg-3); transition: transform 0.15s; flex-shrink: 0; }
 .sc-chev.open { transform: rotate(180deg); }

@@ -1,20 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ExternalLink, FileText, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, ExternalLink, FileText, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useFeedback } from '@/components/feedback';
 import type { Scholarship, ScholarshipMatch, CountryNote } from '@/lib/scholarships';
-import { CLASS_LABEL } from '@/lib/scholarships';
+import { CLASS_LABEL, OFFICIAL_NOTE } from '@/lib/scholarships';
 import type { Classification, SchoolProfile } from '@/lib/school';
 import type { FeedItem } from '@/lib/scholarshipfeed';
 
 type Row = Scholarship & { match: ScholarshipMatch; monthsAway: number | null };
 type Mark = 'saved' | 'applied' | 'no';
-type Filter = 'all' | 'germany' | 'sweden' | 'elsewhere' | 'saved';
+type Filter = 'all' | 'germany' | 'sweden' | 'europe' | 'uk' | 'asia' | 'global' | 'saved';
 
 const KEY = 'lf-scholarship-marks';
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' }, { id: 'germany', label: 'Germany' }, { id: 'sweden', label: 'Sweden' }, { id: 'elsewhere', label: 'Elsewhere' }, { id: 'saved', label: 'Saved' },
+  { id: 'all', label: 'All' }, { id: 'germany', label: 'Germany' }, { id: 'sweden', label: 'Sweden' }, { id: 'europe', label: 'Rest of Europe' }, { id: 'uk', label: 'UK' }, { id: 'asia', label: 'Asia' }, { id: 'global', label: 'Elsewhere' }, { id: 'saved', label: 'Saved' },
 ];
 
 function loadMarks(): Record<string, Mark> {
@@ -100,7 +100,7 @@ export function Scholarships() {
     if (marks[r.id] === 'no' && !showNo) return false;
     if (filter === 'saved') return marks[r.id] === 'saved' || marks[r.id] === 'applied';
     if (filter === 'all') return true;
-    return filter === 'elsewhere' ? (r.group === 'elsewhere' || r.group === 'global') : r.group === filter;
+    return r.group === filter;
   }), [rows, filter, marks, showNo]);
 
   if (!ready) return <div className="empty">Loading scholarships…</div>;
@@ -199,6 +199,8 @@ export function Scholarships() {
         {Object.values(marks).includes('no') && <button className="link-btn" onClick={() => setShowNo(v => !v)}>{showNo ? 'Hide' : 'Show'} the ones I passed on</button>}
       </div>
 
+      <p className="sc-warn"><ShieldCheck size={14} /><span>Free means free. {OFFICIAL_NOTE}</span></p>
+
       <ul className="sc-list">
         {shown.map(r => {
           const open = openId === r.id;
@@ -210,12 +212,19 @@ export function Scholarships() {
                 <span className="sc-name">{r.name}<span className="sc-sub">{r.country} · {r.provider}</span></span>
                 {closingSoon(r) && <span className="sc-soon">{r.monthsAway === 0 ? 'Closes this month' : 'Closing soon'}</span>}
                 <span className={`sc-fund ${r.funding}`}>{r.funding === 'full' ? 'Fully funded' : 'Part funded'}</span>
+                <span className="sc-trust" title={r.trust}><ShieldCheck size={12} />Official source</span>
                 {marks[r.id] && <span className="sc-mark">{marks[r.id] === 'saved' ? 'Saved' : marks[r.id] === 'applied' ? 'Applied' : 'Passed'}</span>}
                 <ChevronDown size={15} className={`sc-chev${open ? ' open' : ''}`} />
               </button>
               {open && (
                 <div className="sc-body">
                   <p>{r.summary}</p>
+                  <p className="sc-trusted"><ShieldCheck size={13} />{r.trust}</p>
+                  <div className="sc-steps">
+                    <h5>How to apply</h5>
+                    <ol>{r.steps.map(st => <li key={st}>{st}</li>)}</ol>
+                  </div>
+                  {r.fee && <p className="sc-fee">{r.fee}</p>}
                   <dl>
                     <dt>Covers</dt><dd>{r.covers}</dd>
                     <dt>Closes</dt><dd>{whenLabel(r)}</dd>
