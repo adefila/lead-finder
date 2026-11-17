@@ -35,6 +35,11 @@ const PITCH: Spot[] = [
   { id: 'redditclientedit', name: 'Reddit search: client edits', kind: 'Direct outreach', why: 'Developers ask how to let a client change text without breaking the site.', tip: 'Free. Answer the question properly, then mention Baton only where it fits.', url: 'https://www.reddit.com/search/?q=client%20edit%20website%20without%20developer', checked: false },
   { id: 'lovableusers', name: 'X search: sites built with AI for clients', kind: 'Direct outreach', why: 'People who build client sites with AI tools often struggle to hand them over.', tip: 'Free. Find a few and offer to try Baton on one real site.', url: 'https://x.com/search?q=lovable%20OR%20bolt%20OR%20v0%20%22client%20site%22&f=live', checked: false },
   { id: 'linkedinfreelance', name: 'LinkedIn, freelance web developers', kind: 'Direct outreach', why: 'Freelancers who build sites for clients and can say yes alone.', tip: 'Searching and a short connection note are free. Offer a free trial on one client site.', url: 'https://www.linkedin.com/search/results/people/?keywords=freelance%20web%20developer', checked: false },
+  { id: 'awwwards', name: 'Awwwards, site of the day', kind: 'Studios that build custom sites', why: 'The studios behind award-winning sites build custom work for clients.', tip: 'Free to browse. Find a studio\'s own site and contact the owner about client handover.', url: 'https://www.awwwards.com/websites/', checked: false },
+  { id: 'framergallery', name: 'Framer Gallery', kind: 'Sites built in Framer', why: 'Real Framer sites with the people who made them.', tip: 'Free to browse. Contact the makers who clearly work for clients.', url: 'https://www.framer.com/gallery/', checked: false },
+  { id: 'madeinwebflow', name: 'Made in Webflow', kind: 'Sites built in Webflow', why: 'A showcase of Webflow sites with their makers.', tip: 'Free to browse. Pick agencies and freelancers with client work.', url: 'https://webflow.com/made-in-webflow', checked: false },
+  { id: 'cssdesign', name: 'CSS Design Awards', kind: 'Studios that build custom sites', why: 'A showcase of well-made websites and the agencies behind them.', tip: 'Free to browse. Look up the agencies and email the owner.', url: 'https://www.cssdesignawards.com/', checked: false },
+  { id: 'agencyhackers', name: 'Agency Hackers', kind: 'Agency owners community', why: 'A community where agency owners swap tools and ideas.', tip: 'Check its current terms and whether it is free to join before you do.', url: 'https://agencyhackers.com/', checked: false },
 ];
 
 const SHOUT: Spot[] = [
@@ -56,6 +61,12 @@ const SHOUT: Spot[] = [
   { id: 'mastodon', name: 'Mastodon #buildinpublic', kind: 'Social post', why: 'Developers and indie makers post under the tag.', tip: 'Free. Join a large server and post a short update with the tag.', url: 'https://mastodon.social/', checked: false },
   { id: 'threads', name: 'Threads', kind: 'Social post', why: 'A large audience for short posts and screenshots.', tip: 'Free. Repost your best short clip.', url: 'https://www.threads.net/', checked: false },
   { id: 'youtube', name: 'YouTube demo', kind: 'Video', why: 'A short demo video keeps bringing people in through search.', tip: 'Free. Title it for the problem, such as letting a client edit their website without a developer.', url: 'https://www.youtube.com/', checked: false },
+  { id: 'reactiflux', name: 'Reactiflux', kind: 'Developer Discord', why: 'A very large Discord for React developers, with channels for sharing work.', tip: 'Free. Read the channel rules and share where it is allowed.', url: 'https://www.reactiflux.com/', checked: false },
+  { id: 'facebookgroups', name: 'Facebook groups', kind: 'Social groups', why: 'There are groups for web designers, Framer, Webflow, freelancers and agency owners.', tip: 'Free. Join a few, read the rules, and help before you share.', url: 'https://www.facebook.com/groups/', checked: false },
+  { id: 'instagram', name: 'Instagram', kind: 'Social post', why: 'Short clips of the editor reach designers and small agency owners.', tip: 'Free. Post a 15 second clip that shows one edit.', url: 'https://www.instagram.com/', checked: false },
+  { id: 'tiktok', name: 'TikTok', kind: 'Social post', why: 'Short product clips can reach freelancers who build sites.', tip: 'Free. Post the same short clip.', url: 'https://www.tiktok.com/', checked: false },
+  { id: 'ghrepo', name: 'GitHub: a small open-source piece', kind: 'Open source', why: 'Developers find tools on GitHub. A small useful piece, with a README that links to Baton, gets seen.', tip: 'Free. Publish something small that is useful on its own.', url: 'https://github.com/', checked: false },
+  { id: 'npmpkg', name: 'npm', kind: 'Open source', why: 'A small package that helps with editing or handover can be found through search.', tip: 'Free to publish. Keep it small and useful.', url: 'https://www.npmjs.com/', checked: false },
 ];
 
 const DIRS: Spot[] = [
@@ -69,6 +80,10 @@ const DIRS: Spot[] = [
   { id: 'ihproducts', name: 'Indie Hackers product page', kind: 'Product directory', why: 'Indie Hackers lets you add your product, with revenue and story, where founders will see it.', tip: 'Free. Add the product after you have posted in the community, so the page has a story.', url: 'https://www.indiehackers.com/products', checked: false },
   { id: 'startupstash', name: 'Startup Stash', kind: 'Resource directory', why: 'A curated directory of tools and resources for startups.', tip: 'Look for the suggest-a-tool link. Free to suggest, and they decide what to list.', url: 'https://startupstash.com/', checked: false },
   { id: 'awesomelists', name: 'Awesome lists on GitHub', kind: 'Curated lists', why: 'Developers use these lists to find tools. There are lists for headless CMS, no-code and website tools.', tip: 'Free. Search the list that fits, read its contribution rules, then open a pull request that follows them.', url: 'https://github.com/sindresorhus/awesome', checked: false },
+  { id: 'sourceforge', name: 'SourceForge vendor profile', kind: 'Software directory', why: 'A long-running software directory that lets vendors list a product for free.', tip: 'Free listing only. Skip any paid promotion.', url: 'https://sourceforge.net/software/vendors/', checked: false },
+  { id: 'getapp', name: 'GetApp', kind: 'Software directory', why: 'A software comparison site from the same group as Capterra, with a free vendor listing.', tip: 'Free listing only. Skip paid lead plans.', url: 'https://www.getapp.com/', checked: false },
+  { id: 'trustradius', name: 'TrustRadius vendor profile', kind: 'Software reviews', why: 'A review site for business software, with a free vendor profile.', tip: 'Free profile only. Ask early users for honest reviews.', url: 'https://www.trustradius.com/vendors', checked: false },
+  { id: 'slant', name: 'Slant', kind: 'Product comparison', why: 'People ask "what is the best X" here and products are compared in the answers.', tip: 'Free. Add Baton to the question about client-editable website tools.', url: 'https://www.slant.co/', checked: false },
 ];
 
 const NEWS: Spot[] = [
@@ -78,6 +93,16 @@ const NEWS: Spot[] = [
   { id: 'jsweekly', name: 'JavaScript Weekly', kind: 'Developer newsletter', why: 'A large weekly JavaScript newsletter. Its team picks links from what people send.', tip: 'Free to suggest a link. Send a technical post about how Baton works, not an advert.', url: 'https://javascriptweekly.com/', checked: false },
   { id: 'frontendfocus', name: 'Frontend Focus', kind: 'Newsletter for web developers', why: 'A weekly newsletter on web design and front-end work, from the same team as JavaScript Weekly.', tip: 'Free to suggest a link. Send something useful to readers, such as a write-up or a demo.', url: 'https://frontendfoc.us/', checked: false },
   { id: 'hackernewsletter', name: 'Hacker Newsletter', kind: 'Weekly digest', why: 'A weekly email of the best Hacker News posts.', tip: 'You cannot submit to it. The way in is a strong Show HN post, so do that first.', url: 'https://hackernewsletter.com/', checked: false },
+  { id: 'hackernoon', name: 'Hacker Noon', kind: 'Write-up', why: 'A technology publication that publishes writing from anyone, after review.', tip: 'Free to submit. Write how Baton works, not an advert.', url: 'https://hackernoon.com/', checked: false },
+  { id: 'freecodecamp', name: 'freeCodeCamp News', kind: 'Write-up', why: 'A large developer audience, and the site accepts guest articles.', tip: 'Free to submit. Teach something useful about client sites and editing.', url: 'https://www.freecodecamp.org/news/', checked: false },
+  { id: 'smashingwrite', name: 'Smashing Magazine', kind: 'Write-up', why: 'A respected web design and development publication that takes article pitches.', tip: 'Free to pitch. Send a clear outline of one practical article.', url: 'https://www.smashingmagazine.com/write-for-us/', checked: false },
+  { id: 'alistapart', name: 'A List Apart', kind: 'Write-up', why: 'A long-standing magazine for people who make websites.', tip: 'Free to submit. Send an article about the handover between developer and client.', url: 'https://alistapart.com/', checked: false },
+  { id: 'substack', name: 'Substack', kind: 'Write-up', why: 'Write a newsletter or a single post, free to publish and share.', tip: 'Free. One honest post on how you built the editor can reach agency owners.', url: 'https://substack.com/', checked: false },
+  { id: 'techpointafrica', name: 'Techpoint Africa', kind: 'African tech news', why: 'A major tech news site for African startups.', tip: 'Free to pitch a story. Look for its contact or tips page and send a short note.', url: 'https://techpoint.africa/', checked: false },
+  { id: 'techcabal', name: 'TechCabal', kind: 'African tech news', why: 'A large tech news site covering Nigeria and Africa.', tip: 'Free to pitch. Send a short note about the problem Baton solves.', url: 'https://techcabal.com/', checked: false },
+  { id: 'disruptafrica', name: 'Disrupt Africa', kind: 'African startup news', why: 'Covers startups across Africa and takes tips on new ones.', tip: 'Free to submit. Look for its contact page.', url: 'https://disrupt-africa.com/', checked: false },
+  { id: 'weetracker', name: 'WeeTracker', kind: 'African startup news', why: 'Covers African startups and funding news.', tip: 'Free to pitch. Look for its contact page.', url: 'https://weetracker.com/', checked: false },
+  { id: 'techmoran', name: 'TechMoran', kind: 'African tech news', why: 'Covers technology and startups across Africa.', tip: 'Free to pitch. Look for its contact page.', url: 'https://techmoran.com/', checked: false },
 ];
 
 const CREDITS: Spot[] = [
@@ -116,6 +141,7 @@ const EVENTS: Spot[] = [
   { id: 'meetup', name: 'Meetup groups', kind: 'Free events', why: 'Local groups for Next.js, Framer, Webflow and startup founders.', tip: 'Free to join. Pick groups with developers or agencies and talk about the problem, not the product.', url: 'https://www.meetup.com/', checked: false },
   { id: 'gdg', name: 'Google Developer Groups', kind: 'Community events', why: 'Free local developer meetups, including in Nigeria.', tip: 'Free. Find your nearest chapter, and offer a short demo talk.', url: 'https://gdg.community.dev/', checked: false },
   { id: 'startupgrind', name: 'Startup Grind chapters', kind: 'Founder events', why: 'Founders meet at local events, many of them free.', tip: 'Free to join. Check your city\'s chapter for upcoming events.', url: 'https://www.startupgrind.com/', checked: false },
+  { id: 'cchub', name: 'Co-Creation Hub (CcHUB), Lagos', kind: 'Community and programmes', why: 'A Lagos innovation centre that runs programmes and events for startups.', tip: 'Free to follow and to attend open events. Check which programmes take applications.', url: 'https://cchubnigeria.com/', checked: false },
 ];
 
 const INVEST: Spot[] = [
@@ -139,6 +165,8 @@ const INVEST: Spot[] = [
   { id: 'seedstars', name: 'Seedstars', kind: 'Startup programmes', why: 'Runs programmes and competitions for startups in emerging markets, including Africa.', tip: 'Free to apply. Check current calls for Nigeria.', url: 'https://www.seedstars.com/', checked: false },
   { id: 'africaprize', name: 'Africa Prize for Engineering Innovation', kind: 'Prize and support', why: 'A prize and training for engineering innovations from Africa.', tip: 'Free to apply. Check whether a software tool qualifies and the current call.', url: 'https://www.raeng.org.uk/africaprize', checked: false },
   { id: 'emergent', name: 'Emergent Ventures', kind: 'Grants', why: 'Fast grants for people with promising ideas, including solo founders.', tip: 'Free to apply. Check the current rules.', url: 'https://www.mercatus.org/emergent-ventures', checked: false },
+  { id: 'foundersfactoryafrica', name: 'Founders Factory Africa', kind: 'Accelerator, Africa', why: 'Builds and backs startups in Africa.', tip: 'Free to apply. Check the current programme and what stage it takes.', url: 'https://foundersfactory.africa/', checked: false },
+  { id: 'mest', name: 'Meltwater Entrepreneurial School of Technology (MEST)', kind: 'Training and investment, Africa', why: 'A programme for African software founders, with training and investment.', tip: 'Free to apply. Check the current call and the terms.', url: 'https://meltwater.org/', checked: false },
 ];
 
 const CSS = `

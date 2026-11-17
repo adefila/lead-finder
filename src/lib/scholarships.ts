@@ -270,9 +270,74 @@ const BASE: Base[] = [
     closes: 'Set by each participating university, and dates change every year', closeMonth: null, limitedCourses: true,
     url: 'https://www.worldbank.org/en/programs/scholarships',
   },
+
+  {
+    id: 'pau', name: 'Pan African University (African Union) master\'s scholarship', group: 'global', country: 'Africa (study in Nigeria, Kenya, Cameroon, Algeria or South Africa)', provider: 'African Union Commission',
+    covers: 'Tuition, living allowance, travel and accommodation, as the African Union scholarship covers', funding: 'full',
+    summary: 'A fully funded master\'s at one of the Pan African University institutes. One of them, PAULESI, is at the University of Ibadan in Nigeria and covers life and earth sciences, health and agriculture. Applications are online only. There are age limits for master\'s applicants, so check them first.',
+    minClass: 'upper', minWorkYears: 0, referees: 3, english: 'English or French, set by the programme', docs: [...BASE_DOCS, 'Certified certificates and transcripts', '1 recommendation letter and 3 referee contacts'],
+    closes: 'The last call ran from mid-November to mid-December, and the next one usually opens around now', closeMonth: 12, limitedCourses: true,
+    url: 'https://www.au-pau.org/submission/',
+  },
+  {
+    id: 'aims-ammi', name: 'AIMS African Masters in Machine Intelligence (AMMI)', group: 'global', country: 'Rwanda', provider: 'African Institute for Mathematical Sciences (AIMS)',
+    covers: 'Tuition, accommodation, meals and travel for the one-year programme, as reported', funding: 'full',
+    summary: 'A fully funded one-year master\'s in machine learning for African students. Selection is by the programme itself, and there is no separate scholarship form. Dates and requirements change each year, so use the programme\'s own site.',
+    minClass: 'first', minWorkYears: 0, referees: 2, english: 'English', docs: [...BASE_DOCS, 'Personal statement', 'References'],
+    closes: 'Set each year by the programme, so check its site', closeMonth: null,
+    url: 'https://aimsammi.org/',
+  },
+  {
+    id: 'rotary-peace', name: 'Rotary Peace Fellowship (master\'s)', group: 'global', country: 'Several countries', provider: 'Rotary Foundation',
+    covers: 'Tuition and living expenses for the master\'s', funding: 'full',
+    summary: 'A fully funded master\'s in peace and conflict or development at one of the Rotary Peace Centers. It is open to applicants from any country with about three years of relevant work. Rotary Club members and staff cannot apply.',
+    minClass: 'upper', minWorkYears: 3, referees: 2, english: 'English proof', docs: [...BASE_DOCS, 'Proof of relevant work', 'Reference letters'],
+    closes: 'The online application usually opens in February and closes in mid-May', closeMonth: 5, limitedCourses: true,
+    url: 'https://www.rotary.org/en/our-programs/peace-fellowships',
+  },
+  {
+    id: 'tudelft-vaneffen', name: 'TU Delft Justus & Louise van Effen Excellence Scholarship', group: 'europe', country: 'Netherlands', provider: 'TU Delft',
+    covers: 'Full tuition fees for the master\'s and a contribution to living costs', funding: 'full',
+    summary: 'For top students from outside the EU who are new to TU Delft. You submit a complete master\'s application first, then the scholarship form. Reference letters that arrive after the deadline are not accepted. Roughly the top tenth of graduates are considered.',
+    minClass: 'first', minWorkYears: 0, referees: 2, english: 'IELTS or TOEFL', docs: [...BASE_DOCS, 'Scholarship application form', 'Reference letters'],
+    closes: 'About 1 December, 23:59 Dutch time. Winners are told by the end of March', closeMonth: 12,
+    url: 'https://www.tudelft.nl/onderwijs/studievoorlichting/praktische-zaken/scholarships/justus-louise-van-effen-excellence-scholarships',
+  },
+  {
+    id: 'clarendon', name: 'Clarendon Scholarship (Oxford)', group: 'uk', country: 'United Kingdom', provider: 'University of Oxford',
+    covers: 'Course fees and a living grant, as Oxford announces for the year', funding: 'full',
+    summary: 'There is no separate form. When you apply for an Oxford graduate course you are considered for a Clarendon scholarship automatically, as long as you apply by the course\'s December or January deadline. Very competitive.',
+    minClass: 'first', minWorkYears: 0, referees: 3, english: 'IELTS or TOEFL', docs: [...BASE_DOCS, 'Written work if the course asks', '3 references'],
+    closes: 'Your course\'s first deadline, in December or January', closeMonth: 1,
+    url: 'https://www.ox.ac.uk/admissions/graduate/fees-and-funding/funding/clarendon/applicants',
+  },
+  {
+    id: 'weidenfeld', name: 'Weidenfeld-Hoffmann Scholarships and Leadership Programme (Oxford)', group: 'uk', country: 'United Kingdom', provider: 'University of Oxford',
+    covers: 'Part or all of the costs of an Oxford graduate course, plus a leadership programme', funding: 'partial',
+    summary: 'For outstanding students from emerging economies in Africa, Asia and South America who apply to an Oxford graduate course. You tick the programme on the Oxford application and also upload a short statement for it. People already studying at Oxford are not eligible.',
+    minClass: 'first', minWorkYears: 0, referees: 3, english: 'IELTS or TOEFL', docs: [...BASE_DOCS, 'Weidenfeld-Hoffmann statement', 'References'],
+    closes: 'About 6 January, but your course\'s own deadline applies', closeMonth: 1,
+    url: 'https://www.ox.ac.uk/admissions/graduate/fees-and-funding/funding/weidenfeld-hoffmann',
+  },
+  {
+    id: 'uppsala-global', name: 'Uppsala University Global Scholarship', group: 'sweden', country: 'Sweden', provider: 'Uppsala University',
+    covers: 'Tuition fees for an international master\'s', funding: 'partial',
+    summary: 'For non-EU students admitted to an Uppsala master\'s. You apply to the course on the national admissions site and rank Uppsala first, then fill in the scholarship form during the application window. It covers tuition only.',
+    minClass: 'upper', minWorkYears: 0, referees: 0, english: 'IELTS or TOEFL', docs: [...BASE_DOCS],
+    closes: 'The admissions deadline is mid-January, with the scholarship form due about two weeks later', closeMonth: 1,
+    url: 'https://www.uu.se/en/admissions/master/scholarships/uppsala-university-scholarships/',
+  },
+  {
+    id: 'nigeria-fsb-bea', name: 'Nigerian Federal Government scholarships (Bilateral Education Agreement)', group: 'global', country: 'Several countries', provider: 'Federal Scholarship Board, Federal Ministry of Education, Nigeria',
+    covers: 'Study abroad under agreements Nigeria has with other countries, with the benefits set by each country', funding: 'partial',
+    summary: 'The Nigerian government\'s own route to study abroad. Postgraduate applicants generally need a first or second class upper degree and the NYSC certificate. It is also the route that several foreign scholarships, such as the Chinese and Hungarian ones, ask Nigerians to use. The portal address differs between sources, so start from the Ministry\'s own site.',
+    minClass: 'upper', minWorkYears: 0, referees: 0, english: 'Set by the country you go to', docs: [...BASE_DOCS, 'NIN slip', 'NYSC certificate or exemption'],
+    closes: 'The call is usually posted between April and July, so watch the Ministry', closeMonth: 6,
+    url: 'https://education.gov.ng/',
+  },
 ];
 
-const OFFICIAL_NOTE = 'Every step below is for the official page only. Never pay anyone to apply, and be careful with blogs: many list old dates or the wrong rules.';
+const OFFICIAL_NOTE = 'Every step below is for the official page only. The scholarships themselves charge nothing, so never pay anyone to apply. Some universities charge their own admission fee, and cards that do say so. Be careful with blogs: many list old dates or the wrong rules.';
 
 const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = {
   'daad-epos': { trust: 'Run by the German government\'s academic exchange service (DAAD).', steps: [
@@ -296,28 +361,28 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Read the scholarship section of that programme\'s page for what is offered this year.',
     'Apply for the course online with transcripts, CV, motivation letter, two references and an English test.',
     'Follow the page for how funding is decided, and answer any follow-up quickly.' ] },
-  'si-gp': { trust: 'Run by the Swedish Institute, an agency of the Swedish government.', steps: [
+  'si-gp': { trust: 'Run by the Swedish Institute, an agency of the Swedish government.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
     'Pick a master\'s from the Swedish Institute list of eligible programmes. Only those qualify.',
     'Apply to your chosen programmes on the national admissions site by the January deadline, and keep the application numbers.',
     'Collect proof of about 3,000 hours of work, leadership or volunteering, and two reference letters.',
     'Apply for the scholarship on the Swedish Institute\'s site in the same window, as that year\'s instructions say.',
     'Wait for the Swedish Institute\'s decision, which comes after the universities decide on admission.' ] },
-  'kth': { trust: 'Run by KTH Royal Institute of Technology, a public Swedish university.', steps: [
+  'kth': { trust: 'Run by KTH Royal Institute of Technology, a public Swedish university.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
     'Apply for your KTH master\'s on the national admissions site by the January deadline.',
     'Check the KTH scholarship page for whether you are considered automatically or must tick an option.',
     'Send the documents with your application, including your transcript and English test.',
     'The scholarship is decided with the admission result. It covers tuition only, so plan for living costs.' ] },
-  'chalmers': { trust: 'Run by Chalmers University of Technology, a public Swedish university.', steps: [
+  'chalmers': { trust: 'Run by Chalmers University of Technology, a public Swedish university.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
     'Apply for your Chalmers master\'s on the national admissions site by the January deadline.',
     'Read the Chalmers scholarship page to see whether a separate form is needed.',
     'Send your transcript, CV, motivation letter and English test.',
     'Wait for the admission and scholarship decision together.' ] },
-  'lund': { trust: 'Run by Lund University, a public Swedish university.', steps: [
+  'lund': { trust: 'Run by Lund University, a public Swedish university.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
     'Apply for your Lund master\'s on the national admissions site by the January deadline.',
     'Check the Lund scholarship page to see whether you are considered automatically.',
     'Send your documents with the application.',
     'Wait for the admission and scholarship decision.' ] },
-  'liu': { trust: 'Run by Linköping University, a public Swedish university.', steps: [
+  'liu': { trust: 'Run by Linköping University, a public Swedish university.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
     'Apply for your Linköping master\'s on the national admissions site by the mid-January deadline.',
     'Check the university\'s scholarship page to see whether you are considered automatically.',
     'Send your documents with the application.',
@@ -337,7 +402,7 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Choose your programmes and universities from the lists the site gives you.',
     'Upload your transcript, certificate, passport, recommendation letters and motivation letter.',
     'Submit before the closing date, then wait for the interview invitation by email.' ] },
-  'chevening': { trust: 'Run by the UK Foreign, Commonwealth and Development Office.', steps: [
+  'chevening': { trust: 'Run by the UK Foreign, Commonwealth and Development Office.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
     'Check you are from an eligible country, hold a degree and have at least two years of work experience.',
     'Open the application on the Chevening site when it opens, usually in August, and register.',
     'Choose up to three UK courses from the Chevening list.',
@@ -348,7 +413,7 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Find your country\'s nominating agency on the Commission\'s site and read its call.',
     'Apply on the Commission\'s online application system during the call, usually in the autumn.',
     'Give two references and choose your UK courses, then wait for the nomination and decision.' ] },
-  'gates-cambridge': { trust: 'Run by the Gates Cambridge Trust at the University of Cambridge, funded by the Gates Foundation.', steps: [
+  'gates-cambridge': { trust: 'Run by the Gates Cambridge Trust at the University of Cambridge, funded by the Gates Foundation.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
     'Choose a Cambridge master\'s in the course directory and find its funding deadline: 8 December or 6 January for the international round.',
     'Apply for the course through the University\'s graduate application portal.',
     'In the funding section, tick Gates Cambridge and answer the four short questions.',
@@ -403,12 +468,12 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Create an account on the online application system when the round opens, usually in February.',
     'Complete the application. You do not need a university offer yet.',
     'Submit before the closing date, around the end of April, and wait for the shortlist and interview.' ] },
-  'eth-esop': { trust: 'Run by ETH Zurich, a public Swiss university.', steps: [
+  'eth-esop': { trust: 'Run by ETH Zurich, a public Swiss university.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
     'Check that you are in about the top tenth of your bachelor\'s class and have not started a master\'s.',
     'Start your ETH master\'s application on eApply and upload the normal admission documents.',
     'Write the pre-proposal for your master\'s thesis and upload it.',
     'Tick the ESOP option and submit before the deadline, usually 30 November around midday Zurich time.' ] },
-  'epfl-excellence': { trust: 'Run by EPFL, a public Swiss university.', steps: [
+  'epfl-excellence': { trust: 'Run by EPFL, a public Swiss university.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
     'Choose one EPFL master\'s programme. You can apply to only one per year.',
     'Start the online master\'s application and upload the admission documents.',
     'Tick the box for the Excellence Fellowship in the same application.',
@@ -428,6 +493,49 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Check that you meet the rules: a degree from at least three years ago and a paid full-time development job.',
     'Apply to a participating university\'s master\'s programme first and get unconditional admission, apart from funding.',
     'Wait for the university to shortlist you, then complete the scholarship form you are sent.' ] },
+  'pau': { trust: 'Run by the African Union Commission through the Pan African University.', steps: [
+    'Open the Pan African University submission site and read the current call, which usually opens in mid-November.',
+    'Check the master\'s age limits and the degree level in the call. They are strict.',
+    'Choose the institute and programme. PAULESI at the University of Ibadan covers life and earth sciences, health and agriculture.',
+    'Prepare certified certificates and transcripts, your passport or ID page, a photo, a CV, one recommendation letter and the contacts of three referees.',
+    'Apply online on the PAU submission site only, using a stable connection, and save each step as you go.' ] },
+  'aims-ammi': { trust: 'Run by the African Institute for Mathematical Sciences, with its partners.', steps: [
+    'Open the AMMI site and read the current call, the eligibility and the deadline.',
+    'Prepare your transcript, certificate, references and personal statement.',
+    'Apply on the programme\'s own application page. There is no separate scholarship form.',
+    'Wait for the selection. Selected students receive the programme\'s funding.' ] },
+  'rotary-peace': { trust: 'Run by the Rotary Foundation.', steps: [
+    'Check that you have a degree, about three years of relevant work and the English level, and that you are not a Rotary member or staff member.',
+    'Read the Rotary Peace Fellowship page and choose the master\'s Peace Center you would apply to.',
+    'Apply online during the call, which usually opens in February and closes in mid-May.',
+    'Give your referees early and complete the essays, then prepare for the interview.' ] },
+  'tudelft-vaneffen': { trust: 'Run by TU Delft, a public Dutch university.', steps: [
+    'Check that you are new to TU Delft, from outside the EU, and about in the top tenth of your graduating class.',
+    'Submit your complete TU Delft MSc application first.',
+    'Complete the scholarship application form on the TU Delft page and add the English certificate if needed.',
+    'Make sure your reference letters arrive before the deadline, because late ones are not accepted.',
+    'Wait for the result, which is announced by the end of March.' ] },
+  'clarendon': { trust: 'Run by the University of Oxford.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
+    'Choose an Oxford graduate course and note its first admissions deadline, in December or January.',
+    'Apply for the course online with your transcript, CV, references and written work if asked.',
+    'You are considered for a Clarendon scholarship automatically. There is no separate form.',
+    'Apply by the course\'s first deadline, since later applicants are not considered for most scholarships.' ] },
+  'weidenfeld': { trust: 'Run by the University of Oxford.', fee: 'The university charges its own application fee for the master degree, and some waive it for certain applicants. Check the amount on the course page. The scholarship itself costs nothing.', steps: [
+    'Check that you are from an eligible emerging economy and are not already studying at Oxford.',
+    'Apply for your Oxford graduate course online.',
+    'In the scholarships section of the application, select the Weidenfeld-Hoffmann programme.',
+    'Write the Weidenfeld-Hoffmann statement and upload it with your application before the deadline.' ] },
+  'uppsala-global': { trust: 'Run by Uppsala University, a public Swedish university.', fee: 'Swedish universities charge non-EU applicants an application fee on the national admissions site. The scholarship itself costs nothing.', steps: [
+    'Apply for an Uppsala master\'s on the national admissions site and rank Uppsala first.',
+    'During the application period, fill in the online scholarship form on the Uppsala site.',
+    'Send your documents to University Admissions by the deadline.',
+    'Wait for the admission and scholarship decision, which covers tuition only.' ] },
+  'nigeria-fsb-bea': { trust: 'Run by Nigeria\'s Federal Ministry of Education.', steps: [
+    'Open the Federal Ministry of Education site and find the Federal Scholarship Board page, as the portal address differs between sources.',
+    'Read the guidelines for postgraduate applicants for the year, usually posted between April and July.',
+    'Register and fill in the online application, then upload your degree certificate, NIN slip and NYSC certificate or exemption.',
+    'If you are nominated, you will be asked for authenticated certificates, your passport and a government hospital medical report.',
+    'Watch for the country you are placed in, and for other foreign scholarships that ask Nigerians to apply through this board.' ] },
 };
 
 export const SCHOLARSHIPS: Scholarship[] = BASE.map(b => ({ ...b, ...EXTRA[b.id] }));
