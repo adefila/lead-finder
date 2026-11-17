@@ -247,14 +247,6 @@ const BASE: Base[] = [
     url: 'https://www.epfl.ch/education/master/',
   },
   {
-    id: 'maeci-italy', name: 'Italian Government scholarships (MAECI)', group: 'europe', country: 'Italy', provider: 'Italian Ministry of Foreign Affairs (MAECI)',
-    covers: 'Monthly allowance and health insurance', funding: 'partial',
-    summary: 'Grants for foreign students at Italian universities, for state master\'s degrees (laurea magistrale), not the university-run "Master universitari". You also pre-enrol on Universitaly. Check the age limit for master\'s applicants.',
-    minClass: 'upper', minWorkYears: 0, referees: 0, english: 'B2 in the language of the course', docs: [...BASE_DOCS],
-    closes: 'The last round closed in late March', closeMonth: 3,
-    url: 'https://studyinitaly.esteri.it/',
-  },
-  {
     id: 'czech-gov', name: 'Czech Government Scholarship for developing countries', group: 'europe', country: 'Czechia', provider: 'Czech Ministry of Foreign Affairs and Ministry of Education',
     covers: 'About 16,000 Czech koruna a month for a master\'s, as reported, with study in English', funding: 'partial',
     summary: 'Offered to Nigerian students for a follow-up master\'s in English. Information technology is one of the recommended fields. The notice reaches Nigerians through the Federal Ministry of Education and the Czech embassy in Abuja.',
@@ -277,14 +269,6 @@ const BASE: Base[] = [
     minClass: 'upper', minWorkYears: 3, referees: 2, english: 'Set by the university', docs: [...BASE_DOCS, 'Proof of development work', 'Reference letters'],
     closes: 'Set by each participating university, and dates change every year', closeMonth: null, limitedCourses: true,
     url: 'https://www.worldbank.org/en/programs/scholarships',
-  },
-  {
-    id: 'aalto-excellence', name: 'Aalto University Excellence Scholarship (Finland)', group: 'europe', country: 'Finland', provider: 'Aalto University',
-    covers: 'A tuition waiver. Living costs are not covered', funding: 'partial',
-    summary: 'For non-EU students at an Aalto master\'s, including computer science and data science. You answer "yes" to the scholarship question on the master\'s application form, and it is decided together with admission. You cannot apply for it before or after the application period.',
-    minClass: 'first', minWorkYears: 0, referees: 0, english: 'IELTS or TOEFL', docs: [...BASE_DOCS],
-    closes: 'The application period usually runs from early December to early January', closeMonth: 1,
-    url: 'https://www.aalto.fi/en/admission-services/apply-to-masters-programmes',
   },
 ];
 
@@ -376,7 +360,7 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Complete the West Africa online application during the call, usually mid-year, with your personal statement and referees.',
     'Prepare for the virtual interview and, if shortlisted, the in-person interview in Abuja, Accra or Lagos.',
     'Apply to Oxford for your course as the Trust instructs.' ] },
-  'mastercard-foundation': { trust: 'Run by the Mastercard Foundation through its partner universities.', fee: 'Some partner universities charge an application fee. The Foundation says it is reimbursed if you are selected.', steps: [
+  'mastercard-foundation': { trust: 'Run by the Mastercard Foundation through its partner universities.', fee: 'Some partner universities charge an application fee. If you do not want to pay anything, apply only to partners that do not charge one.', steps: [
     'Open the Foundation\'s list of partner universities and choose ones with a master\'s that fits you. You must be 35 or under for a master\'s.',
     'Read each university\'s own page for its Scholars Program deadline and entry rules.',
     'Apply through that university\'s admissions portal and say you want the Mastercard Foundation Scholars Program.',
@@ -429,11 +413,6 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Start the online master\'s application and upload the admission documents.',
     'Tick the box for the Excellence Fellowship in the same application.',
     'Submit before the deadline, usually 15 December, or in the later round if it is open.' ] },
-  'maeci-italy': { trust: 'Run by Italy\'s Ministry of Foreign Affairs.', fee: 'Italian universities often charge an application fee for admission.', steps: [
-    'Choose a state master\'s (laurea magistrale) at an Italian university and apply for admission first.',
-    'Pre-enrol on Universitaly. Your university validates it and sends it to the Italian embassy in your country.',
-    'Apply for the grant on the Study in Italy portal during the call, which closed in late March last year.',
-    'Check the age limit and the language certificate for your course.' ] },
   'czech-gov': { trust: 'Run by the Czech government, announced through the Nigerian Federal Ministry of Education and the Czech embassy in Abuja.', steps: [
     'Watch the Federal Ministry of Education and the Czech embassy in Abuja for the yearly notice, usually from late August.',
     'Choose an English-taught follow-up master\'s in a recommended field such as information technology.',
@@ -449,11 +428,6 @@ const EXTRA: Record<string, { steps: string[]; trust: string; fee?: string }> = 
     'Check that you meet the rules: a degree from at least three years ago and a paid full-time development job.',
     'Apply to a participating university\'s master\'s programme first and get unconditional admission, apart from funding.',
     'Wait for the university to shortlist you, then complete the scholarship form you are sent.' ] },
-  'aalto-excellence': { trust: 'Run by Aalto University, a public Finnish university.', fee: 'Aalto charges non-EU applicants an application fee of 100 euro. It is the university\'s admission fee, not the scholarship\'s.', steps: [
-    'Choose an Aalto master\'s such as computer science or data science and read its requirements.',
-    'During the application period, usually early December to early January, fill in the master\'s application form.',
-    'Answer "yes" to the scholarship question on the form. You cannot apply before or after the period.',
-    'Pay the application fee and upload your documents, then wait for the admission and scholarship decision together.' ] },
 };
 
 export const SCHOLARSHIPS: Scholarship[] = BASE.map(b => ({ ...b, ...EXTRA[b.id] }));
