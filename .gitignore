@@ -10,3 +10,7 @@ Thumbs.db
 tsconfig.tsbuildinfo
 
 .vercel
+
+# Cloudflare build output
+.open-next/
+.wrangler/

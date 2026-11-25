@@ -1,0 +1,22 @@
+{
+  // Lead Finder on Cloudflare Workers: the OpenNext build plus its three timers (see cloudflare-worker.ts).
+  // Secrets (email login, API keys, the dashboard password, the timer secret) are NOT here: they live on the Worker and survive every deploy.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lead-finder",
+  "main": "cloudflare-worker.ts",
+  "compatibility_date": "2026-11-23",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "lead-finder" }],
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true },
+  // Plain settings. Anything that is a key or a password is a Worker secret instead.
+  "vars": {
+    "MAIL_PAUSED": "false",
+    "MAIL_WEEKLY_LIMIT": "100",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://jfuryksdphcebropwofe.supabase.co"
+  },
+  // The timers: send the next email every 15 minutes, find leads at 07:00 UTC and look for their emails at 12:00 UTC.
+  // They replace the cron-job.org timer and the two daily jobs in vercel.json.
+  "triggers": { "crons": ["*/15 * * * *", "0 7 * * *", "0 12 * * *"] }
+}
