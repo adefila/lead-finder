@@ -10,9 +10,9 @@
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "lead-finder" }],
   "images": { "binding": "IMAGES" },
   "observability": { "enabled": true },
-  // Plain settings. Anything that is a key or a password is a Worker secret instead.
+  // Plain settings. Anything that is a key or a password is a Worker secret instead. MAIL_PAUSED is a secret too, on purpose, so that pausing
+  // sending (see docs/cloudflare.md) is not undone by the next deploy.
   "vars": {
-    "MAIL_PAUSED": "false",
     "MAIL_WEEKLY_LIMIT": "100",
     "NEXT_PUBLIC_SUPABASE_URL": "https://jfuryksdphcebropwofe.supabase.co"
   },
