@@ -14,18 +14,31 @@ export interface MailConfig {
   smtpHost: string;
   imapHost: string;
   fromName: string;
+  // The address shown as the sender, when it is not the login (an alias such as partners@ on a mailbox).
+  fromAddress?: string;
 }
 
 // The main mailbox (your web-design outreach) or the Baton mailbox (Baton pitches to developers and agencies). Baton has its own login:
-// BATON_MAIL_USER and BATON_MAIL_PASSWORD (an app password), optionally BATON_MAIL_PROVIDER (gmail or zoho) and BATON_MAIL_FROM_NAME.
+//   BATON_MAIL_USER            the mailbox login (for Zoho, the full address that signs in)
+//   BATON_MAIL_PASSWORD        an app password
+//   BATON_MAIL_PROVIDER        gmail or zoho (default gmail)
+//   BATON_MAIL_REGION          Zoho data centre: com (default), eu, in, com.au or jp, the ending of the address you sign in at (mail.zoho.eu)
+//   BATON_MAIL_FROM_ADDRESS    shown as the sender when it differs from the login, e.g. partners@batonedit.com (an alias of that mailbox)
+//   BATON_MAIL_FROM_NAME       the sender name, default "Samuel from Baton"
 export function mailConfig(box: 'main' | 'baton' = 'main'): MailConfig | null {
   const baton = box === 'baton';
   const user = baton ? process.env.BATON_MAIL_USER : (process.env.MAIL_USER ?? process.env.GMAIL_USER);
   const pass = (baton ? process.env.BATON_MAIL_PASSWORD : (process.env.MAIL_PASSWORD ?? process.env.GMAIL_APP_PASSWORD))?.replace(/\s+/g, '');
   if (!user?.trim() || !pass) return null;
   const provider = ((baton ? process.env.BATON_MAIL_PROVIDER : process.env.MAIL_PROVIDER) ?? 'gmail').toLowerCase() as keyof typeof PROVIDERS;
-  const hosts = PROVIDERS[provider] ?? PROVIDERS.gmail;
-  return { user: user.trim(), pass, smtpHost: hosts.smtp, imapHost: hosts.imap, fromName: (baton ? process.env.BATON_MAIL_FROM_NAME : process.env.MAIL_FROM_NAME) ?? 'Samuel Adefila' };
+  let hosts: { smtp: string; imap: string } = PROVIDERS[provider] ?? PROVIDERS.gmail;
+  const region = baton ? process.env.BATON_MAIL_REGION?.trim().toLowerCase().replace(/^\./, '') : undefined;
+  if (provider === 'zoho' && region) hosts = { smtp: `smtp.zoho.${region}`, imap: `imap.zoho.${region}` };
+  return {
+    user: user.trim(), pass, smtpHost: hosts.smtp, imapHost: hosts.imap,
+    fromName: (baton ? process.env.BATON_MAIL_FROM_NAME : process.env.MAIL_FROM_NAME)?.trim() || (baton ? 'Samuel from Baton' : 'Samuel Adefila'),
+    ...(baton && process.env.BATON_MAIL_FROM_ADDRESS?.trim() ? { fromAddress: process.env.BATON_MAIL_FROM_ADDRESS.trim() } : {}),
+  };
 }
 
 export interface OutgoingMail {
@@ -46,7 +59,7 @@ export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<str
     auth: { user: cfg.user, pass: cfg.pass },
   });
   const info = await transport.sendMail({
-    from: mail.from ?? { name: cfg.fromName, address: cfg.user },
+    from: mail.from ?? { name: cfg.fromName, address: cfg.fromAddress ?? cfg.user },
     to: mail.to,
     subject: mail.subject,
     text: mail.text,
