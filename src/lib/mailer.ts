@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import { checkRepliesZoho, sendViaZoho, zohoApiConfigured } from '@/lib/zohomail';
 
 // Gmail today, Zoho later: switch with MAIL_PROVIDER, MAIL_USER and MAIL_PASSWORD.
 const PROVIDERS = {
@@ -16,6 +17,8 @@ export interface MailConfig {
   fromName: string;
   // The address shown as the sender, when it is not the login (an alias such as partners@ on a mailbox).
   fromAddress?: string;
+  // 'zoho': the mailbox is used through Zoho's web API (no SMTP or IMAP, which Zoho blocks from Cloudflare).
+  api?: 'zoho';
 }
 
 // The main mailbox (your web-design outreach) or the Baton mailbox (Baton pitches to developers and agencies). Baton has its own login:
@@ -27,6 +30,12 @@ export interface MailConfig {
 //   BATON_MAIL_FROM_NAME       the sender name, default "Samuel from Baton"
 export function mailConfig(box: 'main' | 'baton' = 'main'): MailConfig | null {
   const baton = box === 'baton';
+  // Baton over Zoho's web API: needs only the Zoho API secrets (see scripts/zoho-setup.mjs) and the sender address.
+  if (baton && zohoApiConfigured()) {
+    const address = process.env.BATON_MAIL_FROM_ADDRESS?.trim() || process.env.BATON_MAIL_USER?.trim();
+    if (!address) return null;
+    return { user: address, pass: '', smtpHost: '', imapHost: '', fromName: process.env.BATON_MAIL_FROM_NAME?.trim() || 'Samuel from Baton', fromAddress: address, api: 'zoho' };
+  }
   const user = baton ? process.env.BATON_MAIL_USER : (process.env.MAIL_USER ?? process.env.GMAIL_USER);
   const pass = (baton ? process.env.BATON_MAIL_PASSWORD : (process.env.MAIL_PASSWORD ?? process.env.GMAIL_APP_PASSWORD))?.replace(/\s+/g, '');
   if (!user?.trim() || !pass) return null;
@@ -52,6 +61,9 @@ export interface OutgoingMail {
 }
 
 export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<string> {
+  if (cfg.api === 'zoho') {
+    return sendViaZoho({ fromAddress: cfg.fromAddress ?? cfg.user, fromName: cfg.fromName, to: mail.to, subject: mail.subject, text: mail.text });
+  }
   const transport = nodemailer.createTransport({
     host: cfg.smtpHost,
     port: 465,
@@ -69,7 +81,7 @@ export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<str
   return info.messageId;
 }
 
-const OPT_OUT = /\b(unsubscribe|not interested|no thanks|no thank you|stop emailing|remove me|take me off|don'?t (contact|email) me|please stop)\b/i;
+export const OPT_OUT = /\b(unsubscribe|not interested|no thanks|no thank you|stop emailing|remove me|take me off|don'?t (contact|email) me|please stop)\b/i;
 
 export interface ReplyCheck { email: string; since: Date }
 export interface ReplyFound { replied: boolean; optedOut: boolean }
@@ -90,6 +102,7 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
   const found = new Map<string, ReplyFound>();
   const bounced = new Set<string>();
   if (!checks.length) return { replies: found, bounced };
+  if (cfg.api === 'zoho') return checkRepliesZoho(checks);
 
   const client = new ImapFlow({
     host: cfg.imapHost,

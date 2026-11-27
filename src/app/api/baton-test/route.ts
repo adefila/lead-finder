@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { ImapFlow } from 'imapflow';
 import { mailConfig, sendMail } from '@/lib/mailer';
+import { testZoho } from '@/lib/zohomail';
 import { getLeads } from '@/lib/supabase';
 import { splitDraft, toHtml, withSignature } from '@/lib/compose';
 
@@ -13,6 +14,11 @@ export const maxDuration = 60;
 export async function GET() {
   const cfg = mailConfig('baton');
   if (!cfg) return NextResponse.json({ connected: false, error: 'BATON_MAIL_USER or BATON_MAIL_PASSWORD is not set' });
+  if (cfg.api === 'zoho') {
+    const out: Record<string, unknown> = { connected: true, via: 'Zoho web API', sender: `${cfg.fromName} <${cfg.fromAddress ?? cfg.user}>` };
+    try { Object.assign(out, await testZoho()); } catch (e) { out.error = (e as Error).message.slice(0, 300); }
+    return NextResponse.json(out);
+  }
   const out: Record<string, unknown> = { connected: true, login: cfg.user, sender: `${cfg.fromName} <${cfg.fromAddress ?? cfg.user}>`, smtpHost: cfg.smtpHost, imapHost: cfg.imapHost };
 
   try {
