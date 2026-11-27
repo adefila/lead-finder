@@ -4,7 +4,7 @@ import { SESSION_COOKIE, hasSession, hasTimerSecret } from '@/lib/session';
 // Reachable without logging in: the login itself, the digest's email logo, the signed
 // links inside digest emails, and the signed website-check pages sent to leads.
 // Also public: the tracked portfolio link (/v), and the form, visit beacon and script your website uses.
-const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go', '/check', '/n', '/v', '/api/capture', '/api/visit', '/t.js', '/d'];
+const PUBLIC = ['/login', '/api/login', '/email-logo.png', '/api/go', '/check', '/n', '/v', '/api/capture', '/api/visit', '/t.js', '/d', '/brand'];
 // Called by timers with "Authorization: Bearer CRON_SECRET". Only the exact secret gets through.
 const TIMER_ROUTES = ['/api/cron', '/api/outbox', '/api/find-emails', '/api/baton-import'];
 

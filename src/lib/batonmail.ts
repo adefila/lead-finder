@@ -3,7 +3,8 @@
 // The header picture is linked from batonedit.com (the Zoho API sends no inline pictures). The plain-text version is the draft itself.
 
 const ORIGIN = 'https://batonedit.com';
-const STRIP = `${ORIGIN}/brand/baton-email-strip.png`;
+// Served by Lead Finder (a public path), so the picture is there without waiting for a Baton deploy.
+const STRIP = 'https://leads.adefilasamuel.com/brand/baton-email-banner.jpg';
 const FONT = "'Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
@@ -45,7 +46,7 @@ export function batonHtml(subject: string, body: string): string {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:#f5f5f5">${esc(preview)}</div>
 <table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" class="card" width="480" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid #e6e6e6;border-radius:12px;overflow:hidden">
-<tr><td bgcolor="#0b0b0c" style="padding:0;background:#0b0b0c;line-height:0;font-size:0"><img src="${STRIP}" width="478" height="56" alt="Baton" style="display:block;width:100%;max-width:478px;height:auto;border:0;color:#ffffff;font:700 20px/56px Arial,Helvetica,sans-serif"></td></tr>
+<tr><td bgcolor="#FF3D12" style="padding:0;background:#FF3D12;line-height:0;font-size:0"><img src="${STRIP}" width="478" height="200" alt="Baton" style="display:block;width:100%;max-width:478px;height:auto;border:0;color:#12110F;font:700 28px/200px Arial,Helvetica,sans-serif"></td></tr>
 <tr><td style="padding:32px;font-family:${FONT}">
 ${before.map(p).join('')}${button}${note}
 <p class="f" style="margin:28px 0 0;padding-top:16px;border-top:1px solid #efefef;font-size:12.5px;line-height:1.55;color:#707070">${socials}</p>
