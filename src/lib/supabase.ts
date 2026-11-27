@@ -61,8 +61,8 @@ export async function sendsSince(sinceIso: string): Promise<{ kind: SendKind; le
 
 // Only one outbox run per minute may send: the timer and "Send the next email now" can land
 // together. The insert fails for the second one, so it backs off.
-export async function claimOutboxRun(at = new Date()): Promise<boolean> {
-  const { error } = await db().from('sent_jobs').insert({ id: `lock:outbox:${Math.floor(at.getTime() / 60_000)}`, sent_at: at.toISOString() });
+export async function claimOutboxRun(at = new Date(), lane = 'main'): Promise<boolean> {
+  const { error } = await db().from('sent_jobs').insert({ id: `lock:outbox:${lane === 'main' ? '' : `${lane}:`}${Math.floor(at.getTime() / 60_000)}`, sent_at: at.toISOString() });
   // Old locks are no use: keep only the last day of them.
   if (!error) await db().from('sent_jobs').delete().like('id', 'lock:%').lt('sent_at', new Date(at.getTime() - 86_400_000).toISOString());
   return !error;

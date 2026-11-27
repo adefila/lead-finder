@@ -22,7 +22,7 @@ import { EmailHuntDock, EmailHuntModal, HUNT_STEP, type EmailHunt } from '@/comp
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; followUpsToday?: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean; paused?: boolean; batonConfigured?: boolean };
+type OutboxStatus = { configured: boolean; sentToday: number; followUpsToday?: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean; paused?: boolean; batonConfigured?: boolean; baton?: { sentToday: number; limit: number; sentWeek: number; weekLimit: number; queued: number } };
 
 // "Fri 2 Oct, 15:10" in your own time zone.
 function lastSentLabel(iso?: string | null): string {
@@ -717,6 +717,7 @@ export default function Home() {
                   : sub === 'won' ? 'Projects you closed.'
                   : sub === 'lost' ? 'Said no, never replied, or bounced.'
                   : sub === 'skipped' ? 'Passed on. Bring any back in one click.'
+                  : view === 'baton' && outbox?.baton ? `Sent from the Baton mailbox, on its own limits: ${outbox.baton.sentToday} of ${outbox.baton.limit} new today, ${outbox.baton.sentWeek} of ${outbox.baton.weekLimit} this week, ${outbox.baton.queued} scheduled.`
                   : VIEWS.find(v => v.id === view)?.hint}
               </p>
             </div>

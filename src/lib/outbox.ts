@@ -17,8 +17,14 @@ import { batonHtml } from '@/lib/batonmail';
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
 export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
 // Follow-ups to people already contacted are limited separately: at most this many a day, so they cannot crowd out new emails.
-// Of the day's new emails, at least this many go to developers and agencies pitched Baton (when enough of them are queued and awake).
-export const BATON_DAILY_MIN = Number(process.env.BATON_DAILY_MIN ?? 5);
+// Baton's pitch to developers and agencies is its own lane: its own mailbox, its own limits and its own spacing, so it never uses up
+// (or waits on) the main address's limits. Defaults: 20 new emails a day and 100 a week.
+export const BATON_DAILY_LIMIT = Number(process.env.BATON_DAILY_LIMIT ?? 20);
+export const BATON_WEEKLY_LIMIT = Number(process.env.BATON_WEEKLY_LIMIT ?? 100);
+export const BATON_FOLLOWUP_DAILY_LIMIT = Number(process.env.BATON_FOLLOWUP_DAILY_LIMIT ?? 20);
+export type Lane = 'main' | 'baton';
+const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
+const isBatonId = (id: string) => id.startsWith('gh-');
 export const FOLLOWUP_DAILY_LIMIT = Number(process.env.MAIL_FOLLOWUP_DAILY_LIMIT ?? 20);
 // At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
 // so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
@@ -62,10 +68,39 @@ const TZ_HINTS: [RegExp, string][] = [
   [/Norway|Oslo|Bergen|Trondheim|Stavanger/i, 'Europe/Oslo'],
   [/Luxembourg/i, 'Europe/Luxembourg'],
   [/Auckland|New Zealand/i, 'Pacific/Auckland'],
+  // Where Baton's developers and agencies are (from their GitHub profiles): sent in their own working hours, not New York's.
+  [/France|Paris|Lyon|Marseille|Toulouse|Nantes|Bordeaux|Lille|Strasbourg/i, 'Europe/Paris'],
+  [/Italy|Italia|Milan|Rome|Turin|Bologna|Naples/i, 'Europe/Rome'],
+  [/Switzerland|Zurich|Geneva|Czech|Prague|Slovakia|Slovenia|Croatia|Serbia|Belgrade|Hungary|Budapest|Norway|Oslo/i, 'Europe/Berlin'],
+  [/Ukraine|Kyiv|Kiev|Romania|Bucharest|Bulgaria|Sofia|Greece|Athens|Lithuania|Latvia|Moldova/i, 'Europe/Bucharest'],
+  [/Turkey|Türkiye|Istanbul|Izmir|Ankara/i, 'Europe/Istanbul'],
+  [/Israel|Tel Aviv|Jerusalem/i, 'Asia/Jerusalem'],
+  [/Egypt|Cairo/i, 'Africa/Cairo'],
+  [/South Africa|Cape Town|Johannesburg|Durban|Pretoria/i, 'Africa/Johannesburg'],
+  [/Nigeria|Lagos|Abuja|Ghana|Accra|Cameroon/i, 'Africa/Lagos'],
+  [/Kenya|Nairobi|Ethiopia|Uganda|Tanzania/i, 'Africa/Nairobi'],
+  [/Georgia|Tbilisi|Armenia|Yerevan|Azerbaijan|Baku|Dubai|UAE|Abu Dhabi|Oman/i, 'Asia/Dubai'],
+  [/Kuwait|Saudi|Riyadh|Jeddah|Iraq|Qatar|Doha/i, 'Asia/Riyadh'],
+  [/Iran|Tehran|Mashhad/i, 'Asia/Tehran'],
+  [/Pakistan|Lahore|Karachi|Islamabad|Rawalpindi/i, 'Asia/Karachi'],
+  [/India|Bangalore|Bengaluru|Mumbai|Delhi|Pune|Hyderabad|Chennai|Kolkata|Gujarat|Kerala|Lucknow|Noida|Gurgaon|Ahmedabad|Jaipur|Kakinada|Karnataka|Maharashtra|Tamil/i, 'Asia/Kolkata'],
+  [/Bangladesh|Dhaka|Chittagong/i, 'Asia/Dhaka'],
+  [/Sri Lanka|Colombo/i, 'Asia/Colombo'],
+  [/Nepal|Kathmandu/i, 'Asia/Kathmandu'],
+  [/Vietnam|Hanoi|Ho Chi Minh|Thailand|Bangkok|Indonesia|Jakarta|Karawang|Magelang/i, 'Asia/Bangkok'],
+  [/Philippines|Manila|Bukidnon|Taiwan|Taipei|China|Beijing|Shanghai|Hong Kong/i, 'Asia/Shanghai'],
+  [/Japan|Tokyo|Osaka|Korea|Seoul/i, 'Asia/Tokyo'],
+  [/Brazil|Brasil|São Paulo|Sao Paulo|Rio de Janeiro|Argentina|Buenos Aires|Uruguay/i, 'America/Sao_Paulo'],
+  [/Chile|Santiago/i, 'America/Santiago'],
+  [/Colombia|Bogot|Peru|Lima|Ecuador|Cuba/i, 'America/Bogota'],
+  [/Venezuela/i, 'America/Caracas'],
+  [/Mexico|México|Guadalajara|Monterrey/i, 'America/Mexico_City'],
 ];
 
 export function timezoneFor(lead: Lead): string {
-  const text = `${lead.company} ${lead.description.slice(0, 200)}`;
+  // Baton prospects name their place in the description ("Based in Pakistan."), after a long bio: read that first.
+  const based = lead.description.match(/Based in ([^.]+)\./)?.[1];
+  const text = based ? `${based} ${lead.company}` : `${lead.company} ${lead.description.slice(0, 200)}`;
   return TZ_HINTS.find(([re]) => re.test(text))?.[1] ?? 'America/New_York';
 }
 
@@ -153,11 +188,18 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; batonConfigured: boolean; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
-  const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getOutboxLeads(), lastSentAt()]);
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { baton: { sentToday: number; limit: number; sentWeek: number; weekLimit: number; queued: number }; followUpsToday: number; batonConfigured: boolean; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
+  const [mainToday, mainWeek, followUpsAll, allLeads, last, weekSends] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getOutboxLeads(), lastSentAt(), sendsSince(startOfWeek().toISOString())]);
+  const dayStart = Date.parse(todayStart());
+  const batonFirsts = weekSends.filter(s => s.kind === 'first' && isBatonId(s.leadId));
+  const batonToday = batonFirsts.filter(s => Date.parse(s.at) >= dayStart).length;
+  const batonFollowUpsToday = weekSends.filter(s => s.kind === 'followup' && isBatonId(s.leadId) && Date.parse(s.at) >= dayStart).length;
+  const sentToday = Math.max(0, mainToday - batonToday), sentWeek = Math.max(0, mainWeek - batonFirsts.length), followUpsToday = Math.max(0, followUpsAll - batonFollowUpsToday);
+  const leads = allLeads.filter(l => !isBatonLead(l));
   return {
     followUpsToday,
     batonConfigured: !!mailConfig('baton'),
+    baton: { sentToday: batonToday, limit: BATON_DAILY_LIMIT, sentWeek: batonFirsts.length, weekLimit: BATON_WEEKLY_LIMIT, queued: allLeads.filter(l => isBatonLead(l) && l.status === 'queued').length },
     paused: PAUSED,
     configured: !!mailConfig(),
     sentToday,
@@ -172,34 +214,43 @@ export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 
 }
 
 // One run = check replies, then send at most one email. Called every ~15 minutes.
-export async function runOutbox(): Promise<OutboxResult> {
-  const cfg = mailConfig();
-  const leads = await getOutboxLeads();
+export async function runOutbox(lane: Lane = 'main'): Promise<OutboxResult> {
+  const batonLane = lane === 'baton';
+  const cfg = mailConfig(lane);
+  const leads = (await getOutboxLeads()).filter(l => isBatonLead(l) === batonLane);
+  const dailyLimit = batonLane ? BATON_DAILY_LIMIT : DAILY_LIMIT;
+  const weeklyLimit = batonLane ? BATON_WEEKLY_LIMIT : WEEKLY_LIMIT;
+  const followUpLimit = batonLane ? BATON_FOLLOWUP_DAILY_LIMIT : FOLLOWUP_DAILY_LIMIT;
+  // What this lane has sent: from the send log, by whose lead it was (Baton leads have ids that start with "gh-").
+  const laneSends = async (sinceIso: string) => (await sendsSince(sinceIso)).filter(s => isBatonId(s.leadId) === batonLane);
+  const firstsSince = async (sinceIso: string) => batonLane
+    ? (await laneSends(sinceIso)).filter(s => s.kind === 'first').length
+    : Math.max(0, (await countFirstSentSince(sinceIso)) - (await sendsSince(sinceIso)).filter(s => s.kind === 'first' && isBatonId(s.leadId)).length);
+  const followUpsSince = async (sinceIso: string) => batonLane
+    ? (await laneSends(sinceIso)).filter(s => s.kind === 'followup').length
+    : Math.max(0, (await countFollowUpsSince(sinceIso)) - (await sendsSince(sinceIso)).filter(s => s.kind === 'followup' && isBatonId(s.leadId)).length);
   // A lead that already got an email (lastSentAt) is never sent a "first" email again, even if it was moved back to
   // To contact and scheduled by mistake.
   const queued = leads.filter(l => l.status === 'queued' && l.contactEmail && !l.optedOut && !l.lastSentAt);
   const result: OutboxResult = {
     configured: !!cfg,
-    sentToday: await countFirstSentSince(todayStart()),
-    limit: DAILY_LIMIT,
-    sentWeek: await countFirstSentSince(startOfWeek().toISOString()),
-    weekLimit: WEEKLY_LIMIT,
+    sentToday: await firstsSince(todayStart()),
+    limit: dailyLimit,
+    sentWeek: await firstsSince(startOfWeek().toISOString()),
+    weekLimit: weeklyLimit,
     queued: queued.length,
     replies: 0,
     optOuts: 0,
     bounced: 0,
   };
-  if (!cfg) return { ...result, skipped: 'Mail is not configured' };
-  // Baton pitches use their own mailbox. Without it they are never sent (and never sent from the main address by mistake).
-  const batonCfg = mailConfig('baton');
-  const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
+  if (!cfg) return { ...result, skipped: batonLane ? 'The Baton mailbox is not set up' : 'Mail is not configured' };
 
   // 1. Replies stop everything for that lead.
   // The timer is answered straight away and the work runs after (see /api/outbox), so the inbox check can have
   // 25s of the 60s a run is allowed. If Gmail is slow we skip
   // it this time (the next run, 15 minutes later, checks again) and hold back follow-ups,
   // so nobody who already replied gets chased.
-  const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut && !isBatonLead(l));
+  const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut);
   const noInbox = { replies: new Map<string, { replied: boolean; optedOut: boolean }>(), bounced: new Set<string>(), checked: false };
   const inboxCheck = checkReplies(cfg, watching.map(l => ({
     email: l.contactEmail!,
@@ -239,42 +290,13 @@ export async function runOutbox(): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
-  // The Baton mailbox is read the same way for the Baton leads: replies and bounces there stop the sequence.
-  let batonChecked = !!batonCfg;
-  const batonWatching = batonCfg ? leads.filter(l => isBatonLead(l) && l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut) : [];
-  if (batonCfg && batonWatching.length) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const r = await Promise.race([
-      checkReplies(batonCfg, batonWatching.map(l => ({ email: l.contactEmail!, since: new Date(l.queuedAt ?? l.contactedAt ?? l.createdAt ?? Date.now()) })))
-        .then(x => ({ ...x, checked: true })).catch(e => { console.error('[outbox] Baton inbox check failed:', (e as Error).message); return noInbox; }),
-      new Promise<typeof noInbox>(resolve => { timer = setTimeout(() => resolve(noInbox), 55_000); }),
-    ]);
-    clearTimeout(timer);
-    batonChecked = r.checked;
-    for (const lead of batonWatching) {
-      const address = lead.contactEmail!.toLowerCase();
-      if (r.bounced.has(address) && !r.replies.has(address)) {
-        await updateLead(lead.id, { status: 'lost', opted_out: true, send_error: 'Email bounced: this address does not exist' });
-        lead.status = 'lost';
-        result.bounced++;
-        continue;
-      }
-      const hit = r.replies.get(address);
-      if (!hit) continue;
-      await updateLead(lead.id, { status: hit.optedOut ? 'lost' : 'replied', opted_out: hit.optedOut });
-      lead.status = hit.optedOut ? 'lost' : 'replied';
-      result.replies++;
-      if (hit.optedOut) result.optOuts++;
-    }
-  }
-
   if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
 
-  // 2. DAILY_LIMIT counts new (first) emails on your calendar day (restarts at midnight in MAIL_TIMEZONE), WEEKLY_LIMIT the week since
+  // 2. dailyLimit counts new (first) emails on your calendar day (restarts at midnight in MAIL_TIMEZONE), weeklyLimit the week since
   // Sunday 00:00 UTC. Follow-ups are counted separately and have their own daily limit.
-  const capReason = result.sentWeek >= WEEKLY_LIMIT
-    ? `Weekly limit of ${WEEKLY_LIMIT} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
-    : result.sentToday >= DAILY_LIMIT ? `Today's ${DAILY_LIMIT} new emails are done. The count restarts at midnight`
+  const capReason = result.sentWeek >= weeklyLimit
+    ? `Weekly limit of ${weeklyLimit} new emails reached. New emails resume when the week resets (${nextWeekStart().toISOString().slice(0, 10)} 00:00 UTC)`
+    : result.sentToday >= dailyLimit ? `Today's ${dailyLimit} new emails are done. The count restarts at midnight`
     : null;
 
   if (TEST_MODE) {
@@ -302,42 +324,39 @@ export async function runOutbox(): Promise<OutboxResult> {
   }
 
   // Space emails out: at most one every MIN_GAP_MIN minutes.
-  const last = await lastSentAt();
+  const laneToday = await laneSends(todayStart());
+  const last = laneToday.length ? new Date(Math.max(...laneToday.map(x => Date.parse(x.at)))) : null;
   if (last && Date.now() - last.getTime() < MIN_GAP_MIN * 60_000) {
     const next = new Date(last.getTime() + MIN_GAP_MIN * 60_000);
     return { ...result, skipped: `Next email can go out after ${next.toISOString().slice(11, 16)} UTC (one every ${MIN_GAP_MIN} minutes)` };
   }
 
   // Only one run may send at a time (the timer and "Send the next email now" can overlap).
-  if (!(await claimOutboxRun())) return { ...result, skipped: 'Another send run started this minute' };
+  if (!(await claimOutboxRun(new Date(), lane))) return { ...result, skipped: 'Another send run started this minute' };
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
-  const followUpsToday = await countFollowUpsSince(todayStart());
-  const followUp = (inboxChecked || inboxFresh) && followUpsToday < FOLLOWUP_DAILY_LIMIT && leads.find(l =>
-    l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l) && (!isBatonLead(l) || (!!batonCfg && batonChecked)));
-  // New emails: DAILY_LIMIT on every working day of your calendar, spread over every hour in which someone in the queue is
+  const followUpsToday = await followUpsSince(todayStart());
+  const followUp = (inboxChecked || inboxFresh) && followUpsToday < followUpLimit && leads.find(l =>
+    l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
+  // New emails: dailyLimit on every working day of your calendar, spread over every hour in which someone in the queue is
   // inside their own business hours, and caught up automatically if the day falls behind (see pacing.ts).
-  const todaysFirsts = capReason ? [] : (await sendsSince(todayStart())).filter(s => s.kind === 'first');
+  const todaysFirsts = capReason ? [] : (await laneSends(todayStart())).filter(s => s.kind === 'first');
   const lastFirstToday = todaysFirsts.length ? new Date(Math.max(...todaysFirsts.map(s => Date.parse(s.at)))) : null;
-  const openNow = capReason ? [] : queued.filter(l => inSendWindow(l) && (!isBatonLead(l) || !!batonCfg));
+  const openNow = capReason ? [] : queued.filter(l => inSendWindow(l));
   const plan = capReason ? null : planNewSend({
     now: new Date(),
     zones: [...new Set(queued.map(timezoneFor))],
     sentToday: result.sentToday,
-    limit: DAILY_LIMIT,
+    limit: dailyLimit,
     lastFirstSentAt: lastFirstToday,
     homeTz: HOME_TZ,
     tickMin: TIMER_MIN,
     minGapMin: MIN_GAP_MIN,
     slowed: backoff.slowed,
   });
-  const batonById = new Set(leads.filter(isBatonLead).map(l => l.id));
-  const batonToday = todaysFirsts.filter(s => batonById.has(s.leadId)).length;
-  const wantBaton = batonToday < BATON_DAILY_MIN;
   const first = plan?.send
     ? [...openNow].sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
-      || (wantBaton ? Number(!isBatonLead(a)) - Number(!isBatonLead(b)) : Number(isBatonLead(a)) - Number(isBatonLead(b))) // Baton's daily 5 first, then the rest
       || Number(wantsDemo(a)) - Number(wantsDemo(b))         // ones still waiting for their demo after the ready ones
       || (b.score ?? 0) - (a.score ?? 0)                     // best fit first
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
@@ -346,7 +365,7 @@ export async function runOutbox(): Promise<OutboxResult> {
   // Follow-ups normally go first, but when the day is behind every send slot is needed for a new email.
   const lead = plan?.behind && first ? first : followUp || first;
   if (!lead) {
-    const why = capReason ? `${capReason}, ${followUpsToday >= FOLLOWUP_DAILY_LIMIT ? `and today's ${FOLLOWUP_DAILY_LIMIT} follow-ups are done` : 'no follow-ups due'}`
+    const why = capReason ? `${capReason}, ${followUpsToday >= followUpLimit ? `and today's ${followUpLimit} follow-ups are done` : 'no follow-ups due'}`
       : `${plan?.reason ?? 'Nothing due inside business hours right now'}${backoff.slowed ? ' (slowed after Gmail pushed back)' : ''}`;
     return { ...result, skipped: why };
   }
@@ -374,7 +393,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title} was changed just now, so nothing was sent to them` };
       }
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -413,7 +432,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       }
       const finalSubject = subject || `${lead.title} website`;
       const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website, lead.contactLinks?.demoKind) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
-      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: isBatonLead(lead) ? batonHtml(finalSubject, body) : toHtml(text, siteLink(lead)) });
+      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: isBatonLead(lead) ? batonHtml(finalSubject, body) : toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
       const now = new Date().toISOString();

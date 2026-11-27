@@ -6,15 +6,22 @@ import { buildMissingDemos } from '@/lib/demoauto';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-async function run() {
+async function runLane(lane: 'main' | 'baton') {
   try {
-    const result = await runOutbox();
-    console.log('[outbox]', JSON.stringify(result));
+    const result = await runOutbox(lane);
+    console.log(`[outbox${lane === 'baton' ? ':baton' : ''}]`, JSON.stringify(result));
     return result;
   } catch (e) {
-    console.error('[outbox] failed:', e);
+    console.error(`[outbox${lane === 'baton' ? ':baton' : ''}] failed:`, e);
     return { error: (e as Error).message };
   }
+}
+
+// Your own mailbox and the Baton mailbox each send their own email on every tick, with their own limits.
+async function run() {
+  const main = await runLane('main');
+  const baton = await runLane('baton');
+  return { ...main, baton };
 }
 
 // Called every ~15 minutes by an external timer (Authorization: Bearer CRON_SECRET),

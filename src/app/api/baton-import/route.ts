@@ -21,7 +21,7 @@ const NOT_A_DESK = /^(no-?reply|noreply|donotreply|abuse|privacy|legal|press|job
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null) as { rows?: Row[]; queue?: boolean } | null;
-  const rows = Array.isArray(body?.rows) ? body!.rows!.slice(0, 400) : [];
+  const rows = Array.isArray(body?.rows) ? body!.rows!.slice(0, 600) : [];
   if (!rows.length) return NextResponse.json({ error: 'Send { rows: [...] }' }, { status: 400 });
 
   const existing = await getLeads();
