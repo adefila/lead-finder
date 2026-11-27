@@ -301,6 +301,18 @@ export async function runOutbox(lane: Lane = 'main'): Promise<OutboxResult> {
     if (hit.optedOut) result.optOuts++;
   }
 
+  // Baton: a prospect who has had the first email and both follow-ups, and still has not answered 2 days after the last one, is closed
+  // (Lost, so it shows under Closed). Closing sends nothing, so it also runs while sending is paused.
+  if (batonLane) {
+    for (const lead of leads) {
+      if (lead.status === 'approved' && followUpState(lead).exhausted) {
+        await updateLead(lead.id, { status: 'lost', auto_sequence: false, queued_at: null });
+        lead.status = 'lost';
+        console.log(`[outbox:baton] closed ${lead.title}: no reply after the first email and 2 follow-ups`);
+      }
+    }
+  }
+
   if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
 
   // 2. dailyLimit counts new (first) emails on your calendar day (restarts at midnight in MAIL_TIMEZONE), weeklyLimit the week since
