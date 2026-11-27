@@ -4,7 +4,7 @@
 
 const ORIGIN = 'https://batonedit.com';
 // Served by Lead Finder (a public path), so the picture is there without waiting for a Baton deploy.
-const STRIP = 'https://leads.adefilasamuel.com/brand/baton-email-banner.jpg';
+const STRIP = 'https://leads.adefilasamuel.com/brand/baton-email-banner-v2.jpg';
 const FONT = "'Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
