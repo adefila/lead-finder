@@ -68,10 +68,17 @@ const plain = (s?: string) => (s ?? '').replace(/&lt;/g, '<').replace(/&gt;/g, '
 const addressOf = (s?: string) => (plain(s).match(/[A-Z0-9._%+'-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? '').toLowerCase();
 
 async function inboxMessages(): Promise<ZohoMessage[]> {
-  const folders = await zoho<{ folderId: string; folderType?: string; folderName?: string }[]>('/folders');
-  const inbox = folders.find(f => /^inbox$/i.test(f.folderType ?? '') || /^inbox$/i.test(f.folderName ?? ''));
-  if (!inbox) throw new Error('Zoho Mail: no Inbox folder found');
-  return await zoho<ZohoMessage[]>(`/messages/view?folderId=${inbox.folderId}&start=1&limit=200&sortBy=date&sortorder=false`) ?? [];
+  // Zoho lists the Inbox when no folder is named, which needs only the messages permission (looking up folders needs another one).
+  const view = '/messages/view?start=1&limit=200&sortBy=date&sortorder=false';
+  try {
+    return (await zoho<ZohoMessage[]>(view)) ?? [];
+  } catch (first) {
+    // Fall back to finding the Inbox folder by name, if this account's API needs it spelled out.
+    const folders = await zoho<{ folderId: string; folderType?: string; folderName?: string }[]>('/folders').catch(() => null);
+    const inbox = folders?.find(f => /^inbox$/i.test(f.folderType ?? '') || /^inbox$/i.test(f.folderName ?? ''));
+    if (!inbox) throw first;
+    return (await zoho<ZohoMessage[]>(`${view}&folderId=${inbox.folderId}`)) ?? [];
+  }
 }
 
 // The newest 200 inbox messages are enough: a reply or a bounce shows up within hours, and this runs every 15 minutes.
