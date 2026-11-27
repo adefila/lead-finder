@@ -34,8 +34,8 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   skipped: 'faded',
 };
 
-export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'inbound' | 'jobs' | 'remote';
-export type Sub = 'all' | 'followup' | 'opened' | 'visited' | 'applied' | 'replied' | 'won' | 'lost' | 'skipped';
+export type View = 'all' | 'new' | 'queued' | 'approved' | 'replied' | 'done' | 'inbound' | 'jobs' | 'remote' | 'baton';
+export type Sub = 'all' | 'new' | 'queued' | 'approved' | 'closed' | 'followup' | 'opened' | 'visited' | 'applied' | 'replied' | 'won' | 'lost' | 'skipped';
 
 export const VIEWS: { id: View; label: string; hint: string }[] = [
   // In pipeline order, like HubSpot or Pipedrive: each lead moves left to right.
@@ -48,12 +48,14 @@ export const VIEWS: { id: View; label: string; hint: string }[] = [
   // Not pipeline stages: shortcuts to open leads you have not finished with.
   { id: 'inbound', label: 'From your site', hint: 'Form enquiries and site visitors. Reply first.' },
   { id: 'jobs', label: 'Jobs', hint: 'Roles to apply for. Click Applied when done.' },
+  { id: 'baton', label: 'Baton', hint: 'Developers and agencies pitched Baton, from the Baton mailbox. Kept apart from everything else.' },
 ];
 
 export const SUBS: Partial<Record<View, { id: Sub; label: string }[]>> = {
   approved: [{ id: 'all', label: 'All' }, { id: 'opened', label: 'Opened your note' }, { id: 'visited', label: 'Visited your site' }, { id: 'followup', label: 'Needs a follow-up' }],
   // Jobs are tracked on their own, start to finish: to apply, applied, got back, got the job, rejected.
   jobs: [{ id: 'all', label: 'To apply' }, { id: 'applied', label: 'Applied' }, { id: 'replied', label: 'Got back' }, { id: 'won', label: 'Got the job' }, { id: 'lost', label: 'Rejected' }, { id: 'skipped', label: 'Skipped' }],
+  baton: [{ id: 'all', label: 'All' }, { id: 'new', label: 'To contact' }, { id: 'queued', label: 'Scheduled' }, { id: 'approved', label: 'Waiting for reply' }, { id: 'replied', label: 'Replied' }, { id: 'closed', label: 'Closed' }],
   done: [{ id: 'all', label: 'All' }, { id: 'won', label: 'Won' }, { id: 'lost', label: 'Lost' }, { id: 'skipped', label: 'Skipped' }],
 };
 
@@ -126,6 +128,9 @@ export function languageOfPlace(where: string): LeadLang {
 
 export function inView(l: Lead, view: View, sub: Sub = 'all'): boolean {
   const s = statusOf(l);
+  // Baton prospects live in the Baton tab and nowhere else (not even All), and the Baton tab holds nothing but them.
+  if (isBaton(l) !== (view === 'baton')) return false;
+  if (view === 'baton') return sub === 'all' ? true : sub === 'closed' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'all') return true;
   if (view === 'done') return sub === 'all' ? ['won', 'lost', 'skipped'].includes(s) : s === sub;
   if (view === 'inbound') return (l.source === 'website' || l.source === 'visitor') && !['won', 'lost', 'skipped'].includes(s);

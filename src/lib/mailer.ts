@@ -16,13 +16,16 @@ export interface MailConfig {
   fromName: string;
 }
 
-export function mailConfig(): MailConfig | null {
-  const user = process.env.MAIL_USER ?? process.env.GMAIL_USER;
-  const pass = (process.env.MAIL_PASSWORD ?? process.env.GMAIL_APP_PASSWORD)?.replace(/\s+/g, '');
-  if (!user || !pass) return null;
-  const provider = (process.env.MAIL_PROVIDER ?? 'gmail').toLowerCase() as keyof typeof PROVIDERS;
+// The main mailbox (your web-design outreach) or the Baton mailbox (Baton pitches to developers and agencies). Baton has its own login:
+// BATON_MAIL_USER and BATON_MAIL_PASSWORD (an app password), optionally BATON_MAIL_PROVIDER (gmail or zoho) and BATON_MAIL_FROM_NAME.
+export function mailConfig(box: 'main' | 'baton' = 'main'): MailConfig | null {
+  const baton = box === 'baton';
+  const user = baton ? process.env.BATON_MAIL_USER : (process.env.MAIL_USER ?? process.env.GMAIL_USER);
+  const pass = (baton ? process.env.BATON_MAIL_PASSWORD : (process.env.MAIL_PASSWORD ?? process.env.GMAIL_APP_PASSWORD))?.replace(/\s+/g, '');
+  if (!user?.trim() || !pass) return null;
+  const provider = ((baton ? process.env.BATON_MAIL_PROVIDER : process.env.MAIL_PROVIDER) ?? 'gmail').toLowerCase() as keyof typeof PROVIDERS;
   const hosts = PROVIDERS[provider] ?? PROVIDERS.gmail;
-  return { user, pass, smtpHost: hosts.smtp, imapHost: hosts.imap, fromName: process.env.MAIL_FROM_NAME ?? 'Samuel Adefila' };
+  return { user: user.trim(), pass, smtpHost: hosts.smtp, imapHost: hosts.imap, fromName: (baton ? process.env.BATON_MAIL_FROM_NAME : process.env.MAIL_FROM_NAME) ?? 'Samuel Adefila' };
 }
 
 export interface OutgoingMail {
@@ -139,18 +142,25 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
     }
 
     lap('replies read');
-    // Delivery failures ("Mail Delivery Subsystem") name the address that bounced.
-    const since = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
-    const failures = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
-    const watched = checks.map(ch => ch.email.toLowerCase());
-    // One pass over the newest messages (a fetch per message took long enough to time out the whole check)
-    const recent = (failures || []).slice(-40);
-    for await (const msg of recent.length ? client.fetch(recent, { uid: true, source: true }, { uid: true }) : []) {
-      if (!msg.source) continue;
-      const text = msg.source.toString('utf8').toLowerCase();
-      // Only a dead address counts: sender-side failures say nothing about the lead (see classifyBounce)
-      if (classifyBounce(text) !== 'dead') continue;
-      for (const email of watched) if (text.includes(email)) bounced.add(email);
+    // The bounce search is allowed to fail on its own: on Cloudflare the connection sometimes drops right after the reply search
+    // ("Connection not available"). The replies above are already read, so the check still counts as done and follow-ups go ahead.
+    try {
+      // Delivery failures ("Mail Delivery Subsystem") name the address that bounced.
+      const since = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
+      const failures = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
+      const watched = checks.map(ch => ch.email.toLowerCase());
+      // One pass over the newest messages (a fetch per message took long enough to time out the whole check)
+      const recent = (failures || []).slice(-40);
+      for await (const msg of recent.length ? client.fetch(recent, { uid: true, source: true }, { uid: true }) : []) {
+        if (!msg.source) continue;
+        const text = msg.source.toString('utf8').toLowerCase();
+        // Only a dead address counts: sender-side failures say nothing about the lead (see classifyBounce)
+        if (classifyBounce(text) !== 'dead') continue;
+        for (const email of watched) if (text.includes(email)) bounced.add(email);
+      }
+    } catch (e) {
+      const x = e as Error & { code?: string; responseText?: string };
+      console.error('[inbox] bounce search failed, replies were still read:', x.message, x.code ?? '', x.responseText ?? '');
     }
   } finally {
     lock.release();

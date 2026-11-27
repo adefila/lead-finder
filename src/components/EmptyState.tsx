@@ -2,10 +2,11 @@
 
 import type { ReactNode } from 'react';
 export type EmptyKind =
-  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'inbound' | 'visited' | 'jobs' | 'remote'
+  | 'new' | 'queued' | 'approved' | 'followup' | 'opened' | 'replied' | 'done' | 'won' | 'lost' | 'skipped' | 'all' | 'search' | 'history' | 'inbound' | 'visited' | 'jobs' | 'remote' | 'baton'
   | 'japplied' | 'jreplied' | 'jwon' | 'jlost' | 'jskipped';
 
 const COPY: Record<EmptyKind, { title: string; body: string }> = {
+  baton: { title: 'No Baton prospects here', body: 'Developers and agencies to pitch Baton to show up here, kept apart from your other leads.' },
   new: { title: 'Nobody waiting', body: 'Click Find new leads and we will look for businesses that need a website.' },
   queued: { title: 'Nothing scheduled', body: 'Open a lead with an email and click Schedule email. It goes out from your inbox on a weekday morning.' },
   approved: { title: 'No one to hear back from yet', body: 'People you email or message show up here while you wait for a reply.' },

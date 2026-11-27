@@ -152,10 +152,11 @@ export interface OutboxResult {
   error?: string;
 }
 
-export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
+export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 'sentToday' | 'limit' | 'sentWeek' | 'weekLimit' | 'queued'> & { followUpsToday: number; batonConfigured: boolean; lastSent: string | null; pausedUntil: string | null; slowed: boolean; paused: boolean }> {
   const [sentToday, sentWeek, followUpsToday, leads, last] = await Promise.all([countFirstSentSince(todayStart()), countFirstSentSince(startOfWeek().toISOString()), countFollowUpsSince(todayStart()), getOutboxLeads(), lastSentAt()]);
   return {
     followUpsToday,
+    batonConfigured: !!mailConfig('baton'),
     paused: PAUSED,
     configured: !!mailConfig(),
     sentToday,
@@ -188,13 +189,16 @@ export async function runOutbox(): Promise<OutboxResult> {
     bounced: 0,
   };
   if (!cfg) return { ...result, skipped: 'Mail is not configured' };
+  // Baton pitches use their own mailbox. Without it they are never sent (and never sent from the main address by mistake).
+  const batonCfg = mailConfig('baton');
+  const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
 
   // 1. Replies stop everything for that lead.
   // The timer is answered straight away and the work runs after (see /api/outbox), so the inbox check can have
   // 25s of the 60s a run is allowed. If Gmail is slow we skip
   // it this time (the next run, 15 minutes later, checks again) and hold back follow-ups,
   // so nobody who already replied gets chased.
-  const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut);
+  const watching = leads.filter(l => l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut && !isBatonLead(l));
   const noInbox = { replies: new Map<string, { replied: boolean; optedOut: boolean }>(), bounced: new Set<string>(), checked: false };
   const inboxCheck = checkReplies(cfg, watching.map(l => ({
     email: l.contactEmail!,
@@ -232,6 +236,35 @@ export async function runOutbox(): Promise<OutboxResult> {
     lead.status = hit.optedOut ? 'lost' : 'replied';
     result.replies++;
     if (hit.optedOut) result.optOuts++;
+  }
+
+  // The Baton mailbox is read the same way for the Baton leads: replies and bounces there stop the sequence.
+  let batonChecked = !!batonCfg;
+  const batonWatching = batonCfg ? leads.filter(l => isBatonLead(l) && l.contactEmail && l.status === 'approved' && l.autoSequence && !l.optedOut) : [];
+  if (batonCfg && batonWatching.length) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const r = await Promise.race([
+      checkReplies(batonCfg, batonWatching.map(l => ({ email: l.contactEmail!, since: new Date(l.queuedAt ?? l.contactedAt ?? l.createdAt ?? Date.now()) })))
+        .then(x => ({ ...x, checked: true })).catch(e => { console.error('[outbox] Baton inbox check failed:', (e as Error).message); return noInbox; }),
+      new Promise<typeof noInbox>(resolve => { timer = setTimeout(() => resolve(noInbox), 55_000); }),
+    ]);
+    clearTimeout(timer);
+    batonChecked = r.checked;
+    for (const lead of batonWatching) {
+      const address = lead.contactEmail!.toLowerCase();
+      if (r.bounced.has(address) && !r.replies.has(address)) {
+        await updateLead(lead.id, { status: 'lost', opted_out: true, send_error: 'Email bounced: this address does not exist' });
+        lead.status = 'lost';
+        result.bounced++;
+        continue;
+      }
+      const hit = r.replies.get(address);
+      if (!hit) continue;
+      await updateLead(lead.id, { status: hit.optedOut ? 'lost' : 'replied', opted_out: hit.optedOut });
+      lead.status = hit.optedOut ? 'lost' : 'replied';
+      result.replies++;
+      if (hit.optedOut) result.optOuts++;
+    }
   }
 
   if (PAUSED) return { ...result, skipped: 'Sending is paused (MAIL_PAUSED). Replies are still checked' };
@@ -280,12 +313,12 @@ export async function runOutbox(): Promise<OutboxResult> {
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUpsToday = await countFollowUpsSince(todayStart());
   const followUp = (inboxChecked || inboxFresh) && followUpsToday < FOLLOWUP_DAILY_LIMIT && leads.find(l =>
-    l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
+    l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l) && (!isBatonLead(l) || (!!batonCfg && batonChecked)));
   // New emails: DAILY_LIMIT on every working day of your calendar, spread over every hour in which someone in the queue is
   // inside their own business hours, and caught up automatically if the day falls behind (see pacing.ts).
   const todaysFirsts = capReason ? [] : (await sendsSince(todayStart())).filter(s => s.kind === 'first');
   const lastFirstToday = todaysFirsts.length ? new Date(Math.max(...todaysFirsts.map(s => Date.parse(s.at)))) : null;
-  const openNow = capReason ? [] : queued.filter(l => inSendWindow(l));
+  const openNow = capReason ? [] : queued.filter(l => inSendWindow(l) && (!isBatonLead(l) || !!batonCfg));
   const plan = capReason ? null : planNewSend({
     now: new Date(),
     zones: [...new Set(queued.map(timezoneFor))],
@@ -297,7 +330,6 @@ export async function runOutbox(): Promise<OutboxResult> {
     minGapMin: MIN_GAP_MIN,
     slowed: backoff.slowed,
   });
-  const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
   const batonById = new Set(leads.filter(isBatonLead).map(l => l.id));
   const batonToday = todaysFirsts.filter(s => batonById.has(s.leadId)).length;
   const wantBaton = batonToday < BATON_DAILY_MIN;
@@ -341,7 +373,7 @@ export async function runOutbox(): Promise<OutboxResult> {
         return { ...result, skipped: `${lead.title} was changed just now, so nothing was sent to them` };
       }
       const subject = lead.sendSubject ? (lead.sendSubject.startsWith('Re:') ? lead.sendSubject : `Re: ${lead.sendSubject}`) : `Re: ${lead.title}`;
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
+      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject, text: withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), html: toHtml(withSignature(text, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead)), siteLink(lead)), inReplyTo: lead.lastMessageId });
       const now = new Date().toISOString();
       await updateLead(lead.id, {
         follow_ups: (lead.followUps ?? 0) + 1,
@@ -375,7 +407,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       }
       const finalSubject = subject || `${lead.title} website`;
       const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website, lead.contactLinks?.demoKind) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
-      const messageId = await sendMail(cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
+      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
       const now = new Date().toISOString();

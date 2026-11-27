@@ -23,7 +23,7 @@ import { EmailHuntDock, EmailHuntModal, HUNT_STEP, type EmailHunt } from '@/comp
 
 type RunResult = { success?: boolean; stats?: Record<string, number>; durationMs?: number; error?: string };
 type RunSummary = { found: number; withEmail: number; error?: string };
-type OutboxStatus = { configured: boolean; sentToday: number; followUpsToday?: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean; paused?: boolean };
+type OutboxStatus = { configured: boolean; sentToday: number; followUpsToday?: number; limit: number; sentWeek?: number; weekLimit?: number; queued: number; lastSent?: string | null; pausedUntil?: string | null; slowed?: boolean; paused?: boolean; batonConfigured?: boolean };
 
 // "Fri 2 Oct, 15:10" in your own time zone.
 function lastSentLabel(iso?: string | null): string {
@@ -471,6 +471,18 @@ export default function Home() {
   const followUpsDue = useMemo(() => scoped.filter(l => !isJobLead(l) && needsAttention(l)).length, [scoped]);
   // "Schedule all" belongs to the To contact tab, so it only counts the leads listed there (not job posts).
   const readyAll = useMemo(() => scoped.filter(l => inView(l, 'new') && readyToSchedule(l)), [scoped]);
+  // Baton prospects ready to schedule (kept out of every other list).
+  const readyBaton = useMemo(() => scoped.filter(l => inView(l, 'baton', 'new') && readyToSchedule(l)), [scoped]);
+  async function scheduleBaton() {
+    const ids = readyBaton.map(l => l.id);
+    const ok = await confirm({
+      title: `Schedule ${ids.length} Baton email${ids.length === 1 ? '' : 's'}?`,
+      body: `They go out from the Baton mailbox on weekdays, at least ${5} a day while there are any, alongside your other emails (up to ${outbox?.limit ?? 20} new a day in all). ${outbox?.batonConfigured ? '' : 'The Baton mailbox is not connected yet, so nothing is sent until it is.'}`,
+      confirmLabel: `Schedule ${ids.length}`,
+    });
+    if (ok) await bulkStatus(ids, 'queued');
+  }
+
   // Scheduled emails or automatic follow-ups that failed to send, newest first.
   const sendFailures = useMemo(() => leads
     // A temporary "try again later" (4xx) while it is still being retried is not a failure yet.
@@ -685,6 +697,12 @@ export default function Home() {
                 <Btn className="btn btn-sm btn-primary view-action" onClick={scheduleAll}
                   title="Schedule every lead here that has an email and an email message">
                   <Icon name="clock" />Schedule all {readyAll.length}
+                </Btn>
+              )}
+              {mode === 'table' && view === 'baton' && (sub === 'all' || sub === 'new') && readyBaton.length > 0 && (
+                <Btn className="btn btn-sm btn-primary view-action" onClick={scheduleBaton}
+                  title="Schedule every Baton prospect here that has an email and a message">
+                  <Icon name="clock" />Schedule all {readyBaton.length}
                 </Btn>
               )}
               <h2 className="view-title">

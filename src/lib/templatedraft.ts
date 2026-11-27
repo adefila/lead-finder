@@ -240,7 +240,8 @@ const batonStack = (l: Lead): string => {
   const s = (l.description.match(/Builds with: (.+?)\.(?:\s|$)/)?.[1] ?? '').split(/,\s*/).map(x => x.trim()).filter(Boolean);
   return s.length ? s.slice(0, 2).join(' and ') : '';
 };
-const batonIsAgency = (l: Lead) => /agency|studio|team|we |our |agencies/i.test(l.description.slice(0, 400));
+// An organisation (no personal name on the lead) is written to as a team; a person is written to as "you".
+const batonIsAgency = (l: Lead) => !l.contactName;
 
 export function batonDraft(l: Lead): string {
   const n = clean(l.title);

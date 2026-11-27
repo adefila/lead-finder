@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const report = await analyzeWebsite(website).catch(() => null);
     if (report?.siteText) lead.siteText = report.siteText;
   }
-  if (lead.contactName === lead.title) lead.contactName = undefined;
+  if (lead.contactName === lead.title && lead.contactLinks?.segment !== 'baton') lead.contactName = undefined;
 
   const [drafted] = await generateColdEmails([lead]);
   if (!drafted?.proposal) return NextResponse.json({ error: 'Could not write a new draft' }, { status: 500 });

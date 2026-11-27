@@ -30,15 +30,15 @@ const B2B_CATEGORIES = new Set(DEFAULT_CATEGORIES);
 // even for companies (Germany, Austria, Spain, Portugal, Italy, parts of Latin America): turn them on with PLACES_MARKETS (for
 // example "de|es", or "all") only after checking the rules for that country. Canada is left out on purpose (strict cold-email law).
 // This is not legal advice.
-// Only European countries are on (UK, Ireland, Netherlands, France, Norway). The others are kept but off; turn one on with PLACES_MARKETS.
+// On: UK, Ireland, Netherlands, France, Luxembourg, Norway, the United States, Australia and Singapore. The others are kept but off; turn one on with PLACES_MARKETS.
 interface Market { country: string; cities: string[]; on: boolean }
 const MARKETS: Market[] = [
   { country: 'United Kingdom', on: true, cities: ['London, UK', 'Manchester, UK', 'Birmingham, UK', 'Leeds, UK', 'Edinburgh, UK', 'Bristol, UK', 'Glasgow, UK', 'Liverpool, UK', 'Cardiff, UK'] },
   { country: 'Ireland', on: true, cities: ['Dublin, Ireland', 'Cork, Ireland'] },
-  { country: 'Australia', on: false, cities: ['Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia', 'Adelaide, Australia'] },
+  { country: 'Australia', on: true, cities: ['Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia', 'Adelaide, Australia'] },
   { country: 'New Zealand', on: false, cities: ['Auckland, New Zealand', 'Wellington, New Zealand'] },
-  { country: 'Singapore', on: false, cities: ['Singapore'] },
-  { country: 'United States', on: false, cities: ['Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Miami, FL', 'Nashville, TN', 'New York, NY', 'San Francisco, CA', 'Dallas, TX', 'Raleigh, NC', 'Minneapolis, MN', 'Phoenix, AZ'] },
+  { country: 'Singapore', on: true, cities: ['Singapore'] },
+  { country: 'United States', on: true, cities: ['Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Miami, FL', 'Nashville, TN', 'New York, NY', 'San Francisco, CA', 'Dallas, TX', 'Raleigh, NC', 'Minneapolis, MN', 'Phoenix, AZ'] },
   { country: 'United Arab Emirates', on: false, cities: ['Dubai, UAE', 'Abu Dhabi, UAE'] },
   { country: 'South Africa', on: false, cities: ['Johannesburg, South Africa', 'Cape Town, South Africa'] },
   { country: 'Nigeria', on: false, cities: ['Lagos, Nigeria', 'Abuja, Nigeria'] },
@@ -48,6 +48,7 @@ const MARKETS: Market[] = [
   // Written in the local language
   { country: 'Netherlands', on: true, cities: ['Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'Utrecht, Netherlands', 'The Hague, Netherlands', 'Eindhoven, Netherlands'] },
   { country: 'France', on: true, cities: ['Paris, France', 'Lyon, France', 'Marseille, France', 'Toulouse, France', 'Nantes, France', 'Bordeaux, France', 'Lille, France'] },
+  { country: 'Luxembourg', on: true, cities: ['Luxembourg City, Luxembourg'] },
   { country: 'Norway', on: true, cities: ['Oslo, Norway', 'Bergen, Norway', 'Trondheim, Norway', 'Stavanger, Norway'] },
   // Off by default: consent rules. Enable one at a time with PLACES_MARKETS.
   { country: 'Germany', on: false, cities: ['Berlin, Germany', 'Munich, Germany', 'Hamburg, Germany', 'Frankfurt, Germany', 'Cologne, Germany', 'Stuttgart, Germany'] },
