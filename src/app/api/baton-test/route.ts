@@ -4,7 +4,8 @@ import { ImapFlow } from 'imapflow';
 import { mailConfig, sendMail } from '@/lib/mailer';
 import { testZoho } from '@/lib/zohomail';
 import { getLeads } from '@/lib/supabase';
-import { splitDraft, toHtml, withSignature } from '@/lib/compose';
+import { splitDraft, withSignature } from '@/lib/compose';
+import { batonHtml } from '@/lib/batonmail';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
   const { subject, body } = splitDraft(sample.proposal ?? '');
   const text = withSignature(body);
   try {
-    const id = await sendMail(cfg, { to: address, subject: `[Test] ${subject}`, text, html: toHtml(text) });
+    const id = await sendMail(cfg, { to: address, subject: `[Test] ${subject}`, text, html: batonHtml(subject, body) });
     return NextResponse.json({ sent: true, to: address, from: `${cfg.fromName} <${cfg.fromAddress ?? cfg.user}>`, subject: `[Test] ${subject}`, sampleLead: sample.title, messageId: id });
   } catch (e) {
     return NextResponse.json({ sent: false, error: (e as Error).message.slice(0, 300) }, { status: 502 });

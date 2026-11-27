@@ -11,6 +11,7 @@ import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/maile
 import { emailDomainAccepts } from '@/lib/verify';
 import { planNewSend } from '@/lib/pacing';
 import { claimGate } from '@/lib/claimcheck';
+import { batonHtml } from '@/lib/batonmail';
 
 // DAILY_LIMIT and WEEKLY_LIMIT count first emails only. Follow-ups have their own daily limit (FOLLOWUP_DAILY_LIMIT).
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
@@ -407,7 +408,7 @@ export async function runOutbox(): Promise<OutboxResult> {
       }
       const finalSubject = subject || `${lead.title} website`;
       const text = withSignature(emailLink(lead) ? withCheckLink(body, emailLink(lead), leadLanguage(lead), !lead.contactLinks?.website, lead.contactLinks?.demoKind) : body, leadLanguage(lead), isJobLead(lead), isBusinessPitch(lead));
-      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: toHtml(text, siteLink(lead)) });
+      const messageId = await sendMail(isBatonLead(lead) ? batonCfg! : cfg, { to: lead.contactEmail!, subject: finalSubject, text, html: isBatonLead(lead) ? batonHtml(finalSubject, body) : toHtml(text, siteLink(lead)) });
       // Translate their one-page note now, so it is ready (and fast) when they open it.
       if (hasCheck(lead) && leadLanguage(lead) !== 'en') await noteCopy(lead).catch(() => undefined);
       const now = new Date().toISOString();

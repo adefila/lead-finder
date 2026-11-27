@@ -1,5 +1,6 @@
 import type { Lead } from '@/types/lead';
 import { isB2B, isJobLead, leadLanguage } from '@/lib/leadview';
+import { BATON_PARTNER_URL } from '@/lib/batonmail';
 
 // A fallback that needs no AI. When the model cannot be reached (no credit, an outage) a new lead would otherwise be saved with no email,
 // and a follow-up would not go out. These drafts are built from what the app already knows about the lead and are written in English,
@@ -258,15 +259,12 @@ export function batonDraft(l: Lead): string {
     "Most of the requests after launch are tiny: change a heading, swap an image, fix a phone number. They still cost you a context switch each time.",
     "The part that eats a developer's week after a launch is rarely the build, it is the stream of small text and image changes from the client.",
   ];
-  const fix = "I'm building Baton for that. You paste the site's URL, it finds how the site is built, and your client gets one link where they edit the text, images and links on the live page themselves. Every change is a draft until they publish, and any version can be rolled back in one click, so nothing they do can break your layout.";
-  const asks = [
-    "Want a test link for one of your client sites? Reply YES and I'll set it up for you.",
-    "Could I set up a test link on one of your sites so you can try it? Just reply YES.",
-  ];
+  const fix = "I'm building Baton for that. You hand the site over, and your client changes the words, photos and links on the live page themselves. Every change is a draft until they publish, and any version can be rolled back in one click, so nothing they do can break your layout.";
+  const partner = "Handing a site over is free. If your client picks a paid plan, you earn 30% of what they pay for their first 12 months.";
   const subjects = agency
     ? [`Client edits at ${n}`, `Fewer edit tickets at ${n}`]
     : ['Client edits after launch', 'Fewer edit tickets after launch'];
-  const body = [opener, `${problems[seed % problems.length]} ${fix}`, asks[(seed >> 3) % asks.length], 'If it is not for you, just say so.'].join('\n\n');
+  const body = [opener, `${problems[seed % problems.length]} ${fix}`, partner, `See how Baton partners work: ${BATON_PARTNER_URL}`, "Reply YES and I'll set up a test on one of your client sites. If it is not for you, just say so."].join('\n\n');
   return `Subject: ${subjects[(seed >> 5) % subjects.length]}\n\n${hi}\n\n${body}${BATON_SIGN}`;
 }
 
@@ -275,6 +273,6 @@ export function batonFollowUp(l: Lead, number: number): string {
   const hi = first ? `Hi ${first},` : 'Hi there,';
   const body = number >= 2
     ? "Last note from me. If client edits ever become a drag on your time, Baton (batonedit.com) is there. Reply any time and I'll set up a test link."
-    : "Just checking my note didn't get buried. A test link of Baton on one of your client sites takes me a few minutes to set up, and you can see how your client would edit it. Want one?";
+    : `Just checking my note didn't get buried. Handing a site to a client on Baton is free, and you earn 30% of what they pay for 12 months if they pick a paid plan: ${BATON_PARTNER_URL}\n\nWant me to set up a test on one of your client sites?`;
   return `${hi}\n\n${body}\n\nSamuel\nbatonedit.com`;
 }

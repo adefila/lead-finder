@@ -48,15 +48,15 @@ async function zoho<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
-export async function sendViaZoho(mail: { fromAddress: string; fromName: string; to: string; subject: string; text: string }): Promise<string> {
+export async function sendViaZoho(mail: { fromAddress: string; fromName: string; to: string; subject: string; text: string; html?: string }): Promise<string> {
   const data = await zoho<{ messageId?: string }>('/messages', {
     method: 'POST',
     body: JSON.stringify({
       fromAddress: `"${mail.fromName.replace(/"/g, '')}" <${mail.fromAddress}>`,
       toAddress: mail.to,
       subject: mail.subject,
-      content: mail.text,
-      mailFormat: 'plaintext',
+      content: mail.html ?? mail.text,
+      mailFormat: mail.html ? 'html' : 'plaintext',
       askReceipt: 'no',
     }),
   });

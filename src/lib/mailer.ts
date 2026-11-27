@@ -62,7 +62,7 @@ export interface OutgoingMail {
 
 export async function sendMail(cfg: MailConfig, mail: OutgoingMail): Promise<string> {
   if (cfg.api === 'zoho') {
-    return sendViaZoho({ fromAddress: cfg.fromAddress ?? cfg.user, fromName: cfg.fromName, to: mail.to, subject: mail.subject, text: mail.text });
+    return sendViaZoho({ fromAddress: cfg.fromAddress ?? cfg.user, fromName: cfg.fromName, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html });
   }
   const transport = nodemailer.createTransport({
     host: cfg.smtpHost,
