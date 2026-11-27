@@ -34,7 +34,7 @@ export async function visitContext(): Promise<{ net: string; where: string; ua: 
   const h = await headers();
   const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || h.get('x-real-ip') || '';
   const net = ip ? createHash('sha256').update(`${ip}:${process.env.CRON_SECRET ?? ''}`).digest('hex').slice(0, 8) : '-';
-  const city = decodeURIComponent(h.get('x-vercel-ip-city') ?? '');
+  const city = (() => { try { return decodeURIComponent(h.get('x-vercel-ip-city') ?? ''); } catch { return h.get('x-vercel-ip-city') ?? ''; } })();
   const where = clean([city, h.get('x-vercel-ip-country') ?? ''].filter(Boolean).join(' '), 40) || '-';
   return { net, where, ua: h.get('user-agent') ?? '' };
 }

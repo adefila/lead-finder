@@ -13,7 +13,7 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ s?: stri
 // Older, long-form links. New emails use the short /n/ links; these keep working.
 async function load({ params, searchParams }: Props) {
   const [{ id: raw }, { s }] = await Promise.all([params, searchParams]);
-  const id = decodeURIComponent(raw);
+  const id = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })();
   if (!s || !verifySig(id, 'check', s)) return null;
   const lead = await getLeadById(id);
   return lead && hasCheck(lead) ? lead : null;

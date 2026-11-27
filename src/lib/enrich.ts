@@ -46,9 +46,14 @@ function decodeCfEmail(hex: string): string {
   return out;
 }
 
+// decodeURIComponent throws "URI malformed" on a stray % (a mailto: link on a real website had one and stopped a whole lead search).
+export function safeDecode(s: string): string {
+  try { return decodeURIComponent(s); } catch { return s; }
+}
+
 export function extractEmails(html: string): string[] {
   const found = new Set<string>();
-  for (const m of html.matchAll(/mailto:([^"'?\s>]+)/gi)) found.add(decodeURIComponent(m[1]));
+  for (const m of html.matchAll(/mailto:([^"'?\s>]+)/gi)) found.add(safeDecode(m[1]));
   for (const m of html.matchAll(/data-cfemail="([0-9a-f]+)"/gi)) found.add(decodeCfEmail(m[1]));
   const text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ');
   for (const m of text.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)) found.add(m[0]);

@@ -2,6 +2,8 @@ import type { Lead } from '@/types/lead';
 
 // Days to wait after the first message, then after the first follow-up.
 export const FOLLOW_UP_GAPS = [3, 4];
+// Baton's pitch follows up sooner: 2 days after the first email, then 2 days after that.
+export const BATON_FOLLOW_UP_GAPS = [2, 2];
 export const MAX_FOLLOW_UPS = FOLLOW_UP_GAPS.length;
 // Days after someone opens the note before their first follow-up.
 export const NOTE_FOLLOW_UP_DAYS = 1;
@@ -16,13 +18,14 @@ export interface FollowUpState {
 export function followUpState(lead: Lead, now = new Date()): FollowUpState {
   const sent = lead.followUps ?? 0;
   if ((lead.status ?? 'new') !== 'approved') return { due: false, exhausted: false, dueAt: null, sent };
+  const gaps = lead.contactLinks?.segment === 'baton' ? BATON_FOLLOW_UP_GAPS : FOLLOW_UP_GAPS;
   const last = new Date(lead.contactedAt ?? lead.createdAt ?? now.toISOString());
   if (sent >= MAX_FOLLOW_UPS) {
-    const closeAt = new Date(last.getTime() + FOLLOW_UP_GAPS[MAX_FOLLOW_UPS - 1] * 86400000);
+    const closeAt = new Date(last.getTime() + gaps[MAX_FOLLOW_UPS - 1] * 86400000);
     return { due: false, exhausted: now >= closeAt, dueAt: closeAt, sent };
   }
 
-  let dueAt = new Date(last.getTime() + FOLLOW_UP_GAPS[sent] * 86400000);
+  let dueAt = new Date(last.getTime() + gaps[sent] * 86400000);
   // They opened the one-page note but haven't replied: follow up while it is fresh, about a
   // day after they opened it (never sooner than a day after the first email).
   if (sent === 0 && lead.noteOpenedAt) {
