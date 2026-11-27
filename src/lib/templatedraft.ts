@@ -262,7 +262,7 @@ export function batonDraft(l: Lead): string {
     ? [`Fewer edit requests at ${n}`, 'Let your clients edit their own sites']
     : ['Let your clients edit their own sites', 'Fewer edit requests after launch'];
   const body = [hooks[seed % hooks.length], why, benefit, `See how Baton works: ${BATON_PARTNER_URL}`, 'Not for you? Just say so.'].join('\n\n');
-  return `Subject: ${subjects[(seed >> 5) % subjects.length]}\n\n${hi}\n\n${body}${BATON_SIGN}`;
+  return `Subject: ${subjects[(seed >>> 5) % subjects.length]}\n\n${hi}\n\n${body}${BATON_SIGN}`;
 }
 
 export function batonFollowUp(l: Lead, number: number): string {

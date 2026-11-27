@@ -388,6 +388,11 @@ export async function runOutbox(): Promise<OutboxResult> {
     } else {
       let { subject, body } = splitDraft(lead.proposal ?? '');
       if (!body) throw new Error('This lead has no draft to send');
+      // A draft with a broken placeholder ("Subject: undefined") must never go out: hold it and say why.
+      if (!subject.trim() || /\b(undefined|NaN)\b/.test(`${subject}\n${body}`)) {
+        await updateLead(lead.id, { status: 'new', auto_sequence: false, queued_at: null, send_error: 'Held: the draft has no subject or contains "undefined". Redraft it.' });
+        return { ...result, skipped: `${lead.title}: the draft has no subject or contains "undefined", moved back to To contact` };
+      }
       // Never tell a business its site lacks something that it has: read the whole site again first (see claimcheck.ts).
       if (!isJobLead(lead) && lead.contactLinks?.segment !== 'baton') {
         const gate = await claimGate(lead, lead.proposal ?? '').catch(() => ({ ok: true } as const));
