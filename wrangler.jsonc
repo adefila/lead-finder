@@ -14,6 +14,9 @@
   // sending (see docs/cloudflare.md) is not undone by the next deploy.
   "vars": {
     "MAIL_WEEKLY_LIMIT": "100",
+    "BATON_MAIL_PROVIDER": "zoho",
+    "BATON_MAIL_FROM_ADDRESS": "partners@batonedit.com",
+    "BATON_MAIL_FROM_NAME": "Samuel from Baton",
     "NEXT_PUBLIC_SUPABASE_URL": "https://jfuryksdphcebropwofe.supabase.co"
   },
   // The timers: send the next email every 15 minutes, find leads at 07:00 UTC and look for their emails at 12:00 UTC.

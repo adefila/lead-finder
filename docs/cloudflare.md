@@ -43,3 +43,7 @@ Nothing deploys from GitHub. Run the build from the project folder, never from i
 - nodemailer must stay on 7.x. Version 10 cannot open mail connections on Workers.
 - The dashboard has no protection if `DASHBOARD_PASSWORD` is missing, so never remove that secret.
 - The dashboard password and the timer secret are in `C:\Users\HP\Backups\2026-11-25\lead-finder-new-secrets.txt` (not in git).
+
+## Baton mailbox
+
+Baton prospects send from their own Zoho mailbox. `BATON_MAIL_PROVIDER`, `BATON_MAIL_FROM_ADDRESS` and `BATON_MAIL_FROM_NAME` are plain values in `wrangler.jsonc`. The login and password must be Worker **secrets** (type Secret, not Text): `BATON_MAIL_USER`, `BATON_MAIL_PASSWORD`, and `BATON_MAIL_REGION` if the Zoho address ends in .eu, .in, .com.au or .jp. A plain Text variable added in the dashboard is erased by the next `wrangler deploy`; a Secret is not. `/api/baton-test` checks the login without sending.
