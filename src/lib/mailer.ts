@@ -86,8 +86,12 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
     greetingTimeout: 8_000,
     socketTimeout: 15_000,
   });
+  const t0 = Date.now();
+  const lap = (what: string) => console.log(`[inbox] ${what}: ${Date.now() - t0} ms`);
   await client.connect();
+  lap('connected');
   const lock = await client.getMailboxLock('INBOX');
+  lap('inbox opened');
   try {
     // Only messages from the leads we're watching. On Gmail the server finds them with its own
     // search (a few "from:" queries), which stays fast however full the inbox gets. Reading the
@@ -109,6 +113,7 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
         for (const uid of (await client.search({ gmraw: query }, { uid: true })) || []) uids.add(uid);
       }
       range = [...uids];
+      lap(`searched (${uids.size} messages from ${addresses.length} addresses)`);
     }
     const messages = Array.isArray(range) && !range.length ? [] : client.fetch(range, { uid: true, envelope: true, internalDate: true }, { uid: true });
     for await (const m of messages) {
@@ -133,6 +138,7 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
       found.set(email.toLowerCase(), { replied: true, optedOut });
     }
 
+    lap('replies read');
     // Delivery failures ("Mail Delivery Subsystem") name the address that bounced.
     const since = new Date(Math.min(...checks.map(ch => ch.since.getTime())));
     const failures = await client.search({ or: [{ from: 'mailer-daemon' }, { from: 'postmaster' }], since }, { uid: true });
@@ -150,6 +156,7 @@ export async function checkReplies(cfg: MailConfig, checks: ReplyCheck[]): Promi
     lock.release();
     await client.logout().catch(() => undefined);
   }
+  lap('done');
   return { replies: found, bounced };
 }
 

@@ -179,12 +179,14 @@ function b2bCase(l: Lead): 'book' | 'price' | 'proof' | 'start' {
 }
 
 export function templateSupported(l: Lead): boolean {
+  if (l.contactLinks?.segment === 'baton') return !!l.contactEmail;
   return !!l.contactEmail && !isJobLead(l) && l.source !== 'website' && l.source !== 'visitor' && l.source !== 'remote' && SUPPORTED.includes(leadLanguage(l) as L4);
 }
 
 // A first email with no AI, or null when the app does not know enough to say something true (then the lead waits for a real draft).
 export function templateDraft(l: Lead): string | null {
   if (!templateSupported(l)) return null;
+  if (l.contactLinks?.segment === 'baton') return batonDraft(l);
   const lang = leadLanguage(l) as L4;
   const P = PACKS[lang];
   const name = clean(l.title);
@@ -218,6 +220,7 @@ export function templateDraft(l: Lead): string | null {
 
 // A follow-up with no AI: the short reminder (number 1) or the last note (number 2), in the lead's language.
 export function templateFollowUp(l: Lead, number: number): string | null {
+  if (l.contactLinks?.segment === 'baton') return batonFollowUp(l, number);
   const lang = leadLanguage(l);
   if (!SUPPORTED.includes(lang as L4)) return null;
   const P = PACKS[lang as L4];
@@ -225,4 +228,52 @@ export function templateFollowUp(l: Lead, number: number): string | null {
   const hi = first && first.length < 60 && first.endsWith(',') ? first : P.hi(firstName(l));
   const body = fill(number >= 2 ? P.fu2 : P.fu1, clean(l.title));
   return `${hi}\n\n${body}\n\nSamuel`;
+}
+
+// ─── Baton: a pitch to developers and agencies who build client sites ────────────────────────────────────────────────
+// Baton (batonedit.com) gives a client a link where they edit the text, images and links of the live site themselves, with draft,
+// publish and one-click rollback, so small edits stop coming back to the developer as tickets. These leads come from GitHub profiles
+// (see /api/baton-import); only what the profile shows is claimed (the stack they build in), and the email is signed for Baton.
+const BATON_SIGN = '\n\nSamuel Adefila\nBaton, so clients can edit their own sites\nbatonedit.com';
+
+const batonStack = (l: Lead): string => {
+  const s = (l.description.match(/Builds with: (.+?)\.(?:\s|$)/)?.[1] ?? '').split(/,\s*/).map(x => x.trim()).filter(Boolean);
+  return s.length ? s.slice(0, 2).join(' and ') : '';
+};
+const batonIsAgency = (l: Lead) => /agency|studio|team|we |our |agencies/i.test(l.description.slice(0, 400));
+
+export function batonDraft(l: Lead): string {
+  const n = clean(l.title);
+  const first = l.contactName ? l.contactName.split(" ")[0] : firstName(l);
+  const hi = first ? `Hi ${first},` : 'Hi there,';
+  const stack = batonStack(l);
+  const seed = hash(l.id);
+  const agency = batonIsAgency(l);
+  const opener = stack
+    ? (agency ? `I saw that ${n} builds client sites in ${stack}.` : `I saw you build client sites in ${stack}.`)
+    : (agency ? `I came across ${n} and the client sites you build.` : 'I came across your GitHub and the client sites you build.');
+  const problems = [
+    "Once a site goes live, the small edits (a price, a photo, a line of text) usually come back to you as tickets.",
+    "Most of the requests after launch are tiny: change a heading, swap an image, fix a phone number. They still cost you a context switch each time.",
+    "The part that eats a developer's week after a launch is rarely the build, it is the stream of small text and image changes from the client.",
+  ];
+  const fix = "I'm building Baton for that. You paste the site's URL, it finds how the site is built, and your client gets one link where they edit the text, images and links on the live page themselves. Every change is a draft until they publish, and any version can be rolled back in one click, so nothing they do can break your layout.";
+  const asks = [
+    "Want a test link for one of your client sites? Reply YES and I'll set it up for you.",
+    "Could I set up a test link on one of your sites so you can try it? Just reply YES.",
+  ];
+  const subjects = agency
+    ? [`Client edits at ${n}`, `Fewer edit tickets at ${n}`]
+    : ['Client edits after launch', 'Fewer edit tickets after launch'];
+  const body = [opener, `${problems[seed % problems.length]} ${fix}`, asks[(seed >> 3) % asks.length], 'If it is not for you, just say so.'].join('\n\n');
+  return `Subject: ${subjects[(seed >> 5) % subjects.length]}\n\n${hi}\n\n${body}${BATON_SIGN}`;
+}
+
+export function batonFollowUp(l: Lead, number: number): string {
+  const first = l.contactName ? l.contactName.split(" ")[0] : firstName(l);
+  const hi = first ? `Hi ${first},` : 'Hi there,';
+  const body = number >= 2
+    ? "Last note from me. If client edits ever become a drag on your time, Baton (batonedit.com) is there. Reply any time and I'll set up a test link."
+    : "Just checking my note didn't get buried. A test link of Baton on one of your client sites takes me a few minutes to set up, and you can see how your client would edit it. Want one?";
+  return `${hi}\n\n${body}\n\nSamuel\nbatonedit.com`;
 }

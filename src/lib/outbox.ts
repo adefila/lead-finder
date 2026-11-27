@@ -1,5 +1,5 @@
 import type { Lead } from '@/types/lead';
-import { getLeads, getOutboxLeads, getLeadById, countFirstSentSince, countFollowUpsSince, lastSentAt, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
+import { getLeads, getOutboxLeads, getLeadById, countFirstSentSince, countFollowUpsSince, lastSentAt, inboxCheckedAt, saveInboxChecked, updateLead, logSend, claimOutboxRun, sendsSince } from '@/lib/supabase';
 import { followUpState } from '@/lib/followup';
 import { draftFollowUp } from '@/lib/claude';
 import { splitDraft, toHtml, withCheckLink, withSignature } from '@/lib/compose';
@@ -10,11 +10,14 @@ import { emailLink, siteLink } from '@/lib/tracking';
 import { checkReplies, mailConfig, sendMail, sentFolderSince } from '@/lib/mailer';
 import { emailDomainAccepts } from '@/lib/verify';
 import { planNewSend } from '@/lib/pacing';
+import { claimGate } from '@/lib/claimcheck';
 
 // DAILY_LIMIT and WEEKLY_LIMIT count first emails only. Follow-ups have their own daily limit (FOLLOWUP_DAILY_LIMIT).
 export const DAILY_LIMIT = Number(process.env.MAIL_DAILY_LIMIT ?? 20);
 export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
 // Follow-ups to people already contacted are limited separately: at most this many a day, so they cannot crowd out new emails.
+// Of the day's new emails, at least this many go to developers and agencies pitched Baton (when enough of them are queued and awake).
+export const BATON_DAILY_MIN = Number(process.env.BATON_DAILY_MIN ?? 5);
 export const FOLLOWUP_DAILY_LIMIT = Number(process.env.MAIL_FOLLOWUP_DAILY_LIMIT ?? 20);
 // At most one email (first or follow-up) every MIN_GAP minutes. The timer runs every 15 minutes,
 // so 10 means one per run: about 28 emails in a 7-hour business day, spaced like a person typing.
@@ -207,9 +210,14 @@ export async function runOutbox(): Promise<OutboxResult> {
   let slowTimer: ReturnType<typeof setTimeout> | undefined;
   const { replies, bounced, checked: inboxChecked } = await Promise.race([
     inboxCheck,
-    new Promise<typeof noInbox>(resolve => { slowTimer = setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 25_000); }),
+    new Promise<typeof noInbox>(resolve => { slowTimer = setTimeout(() => { console.error('[outbox] inbox check slow, skipped this run'); resolve(noInbox); }, 55_000); }),
   ]);
   clearTimeout(slowTimer);
+  // A complete check is remembered. When a later one is slow or fails, follow-ups still go out if the last complete check was under
+  // 6 hours ago (replies in the gap are caught by the next complete check), so one slow run no longer stops every follow-up.
+  if (inboxChecked || !watching.length) await saveInboxChecked().catch(() => undefined);
+  const lastChecked = inboxChecked || !watching.length ? new Date() : await inboxCheckedAt().catch(() => null);
+  const inboxFresh = !!lastChecked && Date.now() - lastChecked.getTime() < 6 * 3600_000;
   for (const lead of watching) {
     const address = lead.contactEmail!.toLowerCase();
     if (bounced.has(address) && !replies.has(address)) {
@@ -271,7 +279,7 @@ export async function runOutbox(): Promise<OutboxResult> {
 
   // 3. Follow-ups first (they keep a conversation going), then new sends. Only inside the lead's business hours.
   const followUpsToday = await countFollowUpsSince(todayStart());
-  const followUp = inboxChecked && followUpsToday < FOLLOWUP_DAILY_LIMIT && leads.find(l =>
+  const followUp = (inboxChecked || inboxFresh) && followUpsToday < FOLLOWUP_DAILY_LIMIT && leads.find(l =>
     l.status === 'approved' && l.autoSequence && l.contactEmail && !l.optedOut && followUpState(l).due && inSendWindow(l));
   // New emails: DAILY_LIMIT on every working day of your calendar, spread over every hour in which someone in the queue is
   // inside their own business hours, and caught up automatically if the day falls behind (see pacing.ts).
@@ -289,9 +297,14 @@ export async function runOutbox(): Promise<OutboxResult> {
     minGapMin: MIN_GAP_MIN,
     slowed: backoff.slowed,
   });
+  const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
+  const batonById = new Set(leads.filter(isBatonLead).map(l => l.id));
+  const batonToday = todaysFirsts.filter(s => batonById.has(s.leadId)).length;
+  const wantBaton = batonToday < BATON_DAILY_MIN;
   const first = plan?.send
     ? [...openNow].sort((a, b) =>
       Number(!!a.sendError) - Number(!!b.sendError)          // failing ones last
+      || (wantBaton ? Number(!isBatonLead(a)) - Number(!isBatonLead(b)) : Number(isBatonLead(a)) - Number(isBatonLead(b))) // Baton's daily 5 first, then the rest
       || Number(wantsDemo(a)) - Number(wantsDemo(b))         // ones still waiting for their demo after the ready ones
       || (b.score ?? 0) - (a.score ?? 0)                     // best fit first
       || (a.queuedAt ?? '').localeCompare(b.queuedAt ?? '')) // then oldest first
@@ -340,8 +353,21 @@ export async function runOutbox(): Promise<OutboxResult> {
       await logSend('followup', lead.id, new Date(now));
       result.sent = { id: lead.id, title: lead.title, kind: 'follow-up' };
     } else {
-      const { subject, body } = splitDraft(lead.proposal ?? '');
+      let { subject, body } = splitDraft(lead.proposal ?? '');
       if (!body) throw new Error('This lead has no draft to send');
+      // Never tell a business its site lacks something that it has: read the whole site again first (see claimcheck.ts).
+      if (!isJobLead(lead) && lead.contactLinks?.segment !== 'baton') {
+        const gate = await claimGate(lead, lead.proposal ?? '').catch(() => ({ ok: true } as const));
+        if (!gate.ok) {
+          await updateLead(lead.id, { status: 'new', auto_sequence: false, queued_at: null, send_error: gate.reason });
+          return { ...result, skipped: `${lead.title}: ${gate.reason}` };
+        }
+        if ('draft' in gate && gate.draft) {
+          await updateLead(lead.id, { draft_email: gate.draft });
+          lead.proposal = gate.draft;
+          ({ subject, body } = splitDraft(gate.draft));
+        }
+      }
       if (!(await emailDomainAccepts(lead.contactEmail!))) {
         // Dead domain: take it out of the queue instead of retrying forever.
         await updateLead(lead.id, { status: 'new', auto_sequence: false, queued_at: null, send_error: "This email address can't receive mail. Try phone or a DM instead." });

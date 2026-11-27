@@ -7,6 +7,7 @@ export const SOURCE_LABEL: Record<Lead['source'], string> = {
   remote: 'Remote job',
   website: 'Your website form',
   visitor: 'Visited your site',
+  github: 'GitHub (Baton pitch)',
   places: 'Google Maps',
   osm: 'Local map',
   companies_house: 'Company register',
@@ -71,6 +72,8 @@ export const isJobLead = (l: Pick<Lead, 'source'>) => l.source === 'job' || l.so
 
 // Local businesses and new companies we pitch systems to. Their emails and notes send them to
 // adefilasamuel.com/local-business instead of the founder homepage.
+// A developer or agency found on GitHub and pitched Baton (the client-edit tool), not Samuel's own web work.
+export const isBaton = (l: Pick<Lead, 'contactLinks'>) => l.contactLinks?.segment === 'baton';
 export const isB2B = (l: Pick<Lead, 'contactLinks'>) => l.contactLinks?.segment === 'b2b';
 // B2B companies are pitched a website rebuild and sent to the homepage; only local businesses get the systems pitch.
 export const isBusinessPitch = (l: Pick<Lead, 'source' | 'contactLinks'>) => (l.source === 'places' || l.source === 'osm' || l.source === 'companies_house') && !isB2B(l);
@@ -322,7 +325,7 @@ const DEFAULT_SYSTEMS = [
 ];
 
 // Leads from your own website: no local-business note, they get a plain reply or introduction.
-const fromSite = (l: Pick<Lead, 'source'>) => l.source === 'website' || l.source === 'visitor';
+const fromSite = (l: Pick<Lead, 'source'>) => l.source === 'website' || l.source === 'visitor' || l.source === 'github';
 
 // Short, anonymous label for the kind of business, in the same order as SYSTEMS above. It goes into the analytics tag on
 // the links in your emails so you can see which kinds of business visit and book. Never a name or an address.

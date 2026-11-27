@@ -206,3 +206,30 @@ function ownDomainFirst(emails: string[], url: string): string[] {
   try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return emails; }
   return [...emails].sort((a, b) => Number(!a.endsWith('@' + host)) - Number(!b.endsWith('@' + host)));
 }
+
+
+// Everything a visitor could find on a site, for checking a claim about it: the homepage plus up to five of its own pages that
+// matter (pricing, services, work, contact, about), each as visible text, link labels and link addresses. The saved "site text" is only
+// the start of the homepage, so it cannot show that something is missing; this can.
+const PRIORITY_PAGES = /pric|plans?|packages?|services?|solutions?|work|projects?|portfolio|case|clients?|testimonial|reviews?|contact|quote|book|demo|about|team|company|prijzen|diensten|tarifs|kontakt|priser|tjenester/i;
+export async function siteCorpus(url: string): Promise<string | null> {
+  const home = await getHtml(url);
+  if (home.kind !== 'ok') return null;
+  const origin = new URL(home.finalUrl).origin;
+  const anchors = (html: string, base: string) => [...html.matchAll(/<a\b[^>]*href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => {
+    let abs = '';
+    try { abs = new URL(m[1], base).toString(); } catch { /* skip */ }
+    return { abs, label: m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() };
+  }).filter(a => a.abs.startsWith('http'));
+  const homeLinks = anchors(home.html, home.finalUrl);
+  const pick = [...new Map(homeLinks
+    .filter(a => a.abs.startsWith(origin) && PRIORITY_PAGES.test(`${new URL(a.abs).pathname} ${a.label}`) && !/\.(pdf|jpe?g|png|zip)$/i.test(a.abs))
+    .map(a => [a.abs.split('?')[0].replace(/\/$/, ''), a] as const)).values()].slice(0, 5);
+  const pages = await Promise.all(pick.map(a => getHtml(a.abs)));
+  const parts = [`${visibleText(home.html)} ${homeLinks.map(a => `${a.label} ${a.abs}`).join(' ')}`];
+  pages.forEach((p, i) => {
+    if (p.kind !== 'ok') return;
+    parts.push(`${visibleText(p.html)} ${anchors(p.html, p.finalUrl).map(a => `${a.label} ${a.abs}`).join(' ')} ${pick[i].label} ${pick[i].abs}`);
+  });
+  return parts.join('\n').slice(0, 60000);
+}

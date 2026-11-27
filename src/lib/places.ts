@@ -7,22 +7,17 @@ import { languageOfPlace, type LeadLang } from '@/lib/leadview';
 // B2B companies: founders and owners of businesses that sell to other businesses. Their sites are the ones
 // worth rebuilding around what they sell. (Local clinics, salons and trades are no longer searched.)
 const DEFAULT_CATEGORIES = [
-  // software and technology
-  'software company', 'SaaS company', 'IT services company', 'managed IT provider', 'cybersecurity company',
-  'AI company', 'data analytics company', 'cloud services company', 'fintech company', 'payments company', 'insurtech company',
-  'legal tech company', 'HR software company', 'edtech company', 'healthtech company', 'cleantech company',
-  // agencies and professional services
-  'digital marketing agency', 'B2B marketing agency', 'PR agency', 'management consultancy', 'recruitment agency', 'staffing agency',
-  'HR consultancy', 'training company', 'business services company', 'market research firm', 'translation services company',
-  'accounting firm', 'financial advisory firm', 'insurance broker', 'law firm',
-  // industry, built world and logistics
-  'logistics company', 'freight forwarder', 'supply chain consultancy', 'engineering firm', 'civil engineering consultancy',
-  'architecture firm', 'construction company', 'environmental consultancy', 'energy consultancy', 'commercial solar installer',
-  'manufacturing company', 'industrial equipment supplier', 'wholesale distributor', 'packaging company', 'telecommunications provider',
-  'medical device company', 'biotech company',
-  // property, events and facilities
-  'commercial real estate firm', 'property management company', 'facilities management company', 'security services company',
-  'event management company',
+  // construction and the built world (the main focus)
+  'construction company', 'building contractor', 'commercial construction company', 'civil engineering contractor', 'groundworks contractor',
+  'scaffolding company', 'commercial roofing contractor', 'steel fabrication company', 'electrical contractor', 'mechanical and electrical contractor',
+  'HVAC contractor', 'fit-out contractor', 'demolition contractor', 'plant hire company', 'building materials supplier',
+  'quantity surveying firm', 'project management consultancy', 'architecture firm', 'civil engineering consultancy', 'structural engineering firm',
+  'engineering firm', 'commercial solar installer', 'facilities management company', 'property management company', 'commercial real estate firm',
+  // industry and logistics
+  'manufacturing company', 'industrial equipment supplier', 'wholesale distributor', 'logistics company', 'freight forwarder', 'packaging company',
+  'security services company', 'commercial cleaning company', 'environmental consultancy', 'energy consultancy',
+  // professional services
+  'management consultancy', 'recruitment agency', 'training company', 'accounting firm', 'law firm',
 ];
 const B2B_CATEGORIES = new Set(DEFAULT_CATEGORIES);
 
@@ -35,20 +30,21 @@ const B2B_CATEGORIES = new Set(DEFAULT_CATEGORIES);
 // even for companies (Germany, Austria, Spain, Portugal, Italy, parts of Latin America): turn them on with PLACES_MARKETS (for
 // example "de|es", or "all") only after checking the rules for that country. Canada is left out on purpose (strict cold-email law).
 // This is not legal advice.
+// Only European countries are on (UK, Ireland, Netherlands, France, Norway). The others are kept but off; turn one on with PLACES_MARKETS.
 interface Market { country: string; cities: string[]; on: boolean }
 const MARKETS: Market[] = [
   { country: 'United Kingdom', on: true, cities: ['London, UK', 'Manchester, UK', 'Birmingham, UK', 'Leeds, UK', 'Edinburgh, UK', 'Bristol, UK', 'Glasgow, UK', 'Liverpool, UK', 'Cardiff, UK'] },
   { country: 'Ireland', on: true, cities: ['Dublin, Ireland', 'Cork, Ireland'] },
-  { country: 'Australia', on: true, cities: ['Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia', 'Adelaide, Australia'] },
-  { country: 'New Zealand', on: true, cities: ['Auckland, New Zealand', 'Wellington, New Zealand'] },
-  { country: 'Singapore', on: true, cities: ['Singapore'] },
-  { country: 'United States', on: true, cities: ['Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Miami, FL', 'Nashville, TN', 'New York, NY', 'San Francisco, CA', 'Dallas, TX', 'Raleigh, NC', 'Minneapolis, MN', 'Phoenix, AZ'] },
-  { country: 'United Arab Emirates', on: true, cities: ['Dubai, UAE', 'Abu Dhabi, UAE'] },
-  { country: 'South Africa', on: true, cities: ['Johannesburg, South Africa', 'Cape Town, South Africa'] },
-  { country: 'Nigeria', on: true, cities: ['Lagos, Nigeria', 'Abuja, Nigeria'] },
-  { country: 'Kenya', on: true, cities: ['Nairobi, Kenya'] },
-  { country: 'Ghana', on: true, cities: ['Accra, Ghana'] },
-  { country: 'Malaysia', on: true, cities: ['Kuala Lumpur, Malaysia'] },
+  { country: 'Australia', on: false, cities: ['Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia', 'Adelaide, Australia'] },
+  { country: 'New Zealand', on: false, cities: ['Auckland, New Zealand', 'Wellington, New Zealand'] },
+  { country: 'Singapore', on: false, cities: ['Singapore'] },
+  { country: 'United States', on: false, cities: ['Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Miami, FL', 'Nashville, TN', 'New York, NY', 'San Francisco, CA', 'Dallas, TX', 'Raleigh, NC', 'Minneapolis, MN', 'Phoenix, AZ'] },
+  { country: 'United Arab Emirates', on: false, cities: ['Dubai, UAE', 'Abu Dhabi, UAE'] },
+  { country: 'South Africa', on: false, cities: ['Johannesburg, South Africa', 'Cape Town, South Africa'] },
+  { country: 'Nigeria', on: false, cities: ['Lagos, Nigeria', 'Abuja, Nigeria'] },
+  { country: 'Kenya', on: false, cities: ['Nairobi, Kenya'] },
+  { country: 'Ghana', on: false, cities: ['Accra, Ghana'] },
+  { country: 'Malaysia', on: false, cities: ['Kuala Lumpur, Malaysia'] },
   // Written in the local language
   { country: 'Netherlands', on: true, cities: ['Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'Utrecht, Netherlands', 'The Hague, Netherlands', 'Eindhoven, Netherlands'] },
   { country: 'France', on: true, cities: ['Paris, France', 'Lyon, France', 'Marseille, France', 'Toulouse, France', 'Nantes, France', 'Bordeaux, France', 'Lille, France'] },
@@ -137,6 +133,8 @@ const BUDGET_MS = 110_000;
 const MIN_REVIEWS = 5;
 // A business is only a lead if customers are still reviewing it.
 const MAX_REVIEW_AGE_DAYS = 365;
+// B2B companies must show recent life on Google too: a review in the last PLACES_ACTIVE_DAYS days (default 90), or no review data but opening hours and a phone.
+const MAX_REVIEW_AGE_DAYS_B2B = Number(process.env.PLACES_ACTIVE_DAYS ?? 90);
 const MAX_REVIEW_AGE_DAYS_BROKEN_SITE = 180;
 
 const FIELD_MASK = [
@@ -341,7 +339,12 @@ export async function fetchPlacesLeads(only?: PlacesOptions): Promise<Lead[]> {
       seen.add(place.id);
       if (known.has(`places-${place.id}`)) { dropped.known++; continue; }
       if (place.businessStatus !== 'OPERATIONAL') { dropped.closed++; continue; }
-      if (!B2B_CATEGORIES.has(r.category)) {
+      if (B2B_CATEGORIES.has(r.category)) {
+        const a = activityOf(place);
+        const recent = a.lastReviewDays !== null && a.lastReviewDays <= MAX_REVIEW_AGE_DAYS_B2B;
+        const noReviewData = a.lastReviewDays === null && a.hasHours && a.hasPhone;
+        if (!recent && !noReviewData) { dropped.inactive++; continue; }
+      } else {
         if ((place.userRatingCount ?? 0) < MIN_REVIEWS) { dropped.fewReviews++; continue; }
         const a = activityOf(place);
         const recentlyReviewed = a.lastReviewDays !== null && a.lastReviewDays <= MAX_REVIEW_AGE_DAYS;

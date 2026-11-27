@@ -575,7 +575,15 @@ ${message}`,
   return text && !INFORMAL_DUTCH.test(text) ? text : message;
 }
 
-export async function generateColdEmails(leads: Lead[]): Promise<Lead[]> {
+// Baton pitches (to developers and agencies) are written from a template, never by the model: no credit used, one voice.
+export async function generateColdEmails(all: Lead[]): Promise<Lead[]> {
+  const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
+  const rest = all.filter(l => !isBatonLead(l));
+  const written = new Map((rest.length ? await draftWithModel(rest) : []).map(l => [l.id, l]));
+  return all.map(l => isBatonLead(l) ? { ...l, proposal: templateDraft(l) ?? l.proposal } : written.get(l.id) ?? l);
+}
+
+async function draftWithModel(leads: Lead[]): Promise<Lead[]> {
   if (!leads.length) return [];
   console.log(`[claude] Drafting outreach for ${leads.length} leads...`);
 
@@ -676,6 +684,7 @@ function humanRules(facts: string[]): string {
 // personal: the "Write a personal follow-up" button, used on leads who looked at your note or site. It is written as a
 // one-off note, outside the automatic sequence.
 export async function draftFollowUp(lead: Lead, opts: { personal?: boolean } = {}): Promise<string> {
+  if (lead.contactLinks?.segment === 'baton') return templateFollowUp(lead, opts.personal ? 1 : (lead.followUps ?? 0) + 1) ?? '';
   const number = opts.personal ? 1 : (lead.followUps ?? 0) + 1;
   const since = lead.contactedAt
     ? Math.max(1, Math.round((Date.now() - new Date(lead.contactedAt).getTime()) / 86400000))

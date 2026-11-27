@@ -242,6 +242,18 @@ export async function updateLeadStatus(id: string, status: LeadStatus): Promise<
   return error ? explain(error.message) : null;
 }
 
+// When the inbox was last read all the way through. A run whose check is slow or fails does not know who replied, so follow-ups wait;
+// but they may still go out if the last complete check was recent (see outbox.ts).
+export async function inboxCheckedAt(): Promise<Date | null> {
+  const { data } = await db().from('profile').select('updated_at').eq('id', 'inboxcheck').maybeSingle();
+  return data?.updated_at ? new Date(String(data.updated_at)) : null;
+}
+
+export async function saveInboxChecked(at = new Date()): Promise<void> {
+  const { error } = await db().from('profile').upsert({ id: 'inboxcheck', text: '', skills: [], titles: [], years: null, source: 'inboxcheck', updated_at: at.toISOString() }, { onConflict: 'id' });
+  if (error) console.error('[supabase] saveInboxChecked:', error.message);
+}
+
 // When the most recent email (first or follow-up) went out, for spacing sends apart.
 export async function lastSentAt(): Promise<Date | null> {
   const { data } = await db().from('leads').select('last_sent_at').not('last_sent_at', 'is', null)

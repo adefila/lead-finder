@@ -3,6 +3,7 @@ export interface ContactLinks {
   website?: string;
   linkedin?: string;
   twitter?: string;
+  github?: string;
   instagram?: string;
   facebook?: string;
   register?: string;
@@ -13,7 +14,7 @@ export interface ContactLinks {
   siteVisits?: number;
   sitePages?: string[];
   // "b2b": a B2B company (founder or owner of a business that sells to other businesses). Pitched a website rebuild, not local systems.
-  segment?: 'b2b';
+  segment?: 'b2b' | 'baton';
   // Jobs: how well the job fits your uploaded profile (kept here so no database change is needed).
   // Set once a skipped job was brought back because it matched your profile, so skipping it again sticks.
   matchRestored?: true;
@@ -37,7 +38,7 @@ export interface Lead {
   company: string;
   description: string;
   url: string;
-  source: 'job' | 'places' | 'osm' | 'companies_house' | 'remote' | 'website' | 'visitor';
+  source: 'job' | 'places' | 'osm' | 'companies_house' | 'remote' | 'website' | 'visitor' | 'github';
   // Signed link to the lead's one-page website check (added by the API, not stored).
   checkUrl?: string;
   postedAt: string;

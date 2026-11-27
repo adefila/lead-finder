@@ -97,6 +97,8 @@ export function withSignature(body: string, lang: Lang = 'en', forJob = false, f
   const SIGNATURE = signatureFor(lang, forJob, forBusiness);
   const text = body.trimEnd();
   if (text.endsWith(SIGNATURE)) return text;
+  // Baton pitches carry their own sign-off (see templatedraft.ts): never add Samuel's web-design signature to them.
+  if (/\nbatonedit\.com$/i.test(text)) return text;
   // A draft that already carries a full signature (either address) gets the right address
   for (const t of [...Object.values(TAGLINE), JOB_TAGLINE]) {
     for (const site of SITE_LINES) {
