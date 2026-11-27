@@ -22,6 +22,17 @@ export const WEEKLY_LIMIT = Number(process.env.MAIL_WEEKLY_LIMIT ?? 100);
 export const BATON_DAILY_LIMIT = Number(process.env.BATON_DAILY_LIMIT ?? 20);
 export const BATON_WEEKLY_LIMIT = Number(process.env.BATON_WEEKLY_LIMIT ?? 100);
 export const BATON_FOLLOWUP_DAILY_LIMIT = Number(process.env.BATON_FOLLOWUP_DAILY_LIMIT ?? 20);
+// A new mailbox sending cold email at full speed gets marked as spam, so Baton ramps up: BATON_RAMP_START (default 10) a day for the first
+// 7 days after its first email, then BATON_DAILY_LIMIT (default 20). Set BATON_RAMP=off to skip the ramp.
+const BATON_RAMP_START = Number(process.env.BATON_RAMP_START ?? 10);
+async function batonDailyLimit(): Promise<number> {
+  if (process.env.BATON_RAMP === 'off') return BATON_DAILY_LIMIT;
+  const start = Math.min(BATON_RAMP_START, BATON_DAILY_LIMIT);
+  const firsts = (await sendsSince(new Date(Date.now() - 30 * 86400_000).toISOString())).filter(x => x.leadId.startsWith('gh-'));
+  if (!firsts.length) return start;
+  const first = Math.min(...firsts.map(x => Date.parse(x.at)));
+  return Date.now() - first < 7 * 86400_000 ? start : BATON_DAILY_LIMIT;
+}
 export type Lane = 'main' | 'baton';
 const isBatonLead = (l: Lead) => l.contactLinks?.segment === 'baton';
 const isBatonId = (id: string) => id.startsWith('gh-');
@@ -199,7 +210,7 @@ export async function outboxStatus(): Promise<Pick<OutboxResult, 'configured' | 
   return {
     followUpsToday,
     batonConfigured: !!mailConfig('baton'),
-    baton: { sentToday: batonToday, limit: BATON_DAILY_LIMIT, sentWeek: batonFirsts.length, weekLimit: BATON_WEEKLY_LIMIT, queued: allLeads.filter(l => isBatonLead(l) && l.status === 'queued').length },
+    baton: { sentToday: batonToday, limit: await batonDailyLimit(), sentWeek: batonFirsts.length, weekLimit: BATON_WEEKLY_LIMIT, queued: allLeads.filter(l => isBatonLead(l) && l.status === 'queued').length },
     paused: PAUSED,
     configured: !!mailConfig(),
     sentToday,
@@ -218,7 +229,7 @@ export async function runOutbox(lane: Lane = 'main'): Promise<OutboxResult> {
   const batonLane = lane === 'baton';
   const cfg = mailConfig(lane);
   const leads = (await getOutboxLeads()).filter(l => isBatonLead(l) === batonLane);
-  const dailyLimit = batonLane ? BATON_DAILY_LIMIT : DAILY_LIMIT;
+  const dailyLimit = batonLane ? await batonDailyLimit() : DAILY_LIMIT;
   const weeklyLimit = batonLane ? BATON_WEEKLY_LIMIT : WEEKLY_LIMIT;
   const followUpLimit = batonLane ? BATON_FOLLOWUP_DAILY_LIMIT : FOLLOWUP_DAILY_LIMIT;
   // What this lane has sent: from the send log, by whose lead it was (Baton leads have ids that start with "gh-").
