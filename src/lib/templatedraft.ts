@@ -235,7 +235,7 @@ export function templateFollowUp(l: Lead, number: number): string | null {
 // Baton (batonedit.com) gives a client a link where they edit the text, images and links of the live site themselves, with draft,
 // publish and one-click rollback, so small edits stop coming back to the developer as tickets. These leads come from GitHub profiles
 // (see /api/baton-import); only what the profile shows is claimed (the stack they build in), and the email is signed for Baton.
-const BATON_SIGN = '\n\nSamuel Adefila\nBaton, so clients can edit their own sites\nbatonedit.com';
+const BATON_SIGN = '\n\nSamuel\nbatonedit.com';
 
 const batonStack = (l: Lead): string => {
   const s = (l.description.match(/Builds with: (.+?)\.(?:\s|$)/)?.[1] ?? '').split(/,\s*/).map(x => x.trim()).filter(Boolean);
@@ -251,20 +251,17 @@ export function batonDraft(l: Lead): string {
   const stack = batonStack(l);
   const seed = hash(l.id);
   const agency = batonIsAgency(l);
-  const opener = stack
-    ? (agency ? `I saw that ${n} builds client sites in ${stack}.` : `I saw you build client sites in ${stack}.`)
-    : (agency ? `I came across ${n} and the client sites you build.` : 'I came across your GitHub and the client sites you build.');
-  const problems = [
-    "Once a site goes live, the small edits (a price, a photo, a line of text) usually come back to you as tickets.",
-    "Most of the requests after launch are tiny: change a heading, swap an image, fix a phone number. They still cost you a context switch each time.",
-    "The part that eats a developer's week after a launch is rarely the build, it is the stream of small text and image changes from the client.",
+  const hooks = [
+    stack ? `Building client sites in ${stack}? Then you know the tiny edit requests that follow every launch.` : 'You know the tiny edit requests that follow every client launch.',
+    'Every launch ends the same way: the client wants one heading, one photo or one phone number changed.',
+    "The build is the easy part. It's the stream of small text and image changes after launch that eats the week.",
   ];
-  const fix = "I'm building Baton for that. You hand the site over, and your client changes the words, photos and links on the live page themselves. Every change is a draft until they publish, and any version can be rolled back in one click, so nothing they do can break your layout.";
-  const partner = "Handing a site over is free. If your client picks a paid plan, you earn 30% of what they pay for their first 12 months.";
+  const why = 'Baton lets your client edit the words, photos and links on the live site themselves. Nothing goes live until they publish, and any change can be undone.';
+  const benefit = 'You get fewer edit requests, and if your client picks a paid plan you earn 30% of what they pay for 12 months.';
   const subjects = agency
-    ? [`Client edits at ${n}`, `Fewer edit tickets at ${n}`]
-    : ['Client edits after launch', 'Fewer edit tickets after launch'];
-  const body = [opener, `${problems[seed % problems.length]} ${fix}`, partner, `See how Baton partners work: ${BATON_PARTNER_URL}`, "Reply YES and I'll set up a test on one of your client sites. If it is not for you, just say so."].join('\n\n');
+    ? [`Fewer edit requests at ${n}`, 'Let your clients edit their own sites']
+    : ['Let your clients edit their own sites', 'Fewer edit requests after launch'];
+  const body = [hooks[seed % hooks.length], why, benefit, `See how Baton works: ${BATON_PARTNER_URL}`, 'Not for you? Just say so.'].join('\n\n');
   return `Subject: ${subjects[(seed >> 5) % subjects.length]}\n\n${hi}\n\n${body}${BATON_SIGN}`;
 }
 
@@ -273,6 +270,6 @@ export function batonFollowUp(l: Lead, number: number): string {
   const hi = first ? `Hi ${first},` : 'Hi there,';
   const body = number >= 2
     ? "Last note from me. If client edits ever become a drag on your time, Baton (batonedit.com) is there. Reply any time and I'll set up a test link."
-    : `Just checking my note didn't get buried. Handing a site to a client on Baton is free, and you earn 30% of what they pay for 12 months if they pick a paid plan: ${BATON_PARTNER_URL}\n\nWant me to set up a test on one of your client sites?`;
+    : `Just checking my note didn't get buried. Handing a site to a client on Baton is free, and you earn 30% of what they pay for 12 months if they pick a paid plan: ${BATON_PARTNER_URL}`;
   return `${hi}\n\n${body}\n\nSamuel\nbatonedit.com`;
 }

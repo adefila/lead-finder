@@ -5,10 +5,17 @@
 const ORIGIN = 'https://batonedit.com';
 const STRIP = `${ORIGIN}/brand/baton-email-strip.png`;
 const FONT = "'Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
-const HFONT = "'General Sans','Switzer',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
 // The tracked link in the email: opens Baton's partner page and tells Baton's analytics the visit came from this outreach.
+// Baton's own social pages (the same ones its website footer and its other emails link to).
+const SOCIALS: [string, string][] = [
+  ['TikTok', 'https://www.tiktok.com/@officialbaton0'],
+  ['X', 'https://x.com/officialbaton_'],
+  ['Instagram', 'https://www.instagram.com/officialbaton_'],
+  ['LinkedIn', 'https://www.linkedin.com/company/101325014'],
+];
+
 export const BATON_PARTNER_URL = `${ORIGIN}/partners?utm_source=outreach&utm_medium=email&utm_campaign=baton-partners`;
 
 // Turns a Baton draft (greeting, paragraphs, a "Label: link" line for the button, closing lines, signature) into the designed email.
@@ -26,13 +33,13 @@ export function batonHtml(subject: string, body: string): string {
   const button = cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0"><tr><td bgcolor="#d12e0a" style="background:#d12e0a;border-radius:8px"><a href="${esc(cta.url)}" style="display:inline-block;background:#d12e0a;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;line-height:1;padding:13px 20px;border-radius:8px;font-family:${FONT}">${esc(cta.label)}</a></td></tr></table>`
     : '';
-  const foot = after.join(' ');
+  const note = after.map(t => `<p class="m" style="margin:20px 0 0;font-size:13.5px;line-height:1.55;color:#707070">${esc(t)}</p>`).join('');
+  const socials = SOCIALS.map(([n, u]) => `<a class="fl" href="${u}" style="color:#707070;text-decoration:underline">${n}</a>`).join(' &nbsp;·&nbsp; ');
   const preview = (before.find(x => !/^Hi\b/.test(x)) ?? title).slice(0, 110);
   return `<!doctype html><html lang="en" xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${esc(title)}</title>
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@600&display=swap" rel="stylesheet">
 <style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}img{border:0;outline:none}table{border-collapse:collapse}
-@media (prefers-color-scheme:dark){.bg{background:#0e0f11!important}.card{background:#17181a!important;border-color:#2a2b2e!important}.t{color:#f3f3f5!important}.m{color:#b8b8c1!important}.f{color:#8d8d97!important;border-color:#2a2b2e!important}}
+@media (prefers-color-scheme:dark){.bg{background:#0e0f11!important}.card{background:#17181a!important;border-color:#2a2b2e!important}.t{color:#f3f3f5!important}.m{color:#b8b8c1!important}.f{color:#8d8d97!important;border-color:#2a2b2e!important}.fl{color:#8d8d97!important}}
 [data-ogsc] .bg{background:#0e0f11!important}[data-ogsc] .card{background:#17181a!important}[data-ogsc] .t{color:#f3f3f5!important}[data-ogsc] .m{color:#b8b8c1!important}</style></head>
 <body class="bg" style="margin:0;padding:0;background:#f5f5f5;font-family:${FONT}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:#f5f5f5">${esc(preview)}</div>
@@ -40,8 +47,8 @@ export function batonHtml(subject: string, body: string): string {
 <table role="presentation" class="card" width="480" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid #e6e6e6;border-radius:12px;overflow:hidden">
 <tr><td bgcolor="#0b0b0c" style="padding:0;background:#0b0b0c;line-height:0;font-size:0"><img src="${STRIP}" width="478" height="56" alt="Baton" style="display:block;width:100%;max-width:478px;height:auto;border:0;color:#ffffff;font:700 20px/56px Arial,Helvetica,sans-serif"></td></tr>
 <tr><td style="padding:32px;font-family:${FONT}">
-<h1 class="t" style="margin:0 0 14px;font-family:${HFONT};font-size:22px;line-height:1.25;font-weight:600;color:#141414;letter-spacing:-0.02em">${esc(title)}</h1>${before.map(p).join('')}${button}
-<p class="f" style="margin:30px 0 0;padding-top:16px;border-top:1px solid #efefef;font-size:12.5px;line-height:1.55;color:#707070">${esc(foot)}${foot ? '<br>' : ''}<span style="opacity:.85">Samuel, Baton &nbsp;·&nbsp; partners@batonedit.com</span><br><span style="opacity:.85">Your website, in your hands.</span></p>
+${before.map(p).join('')}${button}${note}
+<p class="f" style="margin:28px 0 0;padding-top:16px;border-top:1px solid #efefef;font-size:12.5px;line-height:1.55;color:#707070">${socials}</p>
 </td></tr></table>
 </td></tr></table></body></html>`;
 }
